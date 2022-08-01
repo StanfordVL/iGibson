@@ -28,7 +28,7 @@ REQUEUE.clear()
 
 
 # Default port to initialized the TCP store on
-DEFAULT_PORT = 8738
+DEFAULT_PORT = 10000
 # Default address of world rank 0
 DEFAULT_MASTER_ADDR = "127.0.0.1"
 

@@ -9,6 +9,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from igibson.agents.savi_rt.utils.utils import to_tensor
+
 
 EPS_PPO = 1e-5
 
@@ -56,10 +58,17 @@ class PPO(nn.Module):
 
         return (advantages - advantages.mean()) / (advantages.std() + EPS_PPO)
 
-    def update(self, rollouts, rt_predictor_loss=None, loss_weight=None):
+    def update(self, rollouts, loss_weight=None):
         advantages = self.get_advantages(rollouts)
 
+        num_epoch = 5
+        num_mini_batch = 1
+
+        rt_num_correct = 0
+        rt_num_sample = 0
+
         value_loss_epoch = 0
+        rt_value_loss_epoch = 0
         action_loss_epoch = 0
         dist_entropy_epoch = 0
 
@@ -88,6 +97,7 @@ class PPO(nn.Module):
                     values,
                     action_log_probs,
                     dist_entropy,
+                    rt_map,
                     _,
                     _,
                 ) = self.actor_critic.evaluate_actions(
@@ -133,8 +143,24 @@ class PPO(nn.Module):
                     + action_loss
                     - dist_entropy * self.entropy_coef
                 )
-                if rt_predictor_loss is not None:
-                    total_loss += loss_weight*rt_predictor_loss
+
+                rt_map = rt_map.permute(0, 2, 3, 1).view(rt_map.shape[0], -1, 23)
+                #(150*batch_size, 28*28, 23)
+                rt_map = rt_map.reshape(-1, 23)
+                #(150*batch_size*28*28, 23)
+                rt_map_gt = to_tensor(obs_batch['rt_map_gt']).view(rt_map.shape[0], -1).to(self.device)
+                rt_map_gt = rt_map_gt.reshape(-1)
+                #(150*batch_size*28*28,)
+                rt_loss = self.actor_critic.net.rt_loss_fn(rt_map, rt_map_gt)
+                
+                rt_value_loss_epoch += rt_loss.item()
+                rt_preds = torch.argmax(rt_map, dim=1)
+                rt_num_correct += torch.sum(torch.eq(rt_preds, rt_map_gt))
+                rt_num_sample += rt_map_gt.shape[0]
+                # add train rt_predictor
+
+                if rt_loss is not None:
+                    total_loss += loss_weight*rt_loss
 
                 self.before_backward(total_loss)
                 total_loss.backward()
@@ -150,11 +176,14 @@ class PPO(nn.Module):
 
         num_updates = self.ppo_epoch * self.num_mini_batch
 
+        rt_value_loss_epoch /= num_epoch * num_mini_batch
+        rt_num_correct = rt_num_correct.item() / rt_num_sample
+
         value_loss_epoch /= num_updates
         action_loss_epoch /= num_updates
         dist_entropy_epoch /= num_updates
 
-        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
+        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch, rt_value_loss_epoch, rt_num_correct
 
     def before_backward(self, loss):
         pass

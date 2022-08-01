@@ -393,6 +393,7 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     top_down_view: List[np.ndarray] = []
     rt_map_view: List[np.ndarray] = []
     rt_map_gt_view: List[np.ndarray] = []
+
     if "rgb" in observation:
         rgb = observation["rgb_video"]
         if not isinstance(rgb, np.ndarray):
@@ -403,6 +404,7 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     # draw depth map if observation has depth info
     if "depth" in observation:
         depth_map = observation["depth_video"].squeeze() * 255.0
+        print(depth_map.shape)
         if not isinstance(depth_map, np.ndarray):
             depth_map = depth_map.cpu().numpy()
 
@@ -425,11 +427,19 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
 
         egocentric_view_l.append(rgb)
 
+    if "rt_map" in observation:
+        rt_map = observation["rt_map_video"]
+        if not isinstance(rt_map, np.ndarray):
+            rt_map = rt_map.cpu().numpy()
+        rt_map = np.argmax(rt_map, 0).astype(np.float64) / 23. * 255.
+        rt_map_view.append(rt_map)
+
     egocentric_view_rgb = np.concatenate(egocentric_view_l_rgb, axis=1)
     egocentric_view_depth = np.concatenate(egocentric_view_l_depth, axis=1)
     top_down_view = np.concatenate(top_down_view, axis=1)
+    rt_map_view = np.concatenate(rt_map_view, axis=1)
 
-    return egocentric_view_rgb, egocentric_view_depth, top_down_view, rt_map_view, rt_map_gt_view
+    return egocentric_view_rgb, egocentric_view_depth, top_down_view, rt_map_view
 
 def images_to_video(
     images: List[np.ndarray],

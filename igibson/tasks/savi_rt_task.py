@@ -30,6 +30,7 @@ from igibson.utils.assets_utils import get_scene_path
 from PIL import Image
 import cv2
 from scipy import ndimage
+import math
 
 log = logging.getLogger(__name__)
 
@@ -358,14 +359,14 @@ class SAViRTTask(PointNavRandomTask):
 
             delta_pos = self.initial_pos[:2]/env.scene.trav_map_resolution        
             gt_rt = ndimage.shift(gt_rt, [delta_pos[1], -delta_pos[0]]) #move gt_map [left, down] by delta_pos        
-            gt_rt = ndimage.rotate(gt_rt, -90+self.initial_rpy[2]*180.0/3.141593, reshape=False)# rotate gt_map by theta-90 ccw
+            gt_rt = ndimage.rotate(gt_rt, -90+self.initial_rpy[2]*180.0/math.pi, reshape=False)# rotate gt_map by theta-90 ccw
 
             ######sanity check
     #         cv2.imwrite("gt_rt_rotated.png", gt_rt)
             ######
 #         elif self.config["scene"] == "gibson" or self.config["scene"] == "mp3d":
 
-        self.gt_rt = cv2.resize(gt_rt, (28, 28))
+        self.gt_rt = cv2.resize(gt_rt, (32, 32))
      
     
     def get_room_type_map(self):

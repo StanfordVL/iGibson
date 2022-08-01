@@ -1,20 +1,20 @@
-NUM_PROCESSES: 4
+NUM_PROCESSES: 2
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt_slurm_0730/train.log"
+LOG_FILE: "data/savi_rt_slurm_0801/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt_slurm_0730/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0801/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0730/tb"
-MODEL_DIR: "data/savi_rt_slurm_0730/"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0801/tb"
+MODEL_DIR: "data/savi_rt_slurm_0801/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 0
 SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
 joint_loss: True
-loss_weight: 2
+loss_weight: 1.
 
 
 #ppo & DDPPO config
@@ -92,7 +92,7 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
 not_load_object_categories: ['door']
-texture_scale: 0.65
+texture_scale: 0.6
 
 is_discrete: True
 min_std: 1e-6

@@ -196,14 +196,17 @@ class PPOTrainer(BaseRLTrainer):
                 external_memory = rollouts.external_memory[:, rollouts.step].contiguous()
                 external_memory_masks = rollouts.external_memory_masks[rollouts.step]
 
-            (values, actions, actions_log_probs, recurrent_hidden_states, external_memory_features, unflattened_feats) = self.actor_critic.act(
+            (values, actions, actions_log_probs, rt_map, recurrent_hidden_states, external_memory_features, unflattened_feats) = self.actor_critic.act(
                 step_observation,
                 rollouts.recurrent_hidden_states[rollouts.step],
                 rollouts.prev_actions[rollouts.step],
                 rollouts.masks[rollouts.step],
                 external_memory,
                 external_memory_masks,)
-        pth_time += time.time() - t_sample_action
+            pth_time += time.time() - t_sample_action
+            step_observation['rt_map'].copy_(rt_map)
+            for sensor in['rt_map']:
+                rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
 
         t_step_env = time.time()
         if self.is_discrete:
@@ -225,35 +228,10 @@ class PPOTrainer(BaseRLTrainer):
         # spls = torch.tensor(
         #     [[info['spl']] for info in infos], device=current_episode_reward.device)
         
-        #0518
-        print("masks", masks.shape)
-        print("cur_reward", current_episode_reward.shape)
         current_episode_reward += rewards
         running_episode_stats["reward"] += (1 - masks) * current_episode_reward
-        print("running_reward", running_episode_stats["reward"].shape)
         running_episode_stats["count"] += 1 - masks
-        print(self._extract_scalars_from_infos(infos))
-        for k, v in self._extract_scalars_from_infos(infos).items():
-            print(k, v)
-            v = torch.tensor(
-                v, dtype=torch.float, device=current_episode_reward.device
-            ).unsqueeze(1)
-            if k not in running_episode_stats and k != 'last_observation.bump':
-                running_episode_stats[k] = torch.zeros_like(
-                    running_episode_stats["count"]
-                )
-            running_episode_stats[k] += (1 - masks) * v
-
         current_episode_reward *= masks
-
-        # current_episode_reward += rewards
-        # current_episode_step += 1
-        # episode_rewards += (1 - masks) * current_episode_reward
-        # episode_spls += (1 - masks) * spls
-        # episode_steps += (1 - masks) * current_episode_step
-        # episode_counts += 1 - masks
-        # current_episode_reward *= masks
-        # current_episode_step *= masks
         
         rt_hidden_states = torch.zeros(1, self.envs.batch_size, self.rt_predictor.hidden_size) #placeholder   
         rollouts.insert(
@@ -283,7 +261,7 @@ class PPOTrainer(BaseRLTrainer):
             updated_rt_hidden_states = self.rt_predictor.update(step_observation, dones, 
                                      rollouts.rt_hidden_states[rollouts.step-1])
             rollouts.rt_hidden_states[rollouts.step].copy_(updated_rt_hidden_states)
-            for sensor in['rt_map', 'rt_map_features']:
+            for sensor in['rt_map_features']:
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
         pth_time += time.time() - t_update_stats
 
@@ -415,7 +393,7 @@ class PPOTrainer(BaseRLTrainer):
         return value_loss_epoch, num_correct
     
     
-    def _update_agent(self, rollouts, rt_predictor_loss=None):
+    def _update_agent(self, rollouts):
         t_update_model = time.time()
         with torch.no_grad():
             last_observation = {
@@ -440,7 +418,7 @@ class PPOTrainer(BaseRLTrainer):
             next_value, self.config['use_gae'], self.config['gamma'], self.config['tau']
         )
 
-        value_loss, action_loss, dist_entropy = self.agent.update(rollouts, rt_predictor_loss, self.config['loss_weight'])
+        value_loss, action_loss, dist_entropy, rt_predictor_loss, rt_prediction_accuracy = self.agent.update(rollouts, self.config['loss_weight'])
 
         rollouts.after_update()
 
@@ -449,6 +427,8 @@ class PPOTrainer(BaseRLTrainer):
             value_loss,
             action_loss,
             dist_entropy,
+            rt_predictor_loss, 
+            rt_prediction_accuracy
         )
 
     def train(self) -> None:
@@ -577,9 +557,6 @@ class PPOTrainer(BaseRLTrainer):
         rt_map_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]  # type: List[List[np.ndarray]]
-        rt_map_gt_frames = [
-            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
-        ]  # type: List[List[np.ndarray]]
         audios = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]
@@ -599,7 +576,7 @@ class PPOTrainer(BaseRLTrainer):
             and self.envs.batch_size > 0
         ):
             with torch.no_grad():
-                _, actions, _, test_recurrent_hidden_states, test_em_features, _ = self.actor_critic.act(
+                _, actions, _, _, test_recurrent_hidden_states, test_em_features, _ = self.actor_critic.act(
                     batch,
                     test_recurrent_hidden_states,
                     prev_actions,
@@ -653,8 +630,8 @@ class PPOTrainer(BaseRLTrainer):
                     map_gt = batch['rt_map_gt'].cpu().numpy()[i]
 #                     cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/map_prediction_"+str(count)+".png",
 #                                 map_prediction/23*255)
-#                     cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/map_gt_"+str(count)+".png", 
-#                                 map_gt/23*255)
+                    # cv2.imwrite("/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/data/video/map_gt_"+str(count)+".png", 
+                    #             map_gt/23*255)
                     pair = (map_prediction, map_gt)
                     rt_pred_gt[i].append(pair)
 
@@ -668,12 +645,12 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    rgb_frame, depth_frame, top_down_frame, rt_map_frame, rt_map_gt_frame = observations_to_image(observations[i], infos[i])
+                    rgb_frame, depth_frame, top_down_frame, rt_map_frame = observations_to_image(observations[i], infos[i])
                     rgb_frames[i].append(rgb_frame)
                     depth_frames[i].append(depth_frame)
                     top_down_frames[i].append(top_down_frame)
                     rt_map_frames[i].append(rt_map_frame)
-                    rt_map_gt_frames[i].append(rt_map_gt_frame)
+
                     
             rewards = torch.tensor(
                 rewards, dtype=torch.float, device=self.device
@@ -706,11 +683,56 @@ class PPOTrainer(BaseRLTrainer):
                     
                     if len(self.config['VIDEO_OPTION']) > 0:
                         fps = 1
+                        # generate_video(
+                        #     video_option=self.config['VIDEO_OPTION'],
+                        #     video_dir=self.config['VIDEO_DIR'],
+                        #     images=rgb_frames[i][:-1],
+                        #     scene_name="rgb_video_out",
+                        #     sound='_',
+                        #     sr=44100,
+                        #     episode_id=0,
+                        #     checkpoint_idx=checkpoint_index,
+                        #     metric_name='spl',
+                        #     metric_value=infos[i]['spl'],
+                        #     tb_writer=writer,
+                        #     audios=None,
+                        #     fps=fps
+                        # )
+                        # generate_video(
+                        #     video_option=self.config['VIDEO_OPTION'],
+                        #     video_dir=self.config['VIDEO_DIR'],
+                        #     images=depth_frames[i][:-1],
+                        #     scene_name="depth_video_out",
+                        #     sound='_',
+                        #     sr=44100,
+                        #     episode_id=0,
+                        #     checkpoint_idx=checkpoint_index,
+                        #     metric_name='spl',
+                        #     metric_value=infos[i]['spl'],
+                        #     tb_writer=writer,
+                        #     audios=None,
+                        #     fps=fps
+                        # )
+                        # generate_video(
+                        #     video_option=self.config['VIDEO_OPTION'],
+                        #     video_dir=self.config['VIDEO_DIR'],
+                        #     images=top_down_frames[i][:-1],
+                        #     scene_name="top_down_video_out",
+                        #     sound='_',
+                        #     sr=44100,
+                        #     episode_id=0,
+                        #     checkpoint_idx=checkpoint_index,
+                        #     metric_name='spl',
+                        #     metric_value=infos[i]['spl'],
+                        #     tb_writer=writer,
+                        #     audios=None,
+                        #     fps=fps
+                        # )
                         generate_video(
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
-                            images=rgb_frames[i][:-1],
-                            scene_name="rgb_video_out",
+                            images=rt_map_frames[i][:-1],
+                            scene_name="rt_video_out",
                             sound='_',
                             sr=44100,
                             episode_id=0,
@@ -718,39 +740,6 @@ class PPOTrainer(BaseRLTrainer):
                             metric_name='spl',
                             metric_value=infos[i]['spl'],
                             tb_writer=writer,
-#                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
-                            audios=None,
-                            fps=fps
-                        )
-                        generate_video(
-                            video_option=self.config['VIDEO_OPTION'],
-                            video_dir=self.config['VIDEO_DIR'],
-                            images=depth_frames[i][:-1],
-                            scene_name="depth_video_out",
-                            sound='_',
-                            sr=44100,
-                            episode_id=0,
-                            checkpoint_idx=checkpoint_index,
-                            metric_name='spl',
-                            metric_value=infos[i]['spl'],
-                            tb_writer=writer,
-#                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
-                            audios=None,
-                            fps=fps
-                        )
-                        generate_video(
-                            video_option=self.config['VIDEO_OPTION'],
-                            video_dir=self.config['VIDEO_DIR'],
-                            images=top_down_frames[i][:-1],
-                            scene_name="top_down_video_out",
-                            sound='_',
-                            sr=44100,
-                            episode_id=0,
-                            checkpoint_idx=checkpoint_index,
-                            metric_name='spl',
-                            metric_value=infos[i]['spl'],
-                            tb_writer=writer,
-#                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
                             audios=None,
                             fps=fps
                         )
@@ -761,7 +750,6 @@ class PPOTrainer(BaseRLTrainer):
                         depth_frames[i] = []
                         top_down_frames[i] = []
                         rt_map_frames[i] = []
-                        rt_map_gt_frames[i] = []
                         audios[i] = [] 
         
                 count += 1

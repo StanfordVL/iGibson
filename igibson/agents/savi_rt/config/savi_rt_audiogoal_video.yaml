@@ -7,9 +7,9 @@ LOG_INTERVAL: 10
 LOG_FILE: "data/logs/eval.log"
 CHECKPOINT_INTERVAL: 50
 CHECKPOINT_FOLDER: "data/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/checkpoints/ckpt.177.pth"
-TENSORBOARD_DIR: "data/savi_rt/tb"
-MODEL_DIR: "data/savi_rt"
+EVAL_CKPT_PATH_DIR: "data/savi_rt_slurm_0730/checkpoints/ckpt.3.pth"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0730/tb"
+MODEL_DIR: "data/savi_rt_slurm_0730"
 TORCH_GPU_ID: 0
 SEED: 1
 VIDEO_OPTION: ["disk"]
@@ -18,9 +18,10 @@ automatic_reset: False
 VIDEO_DIR: "data/video"
 AUDIO_DIR: "data/audio"
 HAS_DISTRACTOR_SOUND: False
-not_load_object_categories: ['ceilings']
+not_load_object_categories: ['ceilings', 'door']
 joint_loss: True
 loss_weight: 1
+texture_scale: 0.6
 
 #ppo & DDPPO config
 hidden_size: 512
@@ -141,6 +142,8 @@ image_height: 160
 vertical_fov: 45
 image_width_video: 960
 image_height_video: 960
+rt_map_height_video: 960
+rt_map_width_video: 960
 # depth
 depth_low: 0.8
 depth_high: 3.5

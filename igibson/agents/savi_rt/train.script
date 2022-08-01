@@ -3,10 +3,10 @@
 #SBATCH --job-name=audiogoal_occl1
 #SBATCH --partition=svl --qos=normal --nodelist=svl9
 #SBATCH --nodes=1
-#SBATCH --ntasks=6
-#SBATCH --ntasks-per-node=6
-#SBATCH --mem=180G
-#SBATCH --gres=gpu:6
+#SBATCH --ntasks=8
+#SBATCH --ntasks-per-node=8
+#SBATCH --mem=200G
+#SBATCH --gres=gpu:8
 #SBATCH --cpus-per-task=8
 #SBATCH --time 192:00:00
 #SBATCH --output=/viscam/u/li2053/logs/sonic_slurm_%A.out

@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+import os
 
 
 class Logger(logging.Logger):
@@ -29,6 +30,7 @@ class Logger(logging.Logger):
         super().addHandler(handler)
 
     def add_filehandler(self, log_filename):
+        os.makedirs(os.path.dirname(log_filename), exist_ok=True)
         filehandler = logging.FileHandler(log_filename)
         filehandler.setFormatter(self._formatter)
         self.addHandler(filehandler)

@@ -105,6 +105,63 @@ class outconv(nn.Module):
         x = self.conv(x)
         return x
 
+class inconv(nn.Module):
+    def __init__(self, in_ch, out_ch, norm='batchnorm'):
+        super(inconv, self).__init__()
+        self.conv = double_conv(in_ch, out_ch, norm=norm)
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+class double_conv(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+    def __init__(self, in_ch, out_ch, norm='batchnorm'):
+        super(double_conv, self).__init__()
+        if norm == 'batchnorm':
+            normlayer = nn.BatchNorm2d
+        elif norm == 'instancenorm':
+            normlayer = nn.InstanceNorm2d
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            normlayer(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            normlayer(out_ch),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+class down(nn.Module):
+    def __init__(self, in_ch, out_ch, norm='batchnorm'):
+        super(down, self).__init__()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.mpconv = nn.Sequential(nn.MaxPool2d(2),
+                                    double_conv(in_ch, out_ch, norm=norm))
+
+    def forward(self, x):
+        x = self.mpconv(x)
+        return x
+
+class DownSampleEncoder(nn.Module):
+    def __init__(self,
+                 n_channels,
+                 nsf=16,
+                 norm='batchnorm',
+                 **kwargs):
+        super().__init__()
+        self.inc = inconv(n_channels, nsf, norm=norm)
+        self.down_mods = down(nsf, nsf, norm=norm)
+
+    def forward(self, x, *args, **kwargs):
+        x1 = self.inc(x)  # (bs, nsf, ..., ...)
+        out_x = self.down_mods(x1)
+        return out_x 
+
 
 class RTPredictor(nn.Module):
     def __init__(self, config, device, num_env=1): 
@@ -142,19 +199,16 @@ class RTPredictor(nn.Module):
         ).to(device)   
         
         # for encoder/decoder:
-        self.input_size = (128 + 64)*self.rt_map_input_size*self.rt_map_input_size*2
-        self.hidden_size = self.rt_map_output_size*self.rt_map_output_size
+        self.input_size = (128)*self.rt_map_input_size*self.rt_map_input_size*2
+        self.hidden_size = 1 #self.rt_map_output_size*self.rt_map_output_size
 #         self.hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
 
-        self.rnn = RNNStateEncoder(input_size=self.input_size, 
-                                   hidden_size=self.hidden_size).to(self.device)
-        self.outc = outconv(1, self.rooms)
-
-        self.register_buffer(
-            'position_feat',
-            self.position_encoding(np.array([32, 32]), 64)
-        )
+        # self.rnn = RNNStateEncoder(input_size=self.input_size, 
+        #                            hidden_size=self.hidden_size).to(self.device)
+        # self.outc = outconv(1, self.rooms)
         
+        self.visual_down_sampler_encoder = DownSampleEncoder(64).to(device)
+        self.audio_down_sampler_encoder = DownSampleEncoder(128).to(device)
        
     def init_hidden_states(self):
         hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
@@ -177,26 +231,6 @@ class RTPredictor(nn.Module):
             transformed_global_maps[i] = transformed
         # adding a weighting factor
         return transformed_global_maps
-    
-    def position_encoding(self, featshape, n_dim=64):
-        n_dim = n_dim
-        n_freq = n_dim // 2
-        div_term = torch.exp(
-            torch.arange(0, n_freq, 2).float() * (-math.log(10000.0) / n_freq))
-        height, width = featshape
-        out = torch.zeros(n_dim, height, width)
-        pos_w = torch.arange(-width // 2, width // 2 + height % 2).unsqueeze(1)
-        pos_h = torch.arange(-height // 2, height // 2 + height % 2).unsqueeze(1)
-        out[0:n_freq:2, :, :] = torch.sin(pos_h * div_term).transpose(
-            0, 1).unsqueeze(1).repeat(1, height, 1)
-        out[1:n_freq:2, :, :] = torch.cos(pos_h * div_term).transpose(
-            0, 1).unsqueeze(1).repeat(1, height, 1)
-        out[n_freq::2, :, :] = torch.sin(pos_w * div_term).transpose(
-            0, 1).unsqueeze(2).repeat(1, 1, width)
-        out[n_freq + 1::2, :, :] = torch.cos(pos_w * div_term).transpose(
-            0, 1).unsqueeze(2).repeat(1, 1, width)
-        out = out.unsqueeze(0)
-        return out
         
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
@@ -204,9 +238,9 @@ class RTPredictor(nn.Module):
         with torch.no_grad():
             masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
                                  dtype=torch.float, device=self.device)
-            global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
+            global_maps_features, rt_hidden_states  = self.cnn_forward(observations, rt_hidden_states, masks) 
             observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) 
-            observations['rt_map'].copy_(global_maps)
+            # observations['rt_map'].copy_(global_maps)
         return rt_hidden_states
             
         
@@ -230,53 +264,32 @@ class RTPredictor(nn.Module):
         local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy()
         local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy()
         #[batch_sz*step_sz, 128, 32, 32]
-        print("vmap", local_vmaps.shape)
-        print("amap", local_vmaps.shape)
 
-        local_vmaps = torch.cat((local_vmaps, self.position_feat.expand(local_vmaps.shape[0], -1, -1, -1)), 1)
-        local_amaps = torch.cat((local_amaps, self.position_feat.expand(local_amaps.shape[0], -1, -1, -1)), 1)
-        print("vmap_pos", local_vmaps.shape)
-        print("amap_pos", local_vmaps.shape)
-
-        #[batch_sz*step_sz, 128+64, 32, 32]
         
         curr_poses = observations["pose_sensor"][:, :2].cpu().detach().numpy()
         curr_orns = observations["pose_sensor"][:, 2].cpu().detach().numpy()
         map_resolution = observations["map_resolution"].cpu().detach().numpy()
         
-        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_orns, masks, map_resolution)
-        global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_orns, masks, map_resolution)
-        print("global_vmap_pos", global_vmaps.shape)
-        print("global_amap_pos", global_vmaps.shape)
-        # [batch_sz*step_sz, 128 + 64, 32, 32]
+        global_vmaps = torch.from_numpy(self.feature_alignment(local_vmaps, curr_poses, curr_orns, masks, map_resolution)).type(torch.FloatTensor).to(self.device)
+        global_amaps = torch.from_numpy(self.feature_alignment(local_amaps, curr_poses, curr_orns, masks, map_resolution)).type(torch.FloatTensor).to(self.device)
+
+        # [batch_sz*step_sz, 128 , 32, 32]
+
+        global_vmaps = self.visual_down_sampler_encoder(global_vmaps)
+        global_amaps = self.audio_down_sampler_encoder(global_amaps)
         
-        global_vmaps = (torch.from_numpy(global_vmaps)).view(visual_features.shape[0], -1).to(self.device) 
-        global_amaps = (torch.from_numpy(global_amaps)).view(visual_features.shape[0], -1).to(self.device)
+        global_vmaps = global_vmaps.view(visual_features.shape[0], -1)
+        global_amaps = global_amaps.view(visual_features.shape[0], -1)
         # [batch_sz*step_sz, 320000]
 
-        global_maps = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
+        global_maps_features = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
         # [batch_sz*step_sz, 2, 320000] (view)-> [batch_sz*step_sz, 2*320000]
-        global_maps, rt_hidden_states = self.rnn(global_maps.type(torch.FloatTensor).to(self.device), 
-                                               rt_hidden_states, masks)
         
-        global_maps_features = global_maps.view(visual_features.shape[0], 1, 
-                                       self.rt_map_output_size, self.rt_map_output_size)
-        global_maps = self.outc(global_maps_features)
-        return global_maps_features, global_maps, rt_hidden_states
+        # global_maps_features = global_maps.view(visual_features.shape[0], 1, 
+        #                                self.rt_map_output_size, self.rt_map_output_size)
+        # global_maps = self.outc(global_maps_features)
+        return global_maps_features, rt_hidden_states
         
 class RTPredictorDDP(RTPredictor, DecentralizedDistributedMixinBelief):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-
-def global_to_local(pointgoal_global, pose, angle):
-    delta = pointgoal_global - pose[:2]
-    delta_theta = np.arctan2(delta[1], delta[0]) - angle
-    d = np.linalg.norm(delta)
-    return np.array([d * np.cos(delta_theta), d * np.sin(delta_theta)])
-
-
-def local_to_global(pointgoal_local, pose, angle):
-    d = np.linalg.norm(pointgoal_local)
-    theta = np.arctan2(pointgoal_local[1], pointgoal_local[0])
-    return np.array([pose[0] + d*np.cos(theta+angle), pose[1] + d * np.sin(theta+angle)])

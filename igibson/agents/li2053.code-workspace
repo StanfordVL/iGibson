@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../../wangzz/avGibson/igibson/repo"
+		},
+		{
+			"path": "../../../../wangzz"
 		}
 	],
 	"settings": {}

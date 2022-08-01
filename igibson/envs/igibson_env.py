@@ -171,6 +171,9 @@ class iGibsonEnv(BaseEnv):
         self.image_height = self.config.get("image_height", 128)
         self.image_width_video = self.config.get("image_width_video", 960)
         self.image_height_video = self.config.get("image_height_video", 960)
+        self.rt_map_height_video = self.config.get("rt_map_height_video", 960)
+        self.rt_map_width_video = self.config.get("rt_map_width_video", 960)
+        
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
@@ -278,7 +281,7 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
                 )
             observation_space['top_down'] = self.build_obs_space(
-                shape=(self.image_width_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
+                shape=(self.image_height_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
         if 'category_belief' in self.output:
             observation_space['category_belief'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -297,18 +300,18 @@ class iGibsonEnv(BaseEnv):
         if 'rt_map_features' in self.output:
             if len(self.config["VIDEO_OPTION"])!=0:
                 observation_space["rt_map_video"] = self.build_obs_space(
-                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                shape=(self.rt_map_height_video, self.rt_map_width_video, 3), low=0.0, high=1.0
                 )
                 
                 observation_space["rt_map_gt_video"] = self.build_obs_space(
-                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                shape=(self.rt_map_height_video, self.rt_map_width_video, 3), low=0.0, high=1.0
                 )
             observation_space['rt_map_features'] = self.build_obs_space(
-                shape=(784,), low=-np.inf, high=np.inf)
+                shape=(8192,), low=-np.inf, high=np.inf)
             observation_space['rt_map'] = self.build_obs_space(
-                shape=(23,28,28), low=-np.inf, high=np.inf)
+                shape=(23,32,32), low=-np.inf, high=np.inf)
             observation_space['rt_map_gt'] = self.build_obs_space(
-                shape=(28,28), low=-np.inf, high=np.inf)
+                shape=(32,32), low=-np.inf, high=np.inf)
             observation_space['visual_features'] = self.build_obs_space(
                 shape=(128,), low=-np.inf, high=np.inf)
             observation_space['audio_features'] = self.build_obs_space(
@@ -434,8 +437,8 @@ class iGibsonEnv(BaseEnv):
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
         if 'rt_map_features' in self.output:
-            state['rt_map_features'] = np.zeros(784)
-            state['rt_map'] = np.zeros((23,28,28))
+            state['rt_map_features'] = np.zeros(8192)
+            state['rt_map'] = np.zeros((23,32,32))
             state['rt_map_gt'] = self.task.get_room_type_map()
             state['visual_features'] = np.zeros(128)
             state['audio_features'] = np.zeros(128)

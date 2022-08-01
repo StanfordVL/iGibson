@@ -107,7 +107,7 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-#                 self.belief_predictor.freeze_encoders() # ?
+                self.belief_predictor.freeze_encoders()
 
         elif self.config['policy_type'] == 'smt':
             self.actor_critic = AudioNavSMTPolicy(
@@ -156,19 +156,18 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders() # try both
+                #self.belief_predictor.freeze_encoders()
                 
-            #RT
-            if self.config['use_rt_map']:
-                rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
-                # rt_class = RTPredictor
-                self.rt_predictor = rt_class(self.config, self.device, self.envs.batch_size).to(device=self.device)
-                self.rt_predictor.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
-                if self.config['online_training']:
-                    self.rt_predictor.optimizer = torch.optim.SGD(self.rt_predictor.parameters(),
-                                                lr=0.1,
-                                                momentum=0.9,
-                                                weight_decay=0.0001)
+            # #RT
+            # if self.config['use_rt_map']:
+            #     rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
+            #     self.rt_predictor = rt_class(self.config, self.device, self.envs.batch_size).to(device=self.device)
+            #     self.rt_predictor.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
+            #     if self.config['online_training']:
+            #         self.rt_predictor.optimizer = torch.optim.SGD(self.rt_predictor.parameters(),
+            #                                     lr=0.1,
+            #                                     momentum=0.9,
+            #                                     weight_decay=0.0001)
         else:
             raise ValueError(f'Policy type is not defined!')
 
@@ -232,7 +231,6 @@ class DDPPOTrainer(PPOTrainer):
             self.config['distrib_backend']
         )
         add_signal_handlers()
-        self.local_rank = 0
         torch.cuda.empty_cache()
         # Stores the number of workers that have finished their rollout
         num_rollouts_done_store = distrib.PrefixStore(
@@ -242,8 +240,8 @@ class DDPPOTrainer(PPOTrainer):
 
         self.world_rank = distrib.get_rank()
         self.world_size = distrib.get_world_size()
-        self.config['TORCH_GPU_ID'] = self.local_rank
-        self.config['SIMULATOR_GPU_ID'] = self.local_rank
+        self.config['TORCH_GPU_ID'] = self.world_rank
+        self.config['SIMULATOR_GPU_ID'] = self.world_rank
         # Multiply by the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
             self.world_rank * self.config['NUM_PROCESSES']
@@ -255,7 +253,6 @@ class DDPPOTrainer(PPOTrainer):
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda", self.world_rank)
-            print("cuda_world_rank", self.world_rank)
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")
@@ -279,8 +276,8 @@ class DDPPOTrainer(PPOTrainer):
         self.agent.init_distributed(find_unused_params=True)
         if self.config['use_belief_predictor'] and self.config['online_training']:
             self.belief_predictor.init_distributed(find_unused_params=True)
-        if self.config['use_rt_map'] and self.config['online_training']:
-            self.rt_predictor.init_distributed(find_unused_params=True)
+        # if self.config['use_rt_map'] and self.config['online_training']:
+        #     self.rt_predictor.init_distributed(find_unused_params=True)
         
         if self.world_rank == 0:
             logger.info(
@@ -298,16 +295,6 @@ class DDPPOTrainer(PPOTrainer):
                         sum(
                             param.numel()
                             for param in self.belief_predictor.parameters()
-                            if param.requires_grad
-                        )
-                    )
-                )
-            if self.config['use_rt_map']:
-                logger.info(
-                    "belief rt predictor number of trainable parameters: {}".format(
-                        sum(
-                            param.numel()
-                            for param in self.rt_predictor.parameters()
                             if param.requires_grad
                         )
                     )
@@ -330,7 +317,6 @@ class DDPPOTrainer(PPOTrainer):
             self.config['smt_cfg_memory_size'] + self.config['num_steps'],
             self.config['smt_cfg_memory_size'],
             memory_dim,
-            rt_num_hidden_size = self.rt_predictor.hidden_size, #RT
             num_recurrent_layers=self.actor_critic.net.num_recurrent_layers,
         )
         rollouts.to(self.device)
@@ -346,20 +332,13 @@ class DDPPOTrainer(PPOTrainer):
         # they will be kept in memory for the entire duration of training!
         batch = None
         observations = None
-        
-        # episode_spls = torch.zeros(self.envs.batch_size, 1, device=self.device)
-        # episode_steps = torch.zeros(self.envs.batch_size, 1, device=self.device)
 
         running_episode_stats = dict(
             reward=torch.zeros(self.envs.batch_size, 1, device=self.device),
             count=torch.zeros(self.envs.batch_size, 1, device=self.device),
         )
-        print(running_episode_stats)
 
         current_episode_reward = torch.zeros(self.envs.batch_size, 1, device=self.device)
-        # current_episode_step = torch.zeros(self.envs.batch_size, 1, device=self.device)
-        # window_episode_spl = deque(maxlen=self.config['reward_window_size'])
-        # window_episode_step = deque(maxlen=self.config['reward_window_size'])
         
         window_episode_stats = defaultdict(
             lambda:deque(maxlen=self.config['reward_window_size'])
@@ -446,8 +425,7 @@ class DDPPOTrainer(PPOTrainer):
                 self.agent.eval() # set to eval mode
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.eval()
-                if self.config['use_rt_map']: #RT
-                    self.rt_predictor.eval()
+
                 for step in range(self.config['num_steps']):
                     (
                         delta_pth_time,
@@ -456,9 +434,6 @@ class DDPPOTrainer(PPOTrainer):
                     ) = self._collect_rollout_step(
                         rollouts,
                         current_episode_reward,
-                        # current_episode_step,
-                        # episode_spls,
-                        # episode_steps,
                         running_episode_stats,
                     )
                     pth_time += delta_pth_time
@@ -481,37 +456,24 @@ class DDPPOTrainer(PPOTrainer):
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.train()
                     self.belief_predictor.set_eval_encoders()
-                if self.config['use_rt_map']:#RT
-                    self.rt_predictor.train()
                 if self._static_smt_encoder:
                     self.actor_critic.net.set_eval_encoders()
+                    
                 if self.config['use_belief_predictor'] and self.config['online_training']:
                     location_predictor_loss, prediction_accuracy = self.train_belief_predictor(rollouts)
                 else:
                     location_predictor_loss = 0
                     prediction_accuracy = 0
                     
-                if self.config['use_rt_map']: #RT
-                    rt_predictor_loss, rt_prediction_accuracy = self.train_rt_predictor(rollouts)
-                else:
-                    rt_predictor_loss = 0
-                    rt_prediction_accuracy = 0
-                if self.config['joint_loss']:
-                    (
-                        delta_pth_time,
-                        value_loss,
-                        action_loss,
-                        dist_entropy,
-                    ) = self._update_agent(rollouts, rt_predictor_loss)
-                    pth_time += delta_pth_time
-                else:
-                    (
-                        delta_pth_time,
-                        value_loss,
-                        action_loss,
-                        dist_entropy,
-                    ) = self._update_agent(rollouts)
-                    pth_time += delta_pth_time
+                (
+                    delta_pth_time,
+                    value_loss,
+                    action_loss,
+                    dist_entropy,
+                    rt_predictor_loss, 
+                    rt_prediction_accuracy,
+                ) = self._update_agent(rollouts)
+                pth_time += delta_pth_time
                 
                 stats_ordering = list(sorted(running_episode_stats.keys()))
 
@@ -524,9 +486,6 @@ class DDPPOTrainer(PPOTrainer):
                 for i, k in enumerate(stats_ordering):
                     window_episode_stats[k].append(stats[i].clone())
 
-                # window_episode_spl.append(episode_spls.clone())
-                # window_episode_step.append(episode_steps.clone())
-
                 stats = torch.tensor(
                     [value_loss, action_loss, dist_entropy, location_predictor_loss, prediction_accuracy, rt_predictor_loss, rt_prediction_accuracy, count_steps_delta],
                     device=self.device,
@@ -538,8 +497,6 @@ class DDPPOTrainer(PPOTrainer):
                 if self.world_rank == 0:        
                     num_rollouts_done_store.set("num_done", "0")
                     
-                    # window_episode_counts = window_episode_stats['episode_counts']
-                    # window_episode_rewards = window_episode_stats['episode_rewards']
                     losses = [
                         stats[0].item() / self.world_size,
                         stats[1].item() / self.world_size,
@@ -549,9 +506,7 @@ class DDPPOTrainer(PPOTrainer):
                         stats[5].item() / self.world_size,
                         stats[6].item() / self.world_size,
                     ]
-                    # stats = zip(
-                    #     ["count", "reward", "step", 'spl'],
-                    #     [window_episode_counts, window_episode_rewards, window_episode_step, window_episode_spl],)
+
                     deltas = {
                         k: (
                             (v[-1] - v[0]).sum().item()
@@ -576,10 +531,6 @@ class DDPPOTrainer(PPOTrainer):
                         for metric, value in metrics.items():
                             writer.add_scalar(f"Metrics/{metric}", value, count_steps)
 
-                    # if update % 10 == 0:
-                        # writer.add_scalar("Environment/Reward", deltas["reward"] / deltas["count"], count_steps)
-                        # writer.add_scalar("Environment/SPL", deltas["spl"] / deltas["count"], count_steps)
-                        # writer.add_scalar("Environment/Episode_length", deltas["step"] / deltas["count"], count_steps)
                     writer.add_scalar('Policy/Value_Loss', losses[0], count_steps)
                     writer.add_scalar('Policy/Action_Loss', losses[1], count_steps)
                     writer.add_scalar('Policy/Entropy', losses[2], count_steps)
@@ -607,20 +558,6 @@ class DDPPOTrainer(PPOTrainer):
                                 ),
                             )
                         )
-
-                        # window_rewards = (
-                        #     window_episode_rewards[-1] - window_episode_rewards[0]).sum()
-                        # window_counts = (
-                        #     window_episode_counts[-1] - window_episode_counts[0]).sum()
-
-                        # if window_counts > 0:
-                        #     logger.info(
-                        #         "Average window size {} reward: {:3f}".format(len(window_episode_rewards),
-                        #             (window_rewards / window_counts).item(),))
-                        #     logger.info("rt_predictor_loss: {:3f}".format(rt_predictor_loss))
-                        # else:
-                        #     logger.info("No episodes finish in current window")
-                        
                         
                     # checkpoint model
                     if update % self.config['CHECKPOINT_INTERVAL'] == 0:
