@@ -329,6 +329,20 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
         return this_info
 
+    def dump_state(self):
+        dump = super(BehaviorRobot, self).dump_state()
+
+        for part_name, part in self._parts.items():
+            dump["part_" + part_name] = part.dump_state()
+
+        return dump
+
+    def load_state(self, dump):
+        super(BehaviorRobot, self).load_state(dump)
+
+        for part_name, part in self._parts.items():
+            part.load_state(dump["part_" + part_name])
+
     def get_body_ids(self):
         return [part.body_id for part in self._parts.values()]
 
@@ -609,6 +623,9 @@ class BRPart(with_metaclass(ABCMeta, object)):
         """
         self.renderer_instances = []
 
+        self.new_pos = None
+        self.new_orn = None
+
         self._loaded = False
         self.body_id = None
 
@@ -655,6 +672,12 @@ class BRPart(with_metaclass(ABCMeta, object)):
     def move_constraints(self, pos, orn):
         pass
 
+    def dump_state(self):
+        return {"new_pos": self.new_pos, "new_orn": self.new_orn}
+
+    def load_state(self, dump):
+        self.move_constraints(dump["new_pos"], dump["new_orn"])
+
 
 class BRBody(BRPart):
     """
@@ -668,8 +691,6 @@ class BRBody(BRPart):
         self.category = "agent"
         self.model = self.name
         self.movement_cid = None
-        self.new_pos = None
-        self.new_orn = None
 
         # Load in body from correct urdf, depending on user settings
         body_path = "normal_color" if self.parent.normal_color else "alternative_color"
@@ -782,8 +803,6 @@ class BRHand(BRPart):
         self.parent = parent
         self.fpath = os.path.join(self.vr_hand_folder, final_suffix)
         self.hand = hand
-        self.new_pos = None
-        self.new_orn = None
 
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
         self.movement_cid = None
@@ -961,8 +980,6 @@ class BREye(BRPart):
 
         self.name = "BREye_{}".format(self.parent.name)
         self.category = "agent"
-        self.new_pos = None
-        self.new_orn = None
 
         color_folder = "normal_color" if self.parent.normal_color else "alternative_color"
         self.head_visual_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", color_folder, "vr_head.obj")
