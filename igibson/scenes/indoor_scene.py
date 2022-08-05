@@ -72,12 +72,20 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         self.floor_graph = []
         for floor in range(len(self.floor_heights)):
             if self.trav_map_type == "with_obj":
+<<<<<<< HEAD
                 # for this project Sonicverse, we will not render any doors in the trav map
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_door_{}.png".format(floor))))
                 # obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_{}.png".format(floor))))
             else:
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
                 # obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_no_obj_{}.png".format(floor))))
+=======
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_{}.png".format(floor))))
+                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_{}.png".format(floor))))
+            else:
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
+                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_no_obj_{}.png".format(floor))))
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
             # If we do not initialize the original size of the traversability map, we obtain it from the image
             # Then, we compute the final map size as the factor of scaling (default_resolution/resolution) times the
@@ -92,24 +100,39 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
 
             # Here it looks like we do not "care" about the traversability map: wherever the obstacle map is 0, we set
             # the traversability map also to 0
+<<<<<<< HEAD
             # trav_map[obstacle_map == 0] = 0
+=======
+            trav_map[obstacle_map == 0] = 0
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
             # We resize the traversability map to the new size computed before
             trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
 
             # We then erode the image. This is needed because the code that computes shortest path uses the global map
             # and a point robot
+<<<<<<< HEAD
             
+=======
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             if self.trav_map_erosion != 0:
                 trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
 
             # We make the pixels of the image to be either 0 or 255
             trav_map[trav_map < 255] = 0
+<<<<<<< HEAD
             cv2.imwrite("/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/trav_map_1.png", trav_map.astype(np.uint8))
             # We search for the largest connected areas
             if self.build_graph:
                 self.build_trav_graph(maps_path, floor, trav_map)
             cv2.imwrite("/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/trav_map_2.png", trav_map.astype(np.uint8))
+=======
+#             cv2.imwrite("trav_map_1.png", trav_map.astype(np.uint8))
+            # We search for the largest connected areas
+            if self.build_graph:
+                self.build_trav_graph(maps_path, floor, trav_map)
+#             cv2.imwrite("trav_map_2.png", trav_map.astype(np.uint8))
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             self.floor_map.append(trav_map)
 
     # TODO: refactor into C++ for speedup
@@ -121,6 +144,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param floor: floor number
         :param trav_map: traversability map
         """
+<<<<<<< HEAD
         # graph_file = os.path.join(
         #     maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
         # )
@@ -168,6 +192,38 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         # only take the largest connected component
         largest_cc = max(nx.connected_components(g), key=len)
         g = g.subgraph(largest_cc).copy()
+=======
+        graph_file = os.path.join(
+            maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
+        )
+        if os.path.isfile(graph_file):
+            log.debug("Loading traversable graph")
+            with open(graph_file, "rb") as pfile:
+                g = pickle.load(pfile)
+        else:
+            log.debug("Building traversable graph")
+            g = nx.Graph()
+            for i in range(self.trav_map_size):
+                for j in range(self.trav_map_size):
+                    if trav_map[i, j] == 0:
+                        continue
+                    g.add_node((i, j))
+                    # 8-connected graph
+                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                    for n in neighbors:
+                        if (
+                            0 <= n[0] < self.trav_map_size
+                            and 0 <= n[1] < self.trav_map_size
+                            and trav_map[n[0], n[1]] > 0
+                        ):
+                            g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+
+            # only take the largest connected component
+            largest_cc = max(nx.connected_components(g), key=len)
+            g = g.subgraph(largest_cc).copy()
+            with open(graph_file, "wb") as pfile:
+                pickle.dump(g, pfile)
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
         self.floor_graph.append(g)
 

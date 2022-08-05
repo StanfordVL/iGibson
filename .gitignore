@@ -94,3 +94,9 @@ coverage.xml
 
 #audio
 igibson/audio/resonance_audio/*
+
+igibson/agents/savi_rt/pkgs*/*
+igibson/agents/smt/pkgs*/*
+
+igibson/agents/savi_rt/pkgs/cache*/
+igibson/agents/smt/pkgs/cache*/

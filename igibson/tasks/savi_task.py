@@ -24,7 +24,11 @@ from igibson.objects import cube
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.utils import l2_distance, restoreState
 from igibson.agents.savi.utils import dataset
+<<<<<<< HEAD
 from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP#, MP3D_CAT_MAP
+=======
+from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP, MP3D_CAT_MAP
+>>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 from igibson.utils.utils import rotate_vector_3d
 from igibson.utils.assets_utils import get_scene_path
 from PIL import Image
