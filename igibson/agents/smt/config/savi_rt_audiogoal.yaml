@@ -1,15 +1,15 @@
-NUM_PROCESSES: 3
+NUM_PROCESSES: 2
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt_slurm_0804_rt_only_1/train.log"
+LOG_FILE: "data/savi_rt_slurm_0807_pretrained/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt_slurm_0804_rt_only_1/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0807_pretrained/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0804_rt_only_1/tb"
-MODEL_DIR: "data/savi_rt_slurm_0804_rt_only_1/"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0807_pretrained/tb"
+MODEL_DIR: "data/savi_rt_slurm_0807_pretrained/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
-TORCH_GPU_ID: 0
+TORCH_GPU_ID: 1
 SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
@@ -41,7 +41,7 @@ policy_type: 'smt'
 pretrained: False
 pretrained_weights: ""
 reset_critic: False
-use_belief_predictor: True
+use_belief_predictor: False
 use_external_memory: True
 sync_frac: 0.6
 distrib_backend: "GLOO"
@@ -52,12 +52,12 @@ normalize_category_distribution: False
 
 # use_occupancy_map
 # use_roomtype_map
-use_rt_map: True
+use_rt_map: False
 enc_in_scale: [32,32]
 
 # smt
-smt_cfg_memory_size: 3
-smt_cfg_hidden_size: 784
+smt_cfg_memory_size: 150
+smt_cfg_hidden_size: 256
 smt_cfg_nhead: 8
 smt_cfg_num_encoder_layers: 1
 smt_cfg_num_decoder_layers: 1
@@ -67,13 +67,13 @@ smt_cfg_use_pretrained: False
 smt_cfg_pretrained_path: " "
 smt_cfg_pretraining: True
 smt_cfg_freeze_encoders: False
-smt_cfg_freeze_policy_decoders: True
+smt_cfg_freeze_policy_decoders: False
 smt_cfg_use_belief_encoding: False
 
 
 # belief_cfg:
-use_label_belief: True
-use_location_belief: True
+use_label_belief: False
+use_location_belief: False
 online_training: True
 train_encoder: False
 current_pred_only: False
@@ -93,7 +93,7 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
 not_load_object_categories: ['door']
-texture_scale: 0.5
+texture_scale: 1.0
 
 is_discrete: True
 min_std: 1e-6
@@ -129,7 +129,7 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, bump]
+output: [depth, rgb, audio, pose_sensor, task_obs, category, bump]
 extra_rgb: false
 
 # image

@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as tmodels
 import math
-from igibson.agents.savi_rt.models.Unet_parts import UNetUp
+from igibson.agents.smt.models.Unet_parts import UNetUp
 
 
 # from ss_baselines.common.utils import Flatten

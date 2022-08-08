@@ -30,10 +30,7 @@ from igibson.utils.assets_utils import get_scene_path
 from PIL import Image
 import cv2
 from scipy import ndimage
-<<<<<<< HEAD
 import math
-=======
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
 log = logging.getLogger(__name__)
 
@@ -341,11 +338,7 @@ class SAViRTTask(PointNavRandomTask):
         else:
             env.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'] \
                                             +"/val/"+self.cat+".wav", enabled=True)    
-<<<<<<< HEAD
         env.audio_system.setSourceRepeat(self.audio_obj_id, repeat = True)
-=======
-        env.audio_system.setSourceRepeat(self.audio_obj_id, repeat = False)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
 
     def load_gt_rt_map(self, env):
@@ -357,40 +350,26 @@ class SAViRTTask(PointNavRandomTask):
             gt_rt = cv2.resize(gt_rt, (env.scene.trav_map_size, env.scene.trav_map_size))
 
             ######sanity check
-<<<<<<< HEAD
             # pos = env.scene.world_to_map(np.array(env.robots[0].get_position())[:2])
             # print("robo pos", pos)
             # gt_rt[pos[0], pos[1]] = 255
             # cv2.imwrite("gt_rt.png", gt_rt /23 * 255)
-=======
-    #         pos = env.scene.world_to_map(np.array(env.robots[0].get_position())[:2])
-    #         gt_rt[pos[0], pos[1]] = 255
-    #         cv2.imwrite("gt_rt.png", gt_rt)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             ######
 
             gt_rt = np.flip(gt_rt, axis=0)
 
             delta_pos = self.initial_pos[:2]/env.scene.trav_map_resolution        
             gt_rt = ndimage.shift(gt_rt, [delta_pos[1], -delta_pos[0]]) #move gt_map [left, down] by delta_pos        
-<<<<<<< HEAD
             # cv2.imwrite("gt_rt_shifted.png", gt_rt/23 * 255)
             gt_rt = ndimage.rotate(gt_rt, -90+self.initial_rpy[2]*180.0/math.pi, reshape=False)# rotate gt_map by theta-90 ccw
             # cv2.imwrite("gt_rt_final.png", gt_rt/23 * 255)
-=======
-            gt_rt = ndimage.rotate(gt_rt, -90+self.initial_rpy[2]*180.0/3.141593, reshape=False)# rotate gt_map by theta-90 ccw
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
 
             ######sanity check
     #         cv2.imwrite("gt_rt_rotated.png", gt_rt)
             ######
 #         elif self.config["scene"] == "gibson" or self.config["scene"] == "mp3d":
 
-<<<<<<< HEAD
         self.gt_rt = cv2.resize(gt_rt, (32, 32))
-=======
-        self.gt_rt = cv2.resize(gt_rt, (28, 28))
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
      
     
     def get_room_type_map(self):
@@ -400,11 +379,7 @@ class SAViRTTask(PointNavRandomTask):
 if __name__ == "__main__":
     from igibson.envs.igibson_env import iGibsonEnv
     
-<<<<<<< HEAD
     config = "/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/config/savi_rt_audiogoal.yaml"
-=======
-    config = "/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi_rt/config/savi_rt_step1.yaml"
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
     env = iGibsonEnv(config_file=config, 
                      mode="headless", 
                      scene_id = "Rs_int",

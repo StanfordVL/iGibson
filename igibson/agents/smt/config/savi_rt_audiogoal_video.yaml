@@ -7,9 +7,9 @@ LOG_INTERVAL: 10
 LOG_FILE: "data/logs/eval.log"
 CHECKPOINT_INTERVAL: 50
 CHECKPOINT_FOLDER: "data/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/savi_rt_slurm_0730/checkpoints/ckpt.3.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0730/tb"
-MODEL_DIR: "data/savi_rt_slurm_0730"
+EVAL_CKPT_PATH_DIR: "data/savi_rt_slurm_0805/checkpoints/ckpt.184.pth"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0805/tb"
+MODEL_DIR: "data/savi_rt_slurm_0805"
 TORCH_GPU_ID: 0
 SEED: 1
 VIDEO_OPTION: ["disk"]
@@ -47,7 +47,7 @@ policy_type: 'smt'
 pretrained: False
 pretrained_weights: ""
 reset_critic: False
-use_belief_predictor: True
+use_belief_predictor: False
 use_external_memory: True
 sync_frac: 0.6
 distrib_backend: "GLOO"
@@ -56,7 +56,7 @@ num_recurrent_layers: 1
 backbone: "custom_resnet18"
 normalize_category_distribution: False
 
-use_rt_map: True
+use_rt_map: False
 
 # smt
 smt_cfg_memory_size: 1

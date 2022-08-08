@@ -18,7 +18,7 @@ import torch.distributed as distrib
 import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
 
-from igibson.agents.savi_rt.ddppo.algo.ddp_utils import (
+from igibson.agents.smt.ddppo.algo.ddp_utils import (
     EXIT,
     REQUEUE,
     add_signal_handlers,
@@ -27,16 +27,16 @@ from igibson.agents.savi_rt.ddppo.algo.ddp_utils import (
     requeue_job,
     save_interrupted_state,
 )
-from igibson.agents.savi_rt.ddppo.algo.ddppo import DDPPO
-from igibson.agents.savi_rt.models.belief_predictor import BeliefPredictor, BeliefPredictorDDP
-from igibson.agents.savi_rt.models.rollout_storage import RolloutStorage
-from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP
-from igibson.agents.savi_rt.ppo.ppo_trainer import PPOTrainer
-from igibson.agents.savi_rt.ppo.policy import AudioNavSMTPolicy, AudioNavBaselinePolicy
+from igibson.agents.smt.ddppo.algo.ddppo import DDPPO
+from igibson.agents.smt.models.belief_predictor import BeliefPredictor, BeliefPredictorDDP
+from igibson.agents.smt.models.rollout_storage import RolloutStorage
+from igibson.agents.smt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP
+from igibson.agents.smt.ppo.ppo_trainer import PPOTrainer
+from igibson.agents.smt.ppo.policy import AudioNavSMTPolicy, AudioNavBaselinePolicy
 from igibson.envs.parallel_env import ParallelNavEnv
-from igibson.agents.savi_rt.utils.utils import (batch_obs, linear_decay, observations_to_image, 
+from igibson.agents.smt.utils.utils import (batch_obs, linear_decay, observations_to_image, 
                                                 images_to_video, generate_video)
-from igibson.agents.savi_rt.utils.utils import to_tensor
+from igibson.agents.smt.utils.utils import to_tensor
 from utils.dataset import dataset
 from utils.tensorboard_utils import TensorboardWriter
 from utils.environment import AVNavRLEnv
@@ -95,20 +95,6 @@ class DDPPOTrainer(PPOTrainer):
                 use_mlp_state_encoder=self.config['use_mlp_state_encoder']
             )
 
-            if self.config['use_belief_predictor']:
-                bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
-                self.belief_predictor = bp_class(self.config, self.device, None, None,
-                                                 self.config['hidden_size'], self.envs.batch_size, has_distractor_sound
-                                                 ).to(device=self.device)
-                if self.config['online_training']:
-                    params = list(self.belief_predictor.predictor.parameters())
-                    if self.config['train_encoder']:
-                        params += list(self.actor_critic.net.goal_encoder.parameters()) + \
-                                  list(self.actor_critic.net.visual_encoder.parameters()) + \
-                                  list(self.actor_critic.net.action_encoder.parameters())
-                    self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders()
-
         elif self.config['policy_type'] == 'smt':
             self.actor_critic = AudioNavSMTPolicy(
                 observation_space=self.envs.observation_space,
@@ -142,29 +128,7 @@ class DDPPOTrainer(PPOTrainer):
             if self.config['smt_cfg_freeze_encoders']:
                 self._static_smt_encoder = True
                 self.actor_critic.net.freeze_encoders()
-            
-            if self.config['smt_cfg_freeze_policy_decoders']:
-                self.actor_critic.net.freeze_decoders()
-            
-            if self.config['smt_cfg_freeze_policy_decoders']:
-                self.actor_critic.net.freeze_decoders()
 
-            if self.config['use_belief_predictor']:
-                smt = self.actor_critic.net.smt_state_encoder
-                # pretraining: online_training
-                bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
-                self.belief_predictor = bp_class(self.config, self.device, smt._input_size, smt._pose_indices,
-                                                 smt.hidden_state_size, self.envs.batch_size, has_distractor_sound
-                                                 )
-                self.belief_predictor.to(self.device)
-                if self.config['online_training']:
-                    params = list(self.belief_predictor.predictor.parameters())
-                    if self.config['train_encoder']:
-                        params += list(self.actor_critic.net.goal_encoder.parameters()) + \
-                                  list(self.actor_critic.net.visual_encoder.parameters()) + \
-                                  list(self.actor_critic.net.action_encoder.parameters())
-                    self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders()
         else:
             raise ValueError(f'Policy type is not defined!')
 
@@ -229,7 +193,7 @@ class DDPPOTrainer(PPOTrainer):
             self.config['distrib_backend']
         )
         add_signal_handlers()
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         # Stores the number of workers that have finished their rollout
         num_rollouts_done_store = distrib.PrefixStore(
             "rollout_tracker", tcp_store
@@ -240,7 +204,7 @@ class DDPPOTrainer(PPOTrainer):
         self.world_size = distrib.get_world_size()
         self.config['TORCH_GPU_ID'] = self.world_rank
         self.config['SIMULATOR_GPU_ID'] = self.world_rank
-        # Multiply by the number of simulators to make sure they also get unique seeds
+        # Multiply sby the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
             self.world_rank * self.config['NUM_PROCESSES']
         )
@@ -272,8 +236,6 @@ class DDPPOTrainer(PPOTrainer):
 
         self._setup_actor_critic_agent()
         self.agent.init_distributed(find_unused_params=True)
-        if self.config['use_belief_predictor'] and self.config['online_training']:
-            self.belief_predictor.init_distributed(find_unused_params=True)
         
         if self.world_rank == 0:
             logger.info(
@@ -285,16 +247,7 @@ class DDPPOTrainer(PPOTrainer):
                     )
                 )
             )
-            if self.config['use_belief_predictor']:
-                logger.info(
-                    "belief predictor number of trainable parameters: {}".format(
-                        sum(
-                            param.numel()
-                            for param in self.belief_predictor.parameters()
-                            if param.requires_grad
-                        )
-                    )
-                )
+            
             logger.info(f"config: {self.config}")
         observations = self.envs.reset()
         batch = batch_obs(observations, device=self.device)
@@ -316,9 +269,6 @@ class DDPPOTrainer(PPOTrainer):
             num_recurrent_layers=self.actor_critic.net.num_recurrent_layers,
         )
         rollouts.to(self.device)
-
-        if self.config['use_belief_predictor']:
-            self.belief_predictor.update(batch, None)
 
         for sensor in rollouts.observations:
             rollouts.observations[sensor][0].copy_(batch[sensor])
@@ -360,8 +310,6 @@ class DDPPOTrainer(PPOTrainer):
         interrupted_state = load_interrupted_state()
         if interrupted_state is not None:
             self.agent.load_state_dict(interrupted_state["state_dict"])
-            if self.config['use_belief_predictor']:
-                self.belief_predictor.load_state_dict(interrupted_state["belief_predictor"])
             self.agent.optimizer.load_state_dict(
                 interrupted_state["optim_state"]
             )
@@ -410,8 +358,6 @@ class DDPPOTrainer(PPOTrainer):
                                 config=self.config,
                                 requeue_stats=requeue_stats,
                             )
-                        if self.config['use_belief_predictor']:
-                            state_dict['belief_predictor'] = self.belief_predictor.state_dict()
                         save_interrupted_state(state_dict)
 
                     requeue_job()
@@ -419,8 +365,6 @@ class DDPPOTrainer(PPOTrainer):
 
                 count_steps_delta = 0
                 self.agent.eval() # set to eval mode
-                if self.config['use_belief_predictor']:
-                    self.belief_predictor.eval()
 
                 for step in range(self.config['num_steps']):
                     (
@@ -449,17 +393,15 @@ class DDPPOTrainer(PPOTrainer):
                 num_rollouts_done_store.add("num_done", 1)
 
                 self.agent.train()
-                if self.config['use_belief_predictor']:
-                    self.belief_predictor.train()
-                    self.belief_predictor.set_eval_encoders()
+
                 if self._static_smt_encoder:
                     self.actor_critic.net.set_eval_encoders()
                     
-                if self.config['use_belief_predictor'] and self.config['online_training']:
-                    location_predictor_loss, prediction_accuracy = self.train_belief_predictor(rollouts)
-                else:
-                    location_predictor_loss = 0
-                    prediction_accuracy = 0
+
+                location_predictor_loss = 0
+                prediction_accuracy = 0
+                rt_predictor_loss = 0
+                rt_prediction_accuracy = 0
                     
                 (
                     delta_pth_time,

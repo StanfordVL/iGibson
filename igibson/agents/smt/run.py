@@ -17,7 +17,7 @@ import tensorflow as tf
 import torch
 
 from ddppo.algo import ddppo_trainer
-from igibson.agents.savi_rt.ppo.policy import AudioNavSMTNet
+from igibson.agents.smt.ppo.policy import AudioNavSMTNet
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
     )
     parser.add_argument(
         "--model-dir",
-        default='data/models/output',
+        default='data/savi_rt_slurm_0805',
         help="Modify config options from command line",
     )
     parser.add_argument(
@@ -86,7 +86,7 @@ def main():
 
     if args.eval_best:
         best_ckpt_idx = find_best_ckpt_idx(os.path.join(args.model_dir, 'tb'), max_step=args.max_ckpt_ind)
-        best_ckpt_path = os.path.join(args.model_dir, 'data', f'ckpt.{best_ckpt_idx}.pth')
+        best_ckpt_path = os.path.join(args.model_dir, 'checkpoints', f'ckpt.{best_ckpt_idx}.pth')
         print(f'Evaluating the best checkpoint: {best_ckpt_path}')
         args.opts += ['EVAL_CKPT_PATH_DIR', best_ckpt_path]
 

@@ -21,20 +21,20 @@ from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
 from numpy.linalg import norm
 
-from igibson.agents.savi_rt.ppo.base_trainer import BaseRLTrainer
-from igibson.agents.savi_rt.ppo.policy import AudioNavBaselinePolicy, AudioNavSMTPolicy
-from igibson.agents.savi_rt.ppo.ppo import PPO
-from igibson.agents.savi_rt.models.rollout_storage import RolloutStorage, ExternalMemory
-from igibson.agents.savi_rt.models.belief_predictor import BeliefPredictor
+from igibson.agents.smt.ppo.base_trainer import BaseRLTrainer
+from igibson.agents.smt.ppo.policy import AudioNavBaselinePolicy, AudioNavSMTPolicy
+from igibson.agents.smt.ppo.ppo import PPO
+from igibson.agents.smt.models.rollout_storage import RolloutStorage, ExternalMemory
+from igibson.agents.smt.models.belief_predictor import BeliefPredictor
 
-from igibson.agents.savi_rt.utils.environment import AVNavRLEnv
-from igibson.agents.savi_rt.utils.tensorboard_utils import TensorboardWriter
-from igibson.agents.savi_rt.utils.logs import logger
-from igibson.agents.savi_rt.utils.utils import batch_obs, linear_decay, observations_to_image, images_to_video, generate_video
-from igibson.agents.savi_rt.utils.dataset import dataset
+from igibson.agents.smt.utils.environment import AVNavRLEnv
+from igibson.agents.smt.utils.tensorboard_utils import TensorboardWriter
+from igibson.agents.smt.utils.logs import logger
+from igibson.agents.smt.utils.utils import batch_obs, linear_decay, observations_to_image, images_to_video, generate_video
+from igibson.agents.smt.utils.dataset import dataset
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.parallel_env import ParallelNavEnv
-from igibson.agents.savi_rt.utils.utils import to_tensor
+from igibson.agents.smt.utils.utils import to_tensor
 
 from igibson.agents.savi.ppo.slurm_utils import (
     EXIT,
@@ -194,7 +194,7 @@ class PPOTrainer(BaseRLTrainer):
                 external_memory = rollouts.external_memory[:, rollouts.step].contiguous()
                 external_memory_masks = rollouts.external_memory_masks[rollouts.step]
 
-            (values, actions, actions_log_probs, rt_map, recurrent_hidden_states, external_memory_features, unflattened_feats) = self.actor_critic.act(
+            (values, actions, actions_log_probs, recurrent_hidden_states, external_memory_features, unflattened_feats) = self.actor_critic.act(
                 step_observation,
                 rollouts.recurrent_hidden_states[rollouts.step],
                 rollouts.prev_actions[rollouts.step],
@@ -202,15 +202,13 @@ class PPOTrainer(BaseRLTrainer):
                 external_memory,
                 external_memory_masks,)
             pth_time += time.time() - t_sample_action
-            step_observation['rt_map'].copy_(rt_map)
-            for sensor in['rt_map']:
-                rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
 
         t_step_env = time.time()
         if self.is_discrete:
             outputs = self.envs.step([a[0].item() for a in actions])
         else:
             outputs = self.envs.step([a.tolist() for a in actions])
+        print("outputs", len(outputs), len(outputs[0]))
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -240,13 +238,6 @@ class PPOTrainer(BaseRLTrainer):
             external_memory_features
         )
         
-        if self.config['use_belief_predictor']:
-            step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}
-            self.belief_predictor.update(step_observation, dones)
-            for sensor in ['location_belief', 'category_belief']:
-                if sensor not in rollouts.observations.items():
-                    continue
-                rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
         pth_time += time.time() - t_update_stats
 
         return pth_time, env_time, self.envs.batch_size
@@ -461,8 +452,6 @@ class PPOTrainer(BaseRLTrainer):
 
         self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.actor_critic = self.agent.actor_critic
-        if self.config['use_belief_predictor'] and "belief_predictor" in ckpt_dict:
-            self.belief_predictor.load_state_dict(ckpt_dict["belief_predictor"])
 
         observations = self.envs.reset()
         batch = batch_obs(observations, self.device, skip_list=['view_point_goals', 'intermediate',
@@ -482,7 +471,6 @@ class PPOTrainer(BaseRLTrainer):
             self.config['hidden_size'],
             device=self.device,
         )
-        rt_hidden_states = torch.zeros(1, self.envs.batch_size, self.rt_predictor.hidden_size).to(self.device)
         
         if self.config['use_external_memory']:
             test_em = ExternalMemory(
@@ -503,29 +491,6 @@ class PPOTrainer(BaseRLTrainer):
         )
         stats_episodes = dict()  # dict of dicts that stores stats per episode
         
-        if self.config['use_belief_predictor']:
-            self.belief_predictor.update(batch, None)
-
-            descriptor_pred_gt = [[] for _ in range(self.config['EVAL_NUM_PROCESS'])]
-            for i in range(len(descriptor_pred_gt)):
-                category_prediction = np.argmax(batch['category_belief'].cpu().numpy()[i])
-                location_prediction = batch['location_belief'].cpu().numpy()[i]
-                category_gt = np.argmax(batch['category'].cpu().numpy()[i])
-                location_gt = batch['task_obs'].cpu().numpy()[i][:2]
-                geodesic_distance = -1
-                pair = (category_prediction, location_prediction, category_gt, location_gt, geodesic_distance)
-                if 'view_point_goals' in observations[i]:
-                    pair += (observations[i]['view_point_goals'],)
-                descriptor_pred_gt[i].append(pair)
-        
-        if self.config["use_rt_map"]:
-            rt_pred_gt = [[] for _ in range(self.config['EVAL_NUM_PROCESS'])]
-            for i in range(len(descriptor_pred_gt)):
-                map_prediction = np.argmax(batch['rt_map'].cpu().numpy()[i])
-                map_gt = batch['rt_map_gt'].cpu().numpy()[i]
-                pair = (map_prediction, map_gt)
-                rt_pred_gt[i].append(pair)
-        
         rgb_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]  # type: List[List[np.ndarray]]
@@ -545,8 +510,6 @@ class PPOTrainer(BaseRLTrainer):
             os.makedirs(self.config['VIDEO_DIR'], exist_ok=True)
         
         self.actor_critic.eval()
-        if self.config['use_belief_predictor']:
-            self.belief_predictor.eval()
             
         t = tqdm(total=self.config['TEST_EPISODE_COUNT'])
         count = 0
@@ -555,7 +518,7 @@ class PPOTrainer(BaseRLTrainer):
             and self.envs.batch_size > 0
         ):
             with torch.no_grad():
-                _, actions, _, _, test_recurrent_hidden_states, test_em_features, _ = self.actor_critic.act(
+                _, actions, _, test_recurrent_hidden_states, test_em_features, _ = self.actor_critic.act(
                     batch,
                     test_recurrent_hidden_states,
                     prev_actions,
@@ -583,34 +546,6 @@ class PPOTrainer(BaseRLTrainer):
             
             if self.config['use_external_memory']:
                 test_em.insert(test_em_features, not_done_masks)
-            if self.config['use_belief_predictor']:
-                self.belief_predictor.update(batch, dones)
-
-                for i in range(len(descriptor_pred_gt)):
-                    category_prediction = np.argmax(batch['category_belief'].cpu().numpy()[i])
-                    location_prediction = batch['location_belief'].cpu().numpy()[i]
-                    category_gt = np.argmax(batch['category'].cpu().numpy()[i])
-                    location_gt = batch['task_obs'].cpu().numpy()[i][:2]
-                    if dones[i]:
-                        geodesic_distance = -1
-                    else:
-                        geodesic_distance = 1
-                    pair = (category_prediction, location_prediction, category_gt, location_gt, geodesic_distance)
-                    if 'view_point_goals' in observations[i]:
-                        pair += (observations[i]['view_point_goals'],)
-                    descriptor_pred_gt[i].append(pair)
-                    
-            if self.config["use_rt_map"]:
-                rt_pred_gt = [[] for _ in range(self.config['EVAL_NUM_PROCESS'])]
-                for i in range(len(descriptor_pred_gt)):
-                    map_prediction = np.argmax(batch['rt_map'].cpu().numpy()[i], 0)
-                    map_gt = batch['rt_map_gt'].cpu().numpy()[i]
-#                     cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/map_prediction_"+str(count)+".png",
-#                                 map_prediction/23*255)
-                    # cv2.imwrite("/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/data/video/map_gt_"+str(count)+".png", 
-                    #             map_gt/23*255)
-                    pair = (map_prediction, map_gt)
-                    rt_pred_gt[i].append(pair)
 
             for i in range(self.envs.batch_size):
                 if len(self.config['VIDEO_OPTION']) > 0:
@@ -660,51 +595,51 @@ class PPOTrainer(BaseRLTrainer):
                     
                     if len(self.config['VIDEO_OPTION']) > 0:
                         fps = 1
-                        # generate_video(
-                        #     video_option=self.config['VIDEO_OPTION'],
-                        #     video_dir=self.config['VIDEO_DIR'],
-                        #     images=rgb_frames[i][:-1],
-                        #     scene_name="rgb_video_out",
-                        #     sound='_',
-                        #     sr=44100,
-                        #     episode_id=0,
-                        #     checkpoint_idx=checkpoint_index,
-                        #     metric_name='spl',
-                        #     metric_value=infos[i]['spl'],
-                        #     tb_writer=writer,
-                        #     audios=None,
-                        #     fps=fps
-                        # )
-                        # generate_video(
-                        #     video_option=self.config['VIDEO_OPTION'],
-                        #     video_dir=self.config['VIDEO_DIR'],
-                        #     images=depth_frames[i][:-1],
-                        #     scene_name="depth_video_out",
-                        #     sound='_',
-                        #     sr=44100,
-                        #     episode_id=0,
-                        #     checkpoint_idx=checkpoint_index,
-                        #     metric_name='spl',
-                        #     metric_value=infos[i]['spl'],
-                        #     tb_writer=writer,
-                        #     audios=None,
-                        #     fps=fps
-                        # )
-                        # generate_video(
-                        #     video_option=self.config['VIDEO_OPTION'],
-                        #     video_dir=self.config['VIDEO_DIR'],
-                        #     images=top_down_frames[i][:-1],
-                        #     scene_name="top_down_video_out",
-                        #     sound='_',
-                        #     sr=44100,
-                        #     episode_id=0,
-                        #     checkpoint_idx=checkpoint_index,
-                        #     metric_name='spl',
-                        #     metric_value=infos[i]['spl'],
-                        #     tb_writer=writer,
-                        #     audios=None,
-                        #     fps=fps
-                        # )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=rgb_frames[i][:-1],
+                            scene_name="rgb_video_out",
+                            sound='_',
+                            sr=44100,
+                            episode_id=0,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=depth_frames[i][:-1],
+                            scene_name="depth_video_out",
+                            sound='_',
+                            sr=44100,
+                            episode_id=0,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=top_down_frames[i][:-1],
+                            scene_name="top_down_video_out",
+                            sound='_',
+                            sr=44100,
+                            episode_id=0,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
                         generate_video(
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],

@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from igibson.agents.savi.models.smt_resnet import custom_resnet18
 from igibson.agents.savi.utils.utils import ResizeCenterCropper, d3_40_colors_rgb
-
+import cv2
 
 class SMTCNN(nn.Module):
     r"""A modified ResNet-18 architecture from https://arxiv.org/abs/1903.03878.
@@ -86,15 +86,18 @@ class SMTCNN(nn.Module):
         cnn_features = []
         if "rgb" in self.input_modalities:
             rgb_observations = observations["rgb"]
+            cv2.imwrite("rgb.png", rgb_observations[0].cpu().numpy())
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            rgb_observations = rgb_observations.permute(0, 3, 1, 2)
+            rgb_observations = rgb_observations.permute(0, 3, 1, 2)           
             rgb_observations = rgb_observations / 255.0  # normalize RGB
             if self.obs_transform:
                 rgb_observations = self.obs_transform(rgb_observations)
+            cv2.imwrite("rgb_after_pro.png", rgb_observations[0].permute(1, 2, 0).cpu().numpy()*255.0)
             cnn_features.append(self.rgb_encoder(rgb_observations))
 
         if "depth" in self.input_modalities:
             depth_observations = observations["depth"]
+            cv2.imwrite("depth.png", depth_observations[0].cpu().numpy())
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             depth_observations = depth_observations.permute(0, 3, 1, 2)
             if self.obs_transform:

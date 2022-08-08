@@ -13,10 +13,10 @@ from PIL import Image
 import scipy
 import math
 
-from igibson.agents.savi_rt.utils.utils import to_tensor
-from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
-from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
-from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
+from igibson.agents.smt.utils.utils import to_tensor
+from igibson.agents.smt.models.rnn_state_encoder_rt import RNNStateEncoder
+from igibson.agents.smt.models.audio_cnn import AudioCNN
+from igibson.agents.smt.models.smt_cnn import SMTCNN
 
 class DecentralizedDistributedMixinBelief:
     def init_distributed(self, find_unused_params: bool = True) -> None:

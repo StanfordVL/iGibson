@@ -171,10 +171,7 @@ class iGibsonEnv(BaseEnv):
         self.image_height = self.config.get("image_height", 128)
         self.image_width_video = self.config.get("image_width_video", 960)
         self.image_height_video = self.config.get("image_height_video", 960)
-<<<<<<< HEAD
         
-=======
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
@@ -270,10 +267,6 @@ class iGibsonEnv(BaseEnv):
         if 'audio' in self.output:
             if self.audio_system is not None:
                 spectrogram = self.audio_system.get_spectrogram()
-<<<<<<< HEAD
-=======
-                print(spectrogram.shape)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
                 observation_space['audio'] = self.build_obs_space(
                     shape=spectrogram.shape, low=-np.inf, high=np.inf)
             else:
@@ -281,17 +274,12 @@ class iGibsonEnv(BaseEnv):
                 observation_space['audio'] = self.build_obs_space(
                     shape=(257, 83, 2), low=-np.inf, high=np.inf)
         if 'top_down' in self.output:
-<<<<<<< HEAD
             if len(self.config["VIDEO_OPTION"])!=0:
                 observation_space["top_down_video"] = self.build_obs_space(
                 shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
                 )
             observation_space['top_down'] = self.build_obs_space(
                 shape=(self.image_height_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
-=======
-            observation_space['top_down'] = self.build_obs_space(
-                shape=(self.image_width_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
         if 'category_belief' in self.output:
             observation_space['category_belief'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -309,25 +297,18 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.image_height, self.image_height), low=0, high=23)
         if 'rt_map_features' in self.output:
             observation_space['rt_map_features'] = self.build_obs_space(
-<<<<<<< HEAD
                 shape=(4096,), low=-np.inf, high=np.inf)
             observation_space['rt_map'] = self.build_obs_space(
                 shape=(23,32,32), low=-np.inf, high=np.inf)
             observation_space['rt_map_gt'] = self.build_obs_space(
                 shape=(32,32), low=-np.inf, high=np.inf)
-=======
-                shape=(784,), low=-np.inf, high=np.inf)
-            observation_space['rt_map'] = self.build_obs_space(
-                shape=(23,28,28), low=-np.inf, high=np.inf)
-            observation_space['rt_map_gt'] = self.build_obs_space(
-                shape=(28,28), low=-np.inf, high=np.inf)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
-            observation_space['visual_features'] = self.build_obs_space(
-                shape=(128,), low=-np.inf, high=np.inf)
-            observation_space['audio_features'] = self.build_obs_space(
-                shape=(128,), low=-np.inf, high=np.inf)
             observation_space['map_resolution'] = self.build_obs_space(
                 shape=(1,), low=0.0, high=np.inf)
+        
+        observation_space['visual_features'] = self.build_obs_space(
+            shape=(128,), low=-np.inf, high=np.inf)
+        observation_space['audio_features'] = self.build_obs_space(
+            shape=(128,), low=-np.inf, high=np.inf)
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -379,15 +360,9 @@ class iGibsonEnv(BaseEnv):
             if len(self.config["VIDEO_OPTION"])!=0:
                 state['depth_video'] = state['depth']
                 state['rgb_video'] = state['rgb']
-<<<<<<< HEAD
                 state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,1), np.mean)
 #                 if not self.config["extra_rgb"]:
-                state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,3), np.mean)
-=======
-                state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,3), np.mean)
-#                 if not self.config["extra_rgb"]:
                 state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             # (img_height, img_height, 1)
             # because the rendered robot camera should have the same image size for rgb and depth
         if "scan_occ" in self.sensors:
@@ -414,13 +389,8 @@ class iGibsonEnv(BaseEnv):
             frame[depth == 0] = 1.0
 #             frame = cv2.flip(frame, 0)
             bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
-<<<<<<< HEAD
             state['top_down'] = bg
             state['top_down_video'] = state['top_down']
-=======
-            cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/floorplan_Rs.png", bg)
-            state['top_down'] = bg
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             self.simulator.renderer.P = prevP
             
         if 'pose_sensor' in self.output:
@@ -458,17 +428,13 @@ class iGibsonEnv(BaseEnv):
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
         if 'rt_map_features' in self.output:
-<<<<<<< HEAD
             state['rt_map_features'] = np.zeros(4096)
             state['rt_map'] = np.zeros((23,32,32))
-=======
-            state['rt_map_features'] = np.zeros(784)
-            state['rt_map'] = np.zeros((23,28,28))
->>>>>>> ddbfc8be187008cd173688c95cad12dc1bbf7c9b
             state['rt_map_gt'] = self.task.get_room_type_map()
-            state['visual_features'] = np.zeros(128)
-            state['audio_features'] = np.zeros(128)
             state['map_resolution'] = self.scene.trav_map_resolution
+        
+        state['visual_features'] = np.zeros(128)
+        state['audio_features'] = np.zeros(128)
             
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"

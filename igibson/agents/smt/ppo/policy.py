@@ -11,19 +11,16 @@ import itertools
 import torch
 import torch.nn as nn
 from torchsummary import summary
-from igibson.agents.savi_rt.utils.utils import CategoricalNet, GaussianNet
-from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
-from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP
+from igibson.agents.smt.utils.utils import CategoricalNet, GaussianNet
+from igibson.agents.smt.models.rnn_state_encoder_rt import RNNStateEncoder
 
-from igibson.agents.savi_rt.models.visual_cnn import VisualCNN
-from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
-from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
-from igibson.agents.savi_rt.models import Unet_parts
-from igibson.agents.savi_rt.models.smt_state_encoder import SMTStateEncoder
+from igibson.agents.smt.models.visual_cnn import VisualCNN
+from igibson.agents.smt.models.audio_cnn import AudioCNN
+from igibson.agents.smt.models.smt_cnn import SMTCNN
+from igibson.agents.smt.models import Unet_parts
+from igibson.agents.smt.models.smt_state_encoder import SMTStateEncoder
 
 from igibson.agents.savi.utils.dataset import CATEGORIES
-
-from igibson.agents.savi_rt.models.rt_predictor import NonZeroWeightedCrossEntropy
 
 DUAL_GOAL_DELIMITER = ','
 
@@ -59,7 +56,7 @@ class Policy(nn.Module):
         ext_memory_masks,
         deterministic=False,
     ):
-        features, rt_map, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats = self.net(
+        features, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
 
@@ -77,11 +74,11 @@ class Policy(nn.Module):
 
         action_log_probs = distribution.log_probs(action)
         
-        return value, action, action_log_probs, rt_map, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats
+        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats
 
     
     def get_value(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        features, _, _, _, _ = self.net(
+        features, _, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         return self.critic(features)
@@ -89,7 +86,7 @@ class Policy(nn.Module):
     def evaluate_actions(
         self, observations, rnn_hidden_states, prev_actions, masks, action, ext_memory, ext_memory_masks
     ):
-        features, rt_map, rnn_hidden_states, ext_memory_feats, _ = self.net(
+        features, rnn_hidden_states, ext_memory_feats, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -97,7 +94,7 @@ class Policy(nn.Module):
         action_log_probs = distribution.log_probs(action)
         distribution_entropy = distribution.entropy().mean()
 
-        return value, action_log_probs, distribution_entropy, rt_map, rnn_hidden_states, ext_memory_feats
+        return value, action_log_probs, distribution_entropy, rnn_hidden_states, ext_memory_feats
 
 
 class CriticHead(nn.Module):
@@ -315,7 +312,7 @@ class AudioNavSMTNet(Net):
         self.goal_encoder = AudioCNN(observation_space, 128, "audio")
         audio_feature_dims = 128
 
-        self.visual_encoder = VisualCNN(observation_space, hidden_size)#SMTCNN(observation_space)
+        self.visual_encoder = SMTCNN(observation_space)
         if self._use_action_encoding:
             self.action_encoder = nn.Linear(self._action_size, 16)
             action_encoding_dims = 16
@@ -329,10 +326,6 @@ class AudioNavSMTNet(Net):
         if 'bump' in observation_space.spaces:
             self._bump = True
             nfeats += observation_space.spaces["bump"].shape[0]
-            
-        if self._use_rt_map_features:
-            assert "rt_map_features" in observation_space.spaces
-            nfeats += observation_space.spaces["rt_map_features"].shape[0]
         
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
@@ -345,8 +338,6 @@ class AudioNavSMTNet(Net):
             pose_indices = None
             
         self._feature_size = nfeats
-
-        self.rt_predictor = RTPredictor(config, device)
 
         self.smt_state_encoder = SMTStateEncoder(
             nfeats,
@@ -363,9 +354,6 @@ class AudioNavSMTNet(Net):
         if use_pretrained:
             assert(pretrained_path != '')
             self.pretrained_initialization(pretrained_path)
-        
-        self.rt_loss_fn_class = NonZeroWeightedCrossEntropy()
-        self.rt_loss_fn_occ = NonZeroWeightedCrossEntropy()
 
         self.train()
 
@@ -394,27 +382,11 @@ class AudioNavSMTNet(Net):
         
         x, x_unflattened = self.get_features(observations, prev_actions, masks)
 
-        if self._use_belief_as_goal:
-            belief = torch.zeros((x.shape[0], self._hidden_size), device=x.device)
-            if self._use_label_belief:
-                if self._normalize_category_distribution:
-                    belief[:, :len(CATEGORIES)] = nn.functional.softmax(observations['category_belief'], dim=1)
-                else:
-                    belief[:, :len(CATEGORIES)] = observations['category_belief']
-
-            if self._use_location_belief:
-                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief']
-
-            if self._use_belief_encoder:
-                belief = self.belief_encoder(belief)
-        else:
-            belief = None
-
-        x_att, rt_map = self.smt_state_encoder(x, ext_memory, ext_memory_masks, goal=belief)
+        x_att = self.smt_state_encoder(x, ext_memory, ext_memory_masks)
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
 
-        return x_att, rt_map, rnn_hidden_states, x, x_unflattened
+        return x_att, rnn_hidden_states, x, x_unflattened
 
     def _get_one_hot(self, actions):
         if actions.shape[1] == self._action_size:
@@ -444,29 +416,16 @@ class AudioNavSMTNet(Net):
             params_to_freeze.append(self.action_encoder.parameters())
         for p in itertools.chain(*params_to_freeze):
             p.requires_grad = False
-    
-    def freeze_decoders(self):
-        logging.info(f'AudioNavSMTNet ===> Freezing policy decoders!')
-        for param in self.smt_state_encoder.policy_decoder.parameters():
-            param.requires_grad = False
-        self.policy_loss_weight = 0.
-        
 
     def set_eval_encoders(self):
         """Sets the goal, visual and fusion encoders to eval mode."""
         self.goal_encoder.eval()
         self.visual_encoder.eval()
-        self.rt_predictor.eval()
 
     def get_features(self, observations, prev_actions, masks):
         x_unflattened = []
-        print("visual final feat", self.visual_encoder(observations).shape)
-        print("audio final feat", self.goal_encoder(observations).shape)
         observations['visual_features'].copy_(self.visual_encoder(observations))
         observations['audio_features'].copy_(self.goal_encoder(observations))
-        observations["rt_map_features"].copy_(self.rt_predictor.cnn_forward(observations))
-        if self._use_rt_map_features:
-            x_unflattened.append(observations["rt_map_features"])
 
         x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
         x_unflattened.append(observations['task_obs'][:, -2:])

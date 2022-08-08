@@ -12,7 +12,7 @@ import torch.nn as nn
 
 from utils.utils import Flatten
 
-from igibson.agents.savi_rt.models.Unet_parts import UNetUp
+from igibson.agents.smt.models.Unet_parts import UNetUp
 import math
 
 
@@ -31,14 +31,6 @@ class AudioCNN(nn.Module):
         super().__init__()
         self._n_input_audio = observation_space.spaces[audiogoal_sensor].shape[2]
         self._audiogoal_sensor = audiogoal_sensor
-
-        self.outsize = np.array([32, 32])
-        max_out_scale = np.amax(self.outsize)
-        n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
-        self.scaler = nn.ModuleList([
-            UNetUp(128, 128, bilinear=False, norm="batchnorm")
-            for i in range(n_upscale)
-        ])
 
         cnn_dims = np.array(
             observation_space.spaces[audiogoal_sensor].shape[:2], dtype=np.float32
@@ -159,8 +151,4 @@ class AudioCNN(nn.Module):
         cnn_input = torch.cat(cnn_input, dim=1)
 
         feat = self.cnn(cnn_input)
-        print("audio feat", feat.shape)
-        feat = feat.view(-1 , 128, 1, 1)
-        for mod in self.scaler:
-            feat = mod(feat)
         return feat
