@@ -278,13 +278,12 @@ class DDPPOTrainer(PPOTrainer):
         # they will be kept in memory for the entire duration of training!
         batch = None
         observations = None
-
+        current_episode_reward = torch.zeros(self.envs.batch_size, 1, device=self.device)
+        
         running_episode_stats = dict(
             reward=torch.zeros(self.envs.batch_size, 1, device=self.device),
             count=torch.zeros(self.envs.batch_size, 1, device=self.device),
         )
-
-        current_episode_reward = torch.zeros(self.envs.batch_size, 1, device=self.device)
         
         window_episode_stats = defaultdict(
             lambda:deque(maxlen=self.config['reward_window_size'])
@@ -480,7 +479,7 @@ class DDPPOTrainer(PPOTrainer):
 
                     if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
                         logger.info(
-                            "update: {}\tfps: {:.3f}\t".format(update, count_steps / (time.time() - t_start)))
+                            "update: {}\tfps: {:.3f}\t".format(update, (count_steps - count_steps_start) / (time.time() - t_start + prev_time)))
 
                         logger.info(
                             "update: {}\tenv-time: {:.3f}s\tpth-time: {:.3f}s\t"

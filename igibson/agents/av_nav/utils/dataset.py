@@ -32,9 +32,9 @@ class dataset:
             }
             
         
-    def split(self, num_processes):
+    def split(self, num_processes, data_type="train"):
         self.scene_splits = [[] for _ in range(num_processes)]
-        for idx, scene in enumerate(self.SCENE_SPLITS['train']):
+        for idx, scene in enumerate(self.SCENE_SPLITS[data_type]):
             self.scene_splits[idx % len(self.scene_splits)].append(scene)
-        assert sum(map(len, self.scene_splits)) == len(self.SCENE_SPLITS['train'])
+        assert sum(map(len, self.scene_splits)) == len(self.SCENE_SPLITS[data_type])
         return self.scene_splits

@@ -1,13 +1,13 @@
-NUM_PROCESSES: 2
+NUM_PROCESSES: 5
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt_slurm_0807_pretrained/train.log"
+LOG_FILE: "data/savi_rt_slurm_0808/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt_slurm_0807_pretrained/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0808/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0807_pretrained/tb"
-MODEL_DIR: "data/savi_rt_slurm_0807_pretrained/"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0808/tb"
+MODEL_DIR: "data/savi_rt_slurm_0808/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 1
 SEED: 0
@@ -38,8 +38,8 @@ tau: 0.95
 use_normalized_advantage: False
 
 policy_type: 'smt'
-pretrained: False
-pretrained_weights: ""
+pretrained: True #False
+pretrained_weights: "data/savi_rt_slurm_0805/checkpoints/ckpt.184.pth"
 reset_critic: False
 use_belief_predictor: False
 use_external_memory: True
@@ -65,7 +65,7 @@ smt_cfg_dropout: 0.0
 smt_cfg_activation: 'relu'
 smt_cfg_use_pretrained: False
 smt_cfg_pretrained_path: " "
-smt_cfg_pretraining: True
+smt_cfg_pretraining: False #True
 smt_cfg_freeze_encoders: False
 smt_cfg_freeze_policy_decoders: False
 smt_cfg_use_belief_encoding: False

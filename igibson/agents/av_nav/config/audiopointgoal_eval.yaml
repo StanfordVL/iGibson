@@ -3,12 +3,12 @@ NUM_PROCESSES: 6
 EVAL_NUM_PROCESS: 6
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/eval.log"
+LOG_FILE: "data/audiopointgoal/eval.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/checkpoints"
-EVAL_CKPT_PATH_DIR: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/checkpoints/ckpt.15.pth"
+CHECKPOINT_FOLDER: "data/audiopointgoal/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/audiopointgoal/checkpoints/ckpt.258.pth"
 # 96 98
-TENSORBOARD_DIR: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/tb"
+TENSORBOARD_DIR: "data/audiopointgoal/tb"
 TEST_EPISODE_COUNT: 2
 SEED: 0
 TORCH_GPU_ID: 0

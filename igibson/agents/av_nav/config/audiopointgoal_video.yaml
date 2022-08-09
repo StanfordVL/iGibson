@@ -1,22 +1,22 @@
 ## SoundSpaces
-NUM_PROCESSES: 1
+NUM_PROCESSES: 5
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/eval.log"
+LOG_FILE: "data/audiopointgoal/eval.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/checkpoints"
-EVAL_CKPT_PATH_DIR: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/checkpoints/ckpt.15.pth"
+CHECKPOINT_FOLDER: "data/audiopointgoal/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/audiopointgoal/checkpoints/ckpt.258.pth"
 # 96 98
-TENSORBOARD_DIR: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/tb"
-TEST_EPISODE_COUNT: 1
+TENSORBOARD_DIR: "data/audiopointgoal/tb"
+TEST_EPISODE_COUNT: 100
 SEED: 0
 TORCH_GPU_ID: 0
-VIDEO_OPTION: ["disk"]
-VIDEO_DIR: "/viscam/u/wangzz/avGibson/igibson/repo/"
+VIDEO_OPTION: [] #["disk"]
+VIDEO_DIR: "data/audiopointgoal/video/"
 CONTINUOUS_VIEW_CHANGE: True
 DISPLAY_RESOLUTION: 1024
-audio_write: "/viscam/u/wangzz/avGibson/igibson/repo/audio_out"
-not_load_object_categories: ['ceilings']
+audio_write: "data/audiopointgoal/video/"
+not_load_object_categories: ['ceilings', "door"]
 
 # RL PPO
 hidden_size: 512
@@ -78,11 +78,11 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [task_obs, depth, audio, bump, rgb, top_down]
+output: [task_obs, depth, audio, bump, top_down]
 map_size: 1000 
 # for Rs
 #task_obs, 
-extra_rgb: true
+extra_rgb: false
 
 # image
 # ASUS Xtion PRO LIVE
@@ -92,6 +92,8 @@ fisheye: false
 # image_height: 120
 image_width: 128
 image_height: 128
+image_width_video: 768
+image_height_video: 768
 vertical_fov: 45
 # depth
 depth_low: 0.8

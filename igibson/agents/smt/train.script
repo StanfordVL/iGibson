@@ -1,13 +1,13 @@
 #!/bin/bash
 #
 #SBATCH --job-name=audiogoal_occl1
-#SBATCH --partition=svl --qos=normal --nodelist=svl7
+#SBATCH --partition=viscam --qos=normal --nodelist=viscam5
 #SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --mem=80G
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=20
+#SBATCH --ntasks=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --mem=250G
+#SBATCH --gres=gpu:4
+#SBATCH --cpus-per-task=12
 #SBATCH --time 192:00:00
 #SBATCH --output=/viscam/u/li2053/logs/sonic_slurm_%A.out
 #SBATCH --error=/viscam/u/li2053/logs/sonic_slurm_%A.err

@@ -208,7 +208,6 @@ class PPOTrainer(BaseRLTrainer):
             outputs = self.envs.step([a[0].item() for a in actions])
         else:
             outputs = self.envs.step([a.tolist() for a in actions])
-        print("outputs", len(outputs), len(outputs[0]))
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -225,6 +224,17 @@ class PPOTrainer(BaseRLTrainer):
         current_episode_reward += rewards
         running_episode_stats["reward"] += (1 - masks) * current_episode_reward
         running_episode_stats["count"] += 1 - masks
+        for k, v in self._extract_scalars_from_infos(infos).items():
+            v = torch.tensor(
+                v, dtype=torch.float, device=current_episode_reward.device
+            ).unsqueeze(1)
+            if k not in running_episode_stats:
+                running_episode_stats[k] = torch.zeros_like(
+                    running_episode_stats["count"]
+                )
+
+            running_episode_stats[k] += (1 - masks) * v
+            
         current_episode_reward *= masks
         
         rollouts.insert(
@@ -500,9 +510,6 @@ class PPOTrainer(BaseRLTrainer):
         top_down_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]  # type: List[List[np.ndarray]]
-        rt_map_frames = [
-            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
-        ]  # type: List[List[np.ndarray]]
         audios = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]
@@ -549,20 +556,14 @@ class PPOTrainer(BaseRLTrainer):
 
             for i in range(self.envs.batch_size):
                 if len(self.config['VIDEO_OPTION']) > 0:
-                    if self.config['use_belief_predictor']:
-                        pred = descriptor_pred_gt[i][-1]
-                    else:
-                        pred = None
                         
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    rgb_frame, depth_frame, top_down_frame, rt_map_frame = observations_to_image(observations[i], infos[i])
+                    rgb_frame, depth_frame, top_down_frame, _ = observations_to_image(observations[i], infos[i])
                     rgb_frames[i].append(rgb_frame)
                     depth_frames[i].append(depth_frame)
                     top_down_frames[i].append(top_down_frame)
-                    rt_map_frames[i].append(rt_map_frame)
-
                     
             rewards = torch.tensor(
                 rewards, dtype=torch.float, device=self.device
@@ -573,12 +574,6 @@ class PPOTrainer(BaseRLTrainer):
                     episode_stats = dict()
                     episode_stats['spl'] = infos[i]['spl']
                     episode_stats["reward"] = current_episode_reward[i].item()    
-                    if self.config['use_belief_predictor']:
-                        episode_stats['descriptor_pred_gt'] = descriptor_pred_gt[i][:-1]
-                        descriptor_pred_gt[i] = [descriptor_pred_gt[i][-1]]
-                    if self.config["use_rt_map"]:
-                        episode_stats['rt_pred_gt'] = rt_pred_gt[i][:-1]
-                        rt_pred_gt[i] = [rt_pred_gt[i][-1]]
     
                     logging.debug(episode_stats)
                     current_episode_reward[i] = 0
@@ -640,28 +635,12 @@ class PPOTrainer(BaseRLTrainer):
                             audios=None,
                             fps=fps
                         )
-                        generate_video(
-                            video_option=self.config['VIDEO_OPTION'],
-                            video_dir=self.config['VIDEO_DIR'],
-                            images=rt_map_frames[i][:-1],
-                            scene_name="rt_video_out",
-                            sound='_',
-                            sr=44100,
-                            episode_id=0,
-                            checkpoint_idx=checkpoint_index,
-                            metric_name='spl',
-                            metric_value=infos[i]['spl'],
-                            tb_writer=writer,
-                            audios=None,
-                            fps=fps
-                        )
 
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
                         depth_frames[i] = []
                         top_down_frames[i] = []
-                        rt_map_frames[i] = []
                         audios[i] = [] 
         
                 count += 1

@@ -128,7 +128,6 @@ class VisualCNN(nn.Module):
                 nn.Linear(64 * cnn_dims[0] * cnn_dims[1], output_size),
                 nn.ReLU(True),
             )
-
         layer_init(self.cnn)
 
     @property
@@ -141,7 +140,7 @@ class VisualCNN(nn.Module):
             rgb_observations = observations["rgb"]
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             rgb_observations = rgb_observations.permute(0, 3, 1, 2)
-            rgb_observations = rgb_observations / 255.0  # normalize RGB
+            # rgb_observations = rgb_observations / 255.0  # normalize RGB
             cnn_input.append(rgb_observations)
 
         if self._n_input_depth > 0:

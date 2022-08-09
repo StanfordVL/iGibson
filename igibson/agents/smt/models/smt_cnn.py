@@ -86,18 +86,18 @@ class SMTCNN(nn.Module):
         cnn_features = []
         if "rgb" in self.input_modalities:
             rgb_observations = observations["rgb"]
-            cv2.imwrite("rgb.png", rgb_observations[0].cpu().numpy())
+            # cv2.imwrite("rgb.png", rgb_observations[0].cpu().numpy()*255)
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             rgb_observations = rgb_observations.permute(0, 3, 1, 2)           
-            rgb_observations = rgb_observations / 255.0  # normalize RGB
+            # rgb_observations = rgb_observations / 255.0  # normalize RGB
             if self.obs_transform:
                 rgb_observations = self.obs_transform(rgb_observations)
-            cv2.imwrite("rgb_after_pro.png", rgb_observations[0].permute(1, 2, 0).cpu().numpy()*255.0)
+            # cv2.imwrite("rgb_after_pro.png", rgb_observations[0].permute(1, 2, 0).cpu().numpy()*255.0*255.0)
             cnn_features.append(self.rgb_encoder(rgb_observations))
 
         if "depth" in self.input_modalities:
             depth_observations = observations["depth"]
-            cv2.imwrite("depth.png", depth_observations[0].cpu().numpy())
+            # cv2.imwrite("depth.png", depth_observations[0].cpu().numpy()*255.0)
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             depth_observations = depth_observations.permute(0, 3, 1, 2)
             if self.obs_transform:

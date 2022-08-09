@@ -257,7 +257,7 @@ class PPOTrainer(BaseRLTrainer):
 
 
         def load_env(scene_ids):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=0)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_splits], blocking=False)
@@ -430,10 +430,12 @@ class PPOTrainer(BaseRLTrainer):
 #         val_data = data.SCENE_SPLITS['val']
 #         idx = np.random.randint(len(val_data))
 #         scene_ids = [val_data[idx]]
-        scene_ids = data.SCENE_SPLITS["val"]
+        # scene_ids = [data.SCENE_SPLITS["val"]]
+        scene_ids = data.split(self.config['NUM_PROCESSES'], data_type="val")
+
         
         def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_id, device_idx=0)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_ids])
@@ -467,6 +469,9 @@ class PPOTrainer(BaseRLTrainer):
         stats_episodes = dict()  # dict of dicts that stores stats per episode
 
         rgb_frames = [
+            [] for _ in range(num_procs)
+        ]  # type: List[List[np.ndarray]]
+        depth_frames = [
             [] for _ in range(num_procs)
         ]  # type: List[List[np.ndarray]]
         audios = [
@@ -507,8 +512,9 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    frame, frame_topdown = observations_to_image(observations[i], infos[i])
+                    frame, frame_depth, frame_topdown = observations_to_image(observations[i], infos[i])
                     rgb_frames[i].append(frame)
+                    depth_frames[i].append(frame_depth)
                     topdown_frames[i].append(frame_topdown)
                     
             batch = batch_obs(observations, self.device)
@@ -536,7 +542,7 @@ class PPOTrainer(BaseRLTrainer):
                     # use scene_id + episode_id as unique id for storing stats
                     stats_episodes[
                         (
-                            scene_ids[i],
+                            scene_ids[i][0],
                             count,
                         )
                     ] = episode_stats
@@ -549,10 +555,25 @@ class PPOTrainer(BaseRLTrainer):
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
                             images=rgb_frames[i][:-1],
-                            scene_name=scene_ids[i],
+                            scene_name=scene_ids[i][0],
                             sound='telephone',
                             sr=44100,
-                            episode_id=0,
+                            episode_id="rgb",
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=depth_frames[i][:-1],
+                            scene_name=scene_ids[i][0],
+                            sound='telephone',
+                            sr=44100,
+                            episode_id="depth",
                             checkpoint_idx=checkpoint_index,
                             metric_name='spl',
                             metric_value=infos[i]['spl'],
@@ -564,10 +585,10 @@ class PPOTrainer(BaseRLTrainer):
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
                             images=topdown_frames[i][:-1],
-                            scene_name=scene_ids[i],
+                            scene_name=scene_ids[i][0],
                             sound='telephone',
                             sr=44100,
-                            episode_id=1,
+                            episode_id="topdown",
                             checkpoint_idx=checkpoint_index,
                             metric_name='spl',
                             metric_value=infos[i]['spl'],
@@ -579,6 +600,7 @@ class PPOTrainer(BaseRLTrainer):
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
+                        depth_frames[i] = []
                         audios[i] = []
                         topdown_frames[i] = []
                     

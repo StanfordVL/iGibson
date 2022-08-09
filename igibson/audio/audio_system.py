@@ -293,7 +293,7 @@ class AudioSystem(object):
             hop_length = 160
             win_length = 400
             stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
-            stft = block_reduce(stft, block_size=(2, 2), func=np.mean)
+            # stft = block_reduce(stft, block_size=(2, 2), func=np.mean)
             return stft
 
         spectrogram_per_channel = []

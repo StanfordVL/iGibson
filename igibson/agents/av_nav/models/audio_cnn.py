@@ -28,7 +28,6 @@ class AudioCNN(nn.Module):
         cnn_dims = np.array(
             observation_space.spaces[audiogoal_sensor].shape[:2], dtype=np.float32
         )
-
         if cnn_dims[0] < 30 or cnn_dims[1] < 30:
             self._cnn_layers_kernel_size = [(5, 5), (3, 3), (3, 3)]
             self._cnn_layers_stride = [(2, 2), (2, 2), (1, 1)]
@@ -46,7 +45,6 @@ class AudioCNN(nn.Module):
                 kernel_size=np.array(kernel_size, dtype=np.float32),
                 stride=np.array(stride, dtype=np.float32),
             )
-        
         self.cnn = nn.Sequential(
             nn.Conv2d(
                 in_channels=self._n_input_audio,
