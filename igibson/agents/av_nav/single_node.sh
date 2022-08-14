@@ -8,4 +8,4 @@ export MASTER_PORT=8080
 
 set -x
 # FREEPORT = $(python find_free_port.py 2>&1)
-python -m torch.distributed.launch --nproc_per_node 2 run.py --exp-config config/savi_rt_audiogoal.yaml --free_port $(python find_free_port.py 2>&1)
+python -m torch.distributed.launch --nproc_per_node 2 run.py --exp-config config/audiopointgoal_single.yaml --free_port $(python find_free_port.py 2>&1)

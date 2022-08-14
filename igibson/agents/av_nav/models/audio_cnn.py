@@ -79,7 +79,7 @@ class AudioCNN(nn.Module):
 
         audio_observations = observations[self._audiogoal_sensor]
         # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-        audio_observations = audio_observations.permute(0, 3, 1, 2)
+        audio_observations = audio_observations.permute(0, 3, 1, 2).contiguous()
         cnn_input.append(audio_observations)
 
         cnn_input = torch.cat(cnn_input, dim=1)

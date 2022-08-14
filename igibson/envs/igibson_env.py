@@ -296,19 +296,18 @@ class iGibsonEnv(BaseEnv):
             observation_space['floorplan_map'] = self.build_obs_space(
                 shape=(self.image_height, self.image_height), low=0, high=23)
         if 'rt_map_features' in self.output:
-            observation_space['rt_map_features'] = self.build_obs_space(
-                shape=(4096,), low=-np.inf, high=np.inf)
+            # observation_space['rt_map_features'] = self.build_obs_space(
+            #     shape=(4096,), low=-np.inf, high=np.inf)
             observation_space['rt_map'] = self.build_obs_space(
-                shape=(23,32,32), low=-np.inf, high=np.inf)
+                shape=(23,50,50), low=-np.inf, high=np.inf)
             observation_space['rt_map_gt'] = self.build_obs_space(
-                shape=(32,32), low=-np.inf, high=np.inf)
+                shape=(50,50), low=-np.inf, high=np.inf)
             observation_space['map_resolution'] = self.build_obs_space(
                 shape=(1,), low=0.0, high=np.inf)
-        
-        observation_space['visual_features'] = self.build_obs_space(
-            shape=(128,), low=-np.inf, high=np.inf)
-        observation_space['audio_features'] = self.build_obs_space(
-            shape=(128,), low=-np.inf, high=np.inf)
+        # observation_space['visual_features'] = self.build_obs_space(
+        #     shape=(8, 16, 16), low=-np.inf, high=np.inf)
+        # observation_space['audio_features'] = self.build_obs_space(
+        #     shape=(8, 16, 16), low=-np.inf, high=np.inf)
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -428,13 +427,13 @@ class iGibsonEnv(BaseEnv):
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
         if 'rt_map_features' in self.output:
-            state['rt_map_features'] = np.zeros(4096)
-            state['rt_map'] = np.zeros((23,32,32))
+            # state['rt_map_features'] = np.zeros(4096)
+            state['rt_map'] = np.zeros((23,50,50))
             state['rt_map_gt'] = self.task.get_room_type_map()
             state['map_resolution'] = self.scene.trav_map_resolution
         
-        state['visual_features'] = np.zeros(128)
-        state['audio_features'] = np.zeros(128)
+        # state['visual_features'] = np.zeros((8, 16, 16))
+        # state['audio_features'] = np.zeros((8, 16, 16))
             
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"

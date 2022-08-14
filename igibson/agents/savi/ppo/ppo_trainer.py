@@ -288,7 +288,7 @@ class PPOTrainer(BaseRLTrainer):
                     external_memory_masks,
                 ) = sample
                 bp.optimizer.zero_grad()
-                inputs = obs_batch['audio'].permute(0, 3, 1, 2)
+                inputs = obs_batch['audio'].permute(0, 3, 1, 2).contiguous()
                 preds = bp.cnn_forward(obs_batch) # [rightward, backward]
 
                 masks = (torch.sum(torch.reshape(obs_batch['audio'],

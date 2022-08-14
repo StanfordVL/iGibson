@@ -2,12 +2,12 @@
 NUM_PROCESSES: 9
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/audiopointgoal_0810_2_node/train.log"
+LOG_FILE: "data/audiopointgoal_0810_single/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/audiopointgoal_0810_2_node/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/audiopointgoal_0810_2_node/checkpoints/ckpt.264.pth"
+CHECKPOINT_FOLDER: "data/audiopointgoal_0810_single/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/audiopointgoal_0810_single/checkpoints/ckpt.264.pth"
 # 96 98
-TENSORBOARD_DIR: "data/audiopointgoal_0810_2_node/tb"
+TENSORBOARD_DIR: "data/audiopointgoal_0810_single/tb"
 TEST_EPISODE_COUNT: 500
 SEED: 0
 TORCH_GPU_ID: 0

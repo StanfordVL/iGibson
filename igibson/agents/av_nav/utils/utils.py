@@ -31,7 +31,7 @@ class CustomFixedCategorical(torch.distributions.Categorical):
         return (
             super()
             .log_prob(actions.squeeze(-1))
-            .view(actions.size(0), -1)
+            .view(actions.size(0), -1).contiguous()
             .sum(-1)
             .unsqueeze(-1)
         )

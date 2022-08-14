@@ -60,7 +60,7 @@ class TensorboardWriter:
             torch.from_numpy(np_arr).unsqueeze(0) for np_arr in images
         ]
         video_tensor = torch.cat(tuple(frame_tensors))
-        video_tensor = video_tensor.permute(0, 3, 1, 2).unsqueeze(0)
+        video_tensor = video_tensor.permute(0, 3, 1, 2).contiguous().unsqueeze(0)
         # final shape of video tensor: (1, n, 3, H, W)
         self.writer.add_video(
             video_name, video_tensor, fps=fps, global_step=step_idx

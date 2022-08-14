@@ -61,7 +61,7 @@ class VisualCNN(nn.Module):
 
         self.n_channels_out = 128
         
-        self.out_scale = np.array([32, 32])
+        self.out_scale = np.array([16, 16])
 
         max_out_scale = np.amax(self.out_scale)
         n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
@@ -190,26 +190,24 @@ class VisualCNN(nn.Module):
         cnn_input = []
         if self._n_input_rgb > 0:
             rgb_observations = observations["rgb"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            rgb_observations = rgb_observations.permute(0, 3, 1, 2)
-            rgb_observations = rgb_observations / 255.0  # normalize RGB
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            rgb_observations = rgb_observations.permute(0, 3, 1, 2).contiguous()
+            # rgb_observations = rgb_observations / 255.0  # normalize RGB
             cnn_input.append(rgb_observations)
 
         if self._n_input_depth > 0:
             depth_observations = observations["depth"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            depth_observations = depth_observations.permute(0, 3, 1, 2)
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            depth_observations = depth_observations.permute(0, 3, 1, 2).contiguous()
             cnn_input.append(depth_observations)
             
         if self._n_input_map > 0:
             map_observations = observations["floorplan_map"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            map_observations = map_observations.permute(0, 3, 1, 2)
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            map_observations = map_observations.permute(0, 3, 1, 2).contiguous()
             cnn_input.append(map_observations)
         cnn_input = torch.cat(cnn_input, dim=1)
-        print("input", cnn_input.shape)
         feat = self.cnn(cnn_input)
-        print("visual feat", feat.shape)
         feat = F.adaptive_avg_pool2d(feat, 1)
         for mod in self.scaler:
             feat = mod(feat)

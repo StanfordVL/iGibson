@@ -1,1 +1,1 @@
-# from igibson.agents.savi.ddppo.algo.ddppo_trainer import DDPPOTrainer
+# from igibson.agents.av_nav.ddppo.algo.ddppo_trainer import DDPPOTrainer

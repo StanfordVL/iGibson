@@ -38,7 +38,7 @@ class CustomFixedCategorical(torch.distributions.Categorical):
         return (
             super()
             .log_prob(actions.squeeze(-1))
-            .view(actions.size(0), -1)
+            .view(actions.size(0), -1).contiguous()
             .sum(-1)
             .unsqueeze(-1)
         )
@@ -320,10 +320,10 @@ def image_resize_shortest_edge(
         h, w = img.shape[-3:-1]
         if len(img.shape) == 4:
             # NHWC -> NCHW
-            img = img.permute(0, 3, 1, 2)
+            img = img.permute(0, 3, 1, 2).contiguous()
         else:
             # NDHWC -> NDCHW
-            img = img.permute(0, 1, 4, 2, 3)
+            img = img.permute(0, 1, 4, 2, 3).contiguous()
     else:
         # ..HW
         h, w = img.shape[-2:]
@@ -338,10 +338,10 @@ def image_resize_shortest_edge(
     if channels_last:
         if len(img.shape) == 4:
             # NCHW -> NHWC
-            img = img.permute(0, 2, 3, 1)
+            img = img.permute(0, 2, 3, 1).contiguous()
         else:
             # NDCHW -> NDHWC
-            img = img.permute(0, 1, 3, 4, 2)
+            img = img.permute(0, 1, 3, 4, 2).contiguous()
     if no_batch_dim:
         img = img.squeeze(dim=0)  # Removes the batch dimension
     return img

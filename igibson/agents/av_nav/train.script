@@ -1,12 +1,12 @@
 #!/bin/bash
 #
 #SBATCH --job-name=audiogoal_occl1
-#SBATCH --partition=svl --qos=normal
+#SBATCH --partition=viscam --qos=normal --nodelist=viscam6
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=80G
-#SBATCH --gres=gpu:2
-#SBATCH --cpus-per-task=10
+#SBATCH --mem=100G
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=20
 #SBATCH --time 192:00:00
 #SBATCH --output=/viscam/u/li2053/logs/sonic_slurm_%A.out
 #SBATCH --error=/viscam/u/li2053/logs/sonic_slurm_%A.err
@@ -35,10 +35,13 @@ echo "Virtual Env Activated"
 # export LD_LIBRARY_PATH=/usr/local/cuda-11.3/lib64:/usr/lib/x86_64-linux-gnu 
 echo "Working with the LD_LIBRARY_PATH: "$LD_LIBRARY_PATH
 
+export MASTER_ADDR=$(srun --ntasks=1 hostname 2>&1 | tail -n1)
+set -x
+
 cd /viscam/u/li2053/iGibson-dev/igibson/agents/av_nav/
 ###################
 # Run your script #
 ###################
 echo "running command : <RUN_COMMAND>"
 
-python run.py --exp-config config/audiopointgoal.yaml
+srun python -u -m run --exp-config config/audiopointgoal.yaml

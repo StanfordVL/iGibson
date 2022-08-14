@@ -11,8 +11,8 @@ from typing import Tuple
 import torch
 import torch.distributed as distrib
 
-from igibson.agents.savi.models.rollout_storage import RolloutStorage
-from igibson.agents.savi.ppo.ppo import PPO
+from igibson.agents.av_nav.utils.rollout_storage import RolloutStorage
+from igibson.agents.av_nav.ppo.ppo import PPO
 
 EPS_PPO = 1e-5
 

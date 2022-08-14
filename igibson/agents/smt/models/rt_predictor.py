@@ -245,13 +245,13 @@ class RTPredictor(nn.Module):
             
         
     def cnn_forward_visual(self, features):       
-        x_feat = features.view(-1, 128, 1, 1) #[batch size*step size, 128, 1,1]
+        x_feat = features.view(-1, 128, 1, 1).contiguous() #[batch size*step size, 128, 1,1]
         for mod in self.scaler:
             x_feat = mod(x_feat)
         return x_feat
 
     def cnn_forward_audio(self, features):
-        x_feat = self.audio_cnn(features).view(-1, 128, 1, 1)
+        x_feat = self.audio_cnn(features).view(-1, 128, 1, 1).contiguous()
         for mod in self.audio_scaler:
             x_feat = mod(x_feat)
         return x_feat
@@ -284,11 +284,11 @@ class RTPredictor(nn.Module):
         print("after downsample global", global_vmaps.shape)
         
         #From 3d to 1D here
-        global_vmaps = global_vmaps.view(visual_features.shape[0], -1)
-        global_amaps = global_amaps.view(audio_features.shape[0], -1)
+        global_vmaps = global_vmaps.view(visual_features.shape[0], -1).contiguous()
+        global_amaps = global_amaps.view(audio_features.shape[0], -1).contiguous()
         # [batch_sz*step_sz, 320000]
 
-        global_maps_features = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
+        global_maps_features = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1).contiguous()
         # [batch_sz*step_sz, 2, 320000] (view)-> [batch_sz*step_sz, 2*320000]
         
         # global_maps_features = global_maps.view(visual_features.shape[0], 1, 

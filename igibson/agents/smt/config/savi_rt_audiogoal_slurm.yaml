@@ -1,27 +1,21 @@
-NUM_PROCESSES: 1
-TRAIN_EPISODE_PER_SCENE: 100
-# commented out when not using reload_model
+NUM_PROCESSES: 9
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/logs/eval.log"
+LOG_FILE: "data/savi_rt_slurm_0810/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/savi_rt_slurm_0730/checkpoints/ckpt.3.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0730/tb"
-MODEL_DIR: "data/savi_rt_slurm_0730"
-TORCH_GPU_ID: 0
-SEED: 1
-VIDEO_OPTION: ["disk"]
-TEST_EPISODE_COUNT: 1
-automatic_reset: False
-VIDEO_DIR: "data/video"
-AUDIO_DIR: "data/audio/audio"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0810/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0810/tb"
+MODEL_DIR: "data/savi_rt_slurm_0810/"
+TRAIN_EPISODE_COUNT_PER_SCENE: 100
+TORCH_GPU_ID: 1
+SEED: 0
+VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
-not_load_object_categories: ['ceilings', 'door']
 joint_loss: True
-loss_weight: 1
-texture_scale: 0.6
+loss_weight: 1.
+
 
 #ppo & DDPPO config
 hidden_size: 512
@@ -45,9 +39,9 @@ use_normalized_advantage: False
 
 policy_type: 'smt'
 pretrained: False
-pretrained_weights: ""
+pretrained_weights: "" #"data/savi_rt_slurm_0805/checkpoints/ckpt.184.pth"
 reset_critic: False
-use_belief_predictor: True
+use_belief_predictor: False
 use_external_memory: True
 sync_frac: 0.6
 distrib_backend: "GLOO"
@@ -56,7 +50,10 @@ num_recurrent_layers: 1
 backbone: "custom_resnet18"
 normalize_category_distribution: False
 
-use_rt_map: True
+# use_occupancy_map
+# use_roomtype_map
+use_rt_map: False
+enc_in_scale: [32,32]
 
 # smt
 smt_cfg_memory_size: 1
@@ -68,21 +65,21 @@ smt_cfg_dropout: 0.0
 smt_cfg_activation: 'relu'
 smt_cfg_use_pretrained: False
 smt_cfg_pretrained_path: " "
-smt_cfg_pretraining: True
+smt_cfg_pretraining: False #True
 smt_cfg_freeze_encoders: False
+smt_cfg_freeze_policy_decoders: False
 smt_cfg_use_belief_encoding: False
 
 
 # belief_cfg:
-use_label_belief: True
-use_location_belief: True
+use_label_belief: False
+use_location_belief: False
 online_training: True
 train_encoder: False
 current_pred_only: False
 weighting_factor: 0.5
 belief_cfg_lr: 0.001
 label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0501/ckpt.16.pth'
-
 
 
 ## igibson
@@ -93,9 +90,12 @@ load_texture: true
 pybullet_load_texture: true
 trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 2
+trav_map_erosion: 3
 should_open_all_doors: true
+not_load_object_categories: ['door']
+texture_scale: 1.0
 
+is_discrete: True
 min_std: 1e-6
 max_std: 1
 min_log_std: -5
@@ -104,46 +104,39 @@ use_log_std: False
 use_softplus: False
 action_activation: tanh
 
-
 # task
 task: SAViRT
-target_dist_min: 2.0
+target_dist_min: 1.0
 target_dist_max: 10.0
+goal_format: "cartesian"
 task_obs_dim: 4
-#should be 4, though only 2 will be used for training
 
 # robot
 robot:
-   name: Turtlebot
-   action_type: continuous
-   action_normalize: true
-   base_name: null
-   scale: 1.0
-   self_collision: false
-   rendering_params: null
-   controller_config:
-     base:
-        name: JointController
-        motor_type: velocity
-        command_input_limits: default
-        command_output_limits: default
-        use_delta_commands: false
+    name: Turtlebot
+    action_type: continuous
+    action_normalize: true
+    base_name: null
+    scale: 1.0
+    self_collision: false
+    rendering_params: null
+    controller_config:
+        base:
+            name: JointController
+            motor_type: velocity
+            command_input_limits: default
+            command_output_limits: default
+            use_delta_commands: false
 
 # sensor spec
-goal_format: "cartesian"
-output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, bump, top_down]
+output: [depth, rgb, audio, pose_sensor, task_obs, category, bump]
 extra_rgb: false
-audio_write: ""
 
 # image
 fisheye: false
 image_width: 160
 image_height: 160
 vertical_fov: 45
-image_width_video: 960
-image_height_video: 960
-rt_map_height_video: 960
-rt_map_width_video: 960
 # depth
 depth_low: 0.8
 depth_high: 3.5
@@ -157,7 +150,6 @@ audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-visible_target: true
 
 # reward only for point nav fixed task
 reward_type: geodesic
@@ -179,8 +171,3 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
-
-
-
-
-

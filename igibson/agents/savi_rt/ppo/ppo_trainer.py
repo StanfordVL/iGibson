@@ -121,7 +121,6 @@ class PPOTrainer(BaseRLTrainer):
             # Restore checkpoints to models
             ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
             self.agent.load_state_dict(ckpt_dict["state_dict"])
-            self.agent.to(self.device)
             if self.config['use_belief_predictor']:
                 self.belief_predictor.load_state_dict(ckpt_dict["belief_predictor"])
 
@@ -283,7 +282,7 @@ class PPOTrainer(BaseRLTrainer):
                     external_memory_masks
                 ) = sample
                 bp.optimizer.zero_grad()
-                inputs = obs_batch['audio'].permute(0, 3, 1, 2)
+                inputs = obs_batch['audio'].permute(0, 3, 1, 2).contiguous()
                 preds = bp.cnn_forward(obs_batch)
 
                 masks = (torch.sum(torch.reshape(obs_batch['audio'],
@@ -353,12 +352,12 @@ class PPOTrainer(BaseRLTrainer):
                                                                                       rt_hidden_states_batch, 
                                                                                       masks_batch)
 
-                global_map_preds = global_map_preds.permute(0, 2, 3, 1).view(global_map_preds.shape[0], -1,
-                                                                             self.rt_predictor.rooms)
+                global_map_preds = global_map_preds.permute(0, 2, 3, 1).contiguous().view(global_map_preds.shape[0], -1,
+                                                                             self.rt_predictor.rooms).contiguous()
                 #(150*batch_size, 28*28, 23)
                 global_map_preds = global_map_preds.reshape(-1, self.rt_predictor.rooms)
                 #(150*batch_size*28*28, 23)
-                global_map_gt = to_tensor(obs_batch['rt_map_gt']).view(global_map_preds.shape[0], -1).to(self.device)
+                global_map_gt = to_tensor(obs_batch['rt_map_gt']).view(global_map_preds.shape[0], -1).contiguous().to(self.device)
                 global_map_gt = global_map_gt.reshape(-1)
                 #(150*batch_size*28*28,)
                 rt_loss = self.rt_predictor.rt_loss_fn(global_map_preds,

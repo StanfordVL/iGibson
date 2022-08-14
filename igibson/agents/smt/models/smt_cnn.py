@@ -88,7 +88,7 @@ class SMTCNN(nn.Module):
             rgb_observations = observations["rgb"]
             # cv2.imwrite("rgb.png", rgb_observations[0].cpu().numpy()*255)
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            rgb_observations = rgb_observations.permute(0, 3, 1, 2)           
+            rgb_observations = rgb_observations.permute(0, 3, 1, 2).contiguous()           
             # rgb_observations = rgb_observations / 255.0  # normalize RGB
             if self.obs_transform:
                 rgb_observations = self.obs_transform(rgb_observations)
@@ -99,7 +99,7 @@ class SMTCNN(nn.Module):
             depth_observations = observations["depth"]
             # cv2.imwrite("depth.png", depth_observations[0].cpu().numpy()*255.0)
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            depth_observations = depth_observations.permute(0, 3, 1, 2)
+            depth_observations = depth_observations.permute(0, 3, 1, 2).contiguous()
             if self.obs_transform:
                 depth_observations = self.obs_transform(depth_observations)
             cnn_features.append(self.depth_encoder(depth_observations))
@@ -116,7 +116,7 @@ class SMTCNN(nn.Module):
             semantic_observations = torch.cat(
                 [semantic_observations, semantic_object_observations], -1
             )
-            semantic_observations = semantic_observations.permute(0, 3, 1, 2) / 255.0
+            semantic_observations = semantic_observations.permute(0, 3, 1, 2).contiguous() / 255.0
             if self.obs_transform:
                 semantic_observations = self.obs_transform(semantic_observations)
             cnn_features.append(self.semantic_encoder(semantic_observations))

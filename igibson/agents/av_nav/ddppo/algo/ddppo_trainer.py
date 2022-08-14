@@ -18,7 +18,7 @@ import torch.distributed as distrib
 import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
 
-from igibson.agents.savi.ddppo.algo.ddp_utils import (
+from igibson.agents.av_nav.ddppo.algo.ddp_utils import (
     EXIT,
     REQUEUE,
     add_signal_handlers,
@@ -27,12 +27,11 @@ from igibson.agents.savi.ddppo.algo.ddp_utils import (
     requeue_job,
     save_interrupted_state,
 )
-from igibson.agents.savi.ddppo.algo.ddppo import DDPPO
-from igibson.agents.savi.ppo.ppo import PPO
-from igibson.agents.savi.models.belief_predictor import BeliefPredictor #, BeliefPredictorDDP
-from igibson.agents.savi.models.rollout_storage import RolloutStorage
-from igibson.agents.savi.ppo.ppo_trainer import PPOTrainer
-from igibson.agents.savi.ppo.policy import AudioNavSMTPolicy, AudioNavBaselinePolicy
+from igibson.agents.av_nav.ddppo.algo.ddppo import DDPPO
+from igibson.agents.av_nav.utils.rollout_storage import RolloutStorage
+from igibson.agents.av_nav.ppo.ppo import PPO
+from igibson.agents.av_nav.ppo.ppo_trainer import PPOTrainer
+from igibson.agents.av_nav.ppo.policy import AudioNavBaselinePolicy
 from igibson.envs.parallel_env import ParallelNavEnv
 from utils.dataset import dataset
 from utils.utils import batch_obs, linear_decay
@@ -56,7 +55,7 @@ class DDPPOTrainer(PPOTrainer):
 
         super().__init__(config)
 
-    def _setup_actor_critic_agent(self, observation_space=None) -> None:
+    def _setup_actor_critic_agent(self, observation_space=None, action_space=None) -> None:
         r"""Sets up actor critic and agent for PPO.
 
         Args:
@@ -90,6 +89,10 @@ class DDPPOTrainer(PPOTrainer):
             extra_rgb=self.config['extra_rgb']
         )
         self.actor_critic.to(self.device)
+        
+        if self.config["reset_critic"]:
+            nn.init.orthogonal_(self.actor_critic.critic.fc.weight)
+            nn.init.constant_(self.actor_critic.critic.fc.bias, 0)
 
         self.agent = DDPPO(
             actor_critic=self.actor_critic,
@@ -98,14 +101,14 @@ class DDPPOTrainer(PPOTrainer):
             num_mini_batch=self.config['num_mini_batch'],
             value_loss_coef=self.config['value_loss_coef'],
             entropy_coef=self.config['entropy_coef'],
-            lr=self.config['lr'],
-            eps=self.config['eps'],
+            lr=float(self.config['lr']),
+            eps=float(self.config['eps']),
             max_grad_norm=self.config['max_grad_norm'],
             use_normalized_advantage=self.config['use_normalized_advantage'],
         )
 
         
-    def train(self) -> None:
+    def train(self, args) -> None:
         r"""Main method for DD-PPO.
 
         Returns:
@@ -117,7 +120,7 @@ class DDPPOTrainer(PPOTrainer):
             self.config['distrib_backend']
         )
         add_signal_handlers()
-        torch.cuda.empty_cache()
+
         # Stores the number of workers that have finished their rollout
         num_rollouts_done_store = distrib.PrefixStore(
             "rollout_tracker", tcp_store
@@ -126,8 +129,8 @@ class DDPPOTrainer(PPOTrainer):
 
         self.world_rank = distrib.get_rank()
         self.world_size = distrib.get_world_size()
-        self.config['TORCH_GPU_ID'] = self.world_rank
-        self.config['SIMULATOR_GPU_ID'] = self.world_rank
+        self.config['TORCH_GPU_ID'] = self.local_rank
+        self.config['SIMULATOR_GPU_ID'] = self.local_rank
         # Multiply by the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
             self.world_rank * self.config['NUM_PROCESSES']
@@ -138,7 +141,7 @@ class DDPPOTrainer(PPOTrainer):
         torch.manual_seed(self.config['SEED'])
         
         if torch.cuda.is_available():
-            self.device = torch.device("cuda", self.world_rank)
+            self.device = torch.device("cuda", self.local_rank)
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")
@@ -148,10 +151,11 @@ class DDPPOTrainer(PPOTrainer):
 
 
         def load_env(scene_ids):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=0)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=self.local_rank)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_splits], blocking=False)
+        
   
         if not os.path.isdir(self.config['CHECKPOINT_FOLDER']):
             os.makedirs(self.config['CHECKPOINT_FOLDER'])
@@ -176,11 +180,10 @@ class DDPPOTrainer(PPOTrainer):
         rollouts.to(self.device)
 
         observations = self.envs.reset()
-        batch = batch_obs(observations)
+        batch = batch_obs(observations, device=self.device)
 
         for sensor in rollouts.observations:
             rollouts.observations[sensor][0].copy_(batch[sensor])
-
         # batch and observations may contain shared PyTorch CUDA
         # tensors.  We must explicitly clear them here otherwise
         # they will be kept in memory for the entire duration of training!
@@ -188,22 +191,24 @@ class DDPPOTrainer(PPOTrainer):
         observations = None
 
         # episode_rewards and episode_counts accumulates over the entire training course
-        episode_rewards = torch.zeros(self.envs.batch_size, 1)
-        episode_spls = torch.zeros(self.envs.batch_size, 1)
-        episode_steps = torch.zeros(self.envs.batch_size, 1)
-        episode_counts = torch.zeros(self.envs.batch_size, 1)
-        current_episode_reward = torch.zeros(self.envs.batch_size, 1)
-        current_episode_step = torch.zeros(self.envs.batch_size, 1)
-        window_episode_reward = deque(maxlen=self.config['reward_window_size'])
-        window_episode_spl = deque(maxlen=self.config['reward_window_size'])
-        window_episode_step = deque(maxlen=self.config['reward_window_size'])
-        window_episode_counts = deque(maxlen=self.config['reward_window_size'])
+        current_episode_reward = torch.zeros(self.envs.batch_size, 1, device=self.device)
+
+        running_episode_stats = dict(
+            count=torch.zeros(self.envs.batch_size, 1, device=self.device),
+            reward=torch.zeros(self.envs.batch_size, 1, device=self.device),
+        )
+
+        window_episode_stats = defaultdict(
+            lambda: deque(maxlen=self.config["reward_window_size"])
+        )
 
         t_start = time.time()
         env_time = 0
         pth_time = 0
         count_steps = 0
         count_checkpoints = 0
+        start_update = 0
+        prev_time = 0
 
         lr_scheduler = LambdaLR(
             optimizer=self.agent.optimizer,
@@ -214,8 +219,29 @@ class DDPPOTrainer(PPOTrainer):
         count_steps_start, count_checkpoints, start_update = self.try_to_resume_checkpoint()
         count_steps = count_steps_start
 
-        with TensorboardWriter(
+        interrupted_state = load_interrupted_state()
+        if interrupted_state is not None:
+            self.agent.load_state_dict(interrupted_state["state_dict"])
+            self.agent.optimizer.load_state_dict(
+                interrupted_state["optim_state"]
+            )
+            lr_scheduler.load_state_dict(interrupted_state["lr_sched_state"])
+
+            requeue_stats = interrupted_state["requeue_stats"]
+            env_time = requeue_stats["env_time"]
+            pth_time = requeue_stats["pth_time"]
+            count_steps = requeue_stats["count_steps"]
+            count_checkpoints = requeue_stats["count_checkpoints"]
+            start_update = requeue_stats["start_update"]
+            prev_time = requeue_stats["prev_time"]
+
+
+        with (
+            TensorboardWriter(
             self.config['TENSORBOARD_DIR'], flush_secs=self.flush_secs
+            )
+            if self.world_rank == 0
+            else contextlib.suppress()
         ) as writer:
             for update in range(self.config['NUM_UPDATES']):
                 if self.config['use_linear_lr_decay']:
@@ -225,77 +251,145 @@ class DDPPOTrainer(PPOTrainer):
                     self.agent.clip_param = self.config['clip_param'] * linear_decay(
                         update, self.config['NUM_UPDATES']
                     )
+                
+                if EXIT.is_set():
+                    self.envs.close()
 
+                    if REQUEUE.is_set() and self.world_rank == 0:
+                        requeue_stats = dict(
+                            env_time=env_time,
+                            pth_time=pth_time,
+                            count_steps=count_steps,
+                            count_checkpoints=count_checkpoints,
+                            start_update=update,
+                            prev_time=(time.time() - t_start) + prev_time,
+                        )
+                        state_dict = dict(
+                                state_dict=self.agent.state_dict(),
+                                optim_state=self.agent.optimizer.state_dict(),
+                                lr_sched_state=lr_scheduler.state_dict(),
+                                config=self.config,
+                                requeue_stats=requeue_stats,
+                            )
+                        if self.config['use_belief_predictor']:
+                            state_dict['belief_predictor'] = self.belief_predictor.state_dict()
+                        save_interrupted_state(state_dict)
+
+                    requeue_job()
+                    return
+
+                count_steps_delta = 0
+                self.agent.eval()
                 for step in range(self.config['num_steps']):
                     # At each timestep, `env.step` calls `task.get_reward`,
                     delta_pth_time, delta_env_time, delta_steps = self._collect_rollout_step(
                         rollouts,
                         current_episode_reward,
-                        current_episode_step,
-                        episode_rewards,
-                        episode_spls,
-                        episode_counts,
-                        episode_steps
+                        running_episode_stats,
                     )
                     pth_time += delta_pth_time
                     env_time += delta_env_time
-                    count_steps += delta_steps
+                    count_steps_delta += delta_steps
+
+                    # This is where the preemption of workers happens.  If a
+                    # worker detects it will be a straggler, it preempts itself!
+                    if (
+                        step
+                        >= self.config['num_steps'] * self.SHORT_ROLLOUT_THRESHOLD
+                    ) and int(num_rollouts_done_store.get("num_done")) > (
+                        self.config['sync_frac'] * self.world_size
+                    ):
+                        break
+                
+                num_rollouts_done_store.add("num_done", 1)
+
+                self.agent.train()
 
                 delta_pth_time, value_loss, action_loss, dist_entropy = self._update_agent(
                     rollouts
                 )
                 pth_time += delta_pth_time
 
-                window_episode_reward.append(episode_rewards.clone())
-                window_episode_spl.append(episode_spls.clone())
-                window_episode_step.append(episode_steps.clone())
-                window_episode_counts.append(episode_counts.clone())
+                stats_ordering = list(sorted(running_episode_stats.keys()))
+                stats = torch.stack(
+                    [running_episode_stats[k] for k in stats_ordering], 0
+                )
+                distrib.all_reduce(stats)
+                                
+                for i, k in enumerate(stats_ordering):
+                    window_episode_stats[k].append(stats[i].clone())
 
-                losses = [value_loss, action_loss, dist_entropy]
-                stats = zip(
-                    ["count", "reward", "step", 'spl'],
-                    [window_episode_counts, window_episode_reward, window_episode_step, window_episode_spl],)
-                deltas = {
-                    k: ((v[-1] - v[0]).sum().item()
-                        if len(v) > 1 else v[0].sum().item()) for k, v in stats}
-                deltas["count"] = max(deltas["count"], 1.0)
+                stats = torch.tensor(
+                    [value_loss, action_loss, dist_entropy, count_steps_delta],
+                    device=self.device,
+                )
+                distrib.all_reduce(stats)
+                count_steps += stats[3].item()
 
-                # this reward is averaged over all the episodes happened during window_size updates
-                # approximately number of steps is window_size * num_steps
-                if update % 10 == 0:
-                    writer.add_scalar("Environment/Reward", deltas["reward"] / deltas["count"], count_steps)
-                    writer.add_scalar("Environment/SPL", deltas["spl"] / deltas["count"], count_steps)
-                    writer.add_scalar("Environment/Episode_length", deltas["step"] / deltas["count"], count_steps)
-                    writer.add_scalar('Policy/Value_Loss', value_loss, count_steps)
-                    writer.add_scalar('Policy/Action_Loss', action_loss, count_steps)
-                    writer.add_scalar('Policy/Entropy', dist_entropy, count_steps)
+                if self.world_rank == 0:
+                    num_rollouts_done_store.set("num_done", "0")
+
+                    losses = [
+                        stats[0].item() / self.world_size,
+                        stats[1].item() / self.world_size,
+                        stats[2].item() / self.world_size,
+                    ]
+                    deltas = {
+                        k: (
+                            (v[-1] - v[0]).sum().item()
+                            if len(v) > 1
+                            else v[0].sum().item()
+                        )
+                        for k, v in window_episode_stats.items()
+                    }
+                    deltas["count"] = max(deltas["count"], 1.0)
+
+                    writer.add_scalar(
+                        "Metrics/reward", deltas["reward"] / deltas["count"], count_steps
+                    )
+
+                    # Check to see if there are any metrics
+                    # that haven't been logged yet
+                    metrics = {
+                        k: v / deltas["count"]
+                        for k, v in deltas.items()
+                        if k not in {"reward", "count"}
+                    }
+                    if len(metrics) > 0:
+                        for metric, value in metrics.items():
+                            writer.add_scalar(f"Metrics/{metric}", value, count_steps)
+
+                    # this reward is averaged over all the episodes happened during window_size updates
+                    # approximately number of steps is window_size * num_steps
+                    writer.add_scalar('Policy/Value_Loss', losses[0], count_steps)
+                    writer.add_scalar('Policy/Action_Loss', losses[1], count_steps)
+                    writer.add_scalar('Policy/Entropy', losses[2], count_steps)
                     writer.add_scalar('Policy/Learning_Rate', lr_scheduler.get_lr()[0], count_steps)
 
-                # log stats
-                if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
-                    logger.info(
-                        "update: {}\tfps: {:.3f}\t".format(update, count_steps / (time.time() - t_start)))
-
-                    logger.info(
-                        "update: {}\tenv-time: {:.3f}s\tpth-time: {:.3f}s\t"
-                        "frames: {}".format(update, env_time, pth_time, count_steps))
-
-                    window_rewards = (
-                        window_episode_reward[-1] - window_episode_reward[0]).sum()
-                    window_counts = (
-                        window_episode_counts[-1] - window_episode_counts[0]).sum()
-
-                    if window_counts > 0:
+                    # log stats
+                    if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
                         logger.info(
-                            "Average window size {} reward: {:3f}".format(len(window_episode_reward),
-                                (window_rewards / window_counts).item(),))
-                    else:
-                        logger.info("No episodes finish in current window")
+                            "update: {}\tfps: {:.3f}\t".format(update, count_steps / (time.time() - t_start)))
 
-                # checkpoint model
-                if update % self.config['CHECKPOINT_INTERVAL'] == 0:
-                    self.save_checkpoint(f"ckpt.{count_checkpoints}.pth")
-                    count_checkpoints += 1
+                        logger.info(
+                            "update: {}\tenv-time: {:.3f}s\tpth-time: {:.3f}s\t"
+                            "frames: {}".format(update, env_time, pth_time, count_steps))
+
+                        logger.info(
+                            "Average window size: {}  {}".format(
+                                len(window_episode_stats["count"]),
+                                "  ".join(
+                                    "{}: {:.3f}".format(k, v / deltas["count"])
+                                    for k, v in deltas.items()
+                                    if k != "count"
+                                ),
+                            )
+                        )
+
+                    # checkpoint model
+                    if update % self.config['CHECKPOINT_INTERVAL'] == 0:
+                        self.save_checkpoint(f"ckpt.{count_checkpoints}.pth")
+                        count_checkpoints += 1
                     
             self.envs.close()
 

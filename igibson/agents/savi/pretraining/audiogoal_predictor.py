@@ -37,7 +37,7 @@ class AudioGoalPredictor(nn.Module):
             audio_observations = torch.from_numpy(audio_observations).to(device='cuda:0').unsqueeze(0)
 
         # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-        audio_observations = audio_observations.permute(0, 3, 1, 2)
+        audio_observations = audio_observations.permute(0, 3, 1, 2).contiguous()
         return self.predictor(audio_observations)
 
 

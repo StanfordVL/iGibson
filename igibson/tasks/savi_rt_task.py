@@ -8,6 +8,8 @@ import glob
 import csv
 import json
 import xml.etree.ElementTree as ET
+import kornia.geometry.transform as korntransforms
+import torch
 
 import igibson
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
@@ -31,6 +33,7 @@ from PIL import Image
 import cv2
 from scipy import ndimage
 import math
+
 
 log = logging.getLogger(__name__)
 
@@ -353,24 +356,29 @@ class SAViRTTask(PointNavRandomTask):
             # pos = env.scene.world_to_map(np.array(env.robots[0].get_position())[:2])
             # print("robo pos", pos)
             # gt_rt[pos[0], pos[1]] = 255
-            # cv2.imwrite("gt_rt.png", gt_rt /23 * 255)
+            # cv2.imwrite(env.config['scene_id'] + "_gt_rt.png", gt_rt /23 * 255)
             ######
 
             gt_rt = np.flip(gt_rt, axis=0)
+            padded_shape = 350
+            padded_gt_rt = np.zeros((padded_shape, padded_shape))
+            padded_gt_rt[int(padded_gt_rt.shape[0]/2 - gt_rt.shape[0]/2):int(padded_gt_rt.shape[0]/2 + gt_rt.shape[0]/2),
+                int(padded_gt_rt.shape[1]/2 - gt_rt.shape[1]/2):int(padded_gt_rt.shape[1]/2 + gt_rt.shape[1]/2)] = gt_rt
 
-            delta_pos = self.initial_pos[:2]/env.scene.trav_map_resolution        
-            gt_rt = ndimage.shift(gt_rt, [delta_pos[1], -delta_pos[0]]) #move gt_map [left, down] by delta_pos        
-            # cv2.imwrite("gt_rt_shifted.png", gt_rt/23 * 255)
-            gt_rt = ndimage.rotate(gt_rt, -90+self.initial_rpy[2]*180.0/math.pi, reshape=False)# rotate gt_map by theta-90 ccw
-            # cv2.imwrite("gt_rt_final.png", gt_rt/23 * 255)
+            # cv2.imwrite(env.config['scene_id'] + "_gt_rt_after_pad.png", padded_gt_rt /23 * 255)
+
+            delta_pos = self.initial_pos[:2]/env.scene.trav_map_resolution
+            padded_gt_rt = ndimage.shift(padded_gt_rt, [delta_pos[1], -delta_pos[0]]) #move gt_map [left, down] by delta_pos        
+            # cv2.imwrite(env.config['scene_id'] + "gt_rt_shifted.png", padded_gt_rt/23 * 255)
+            padded_gt_rt = ndimage.rotate(padded_gt_rt, -90+self.initial_rpy[2]*180.0/math.pi, reshape=False)# rotate gt_map by theta-90 ccw
 
             ######sanity check
     #         cv2.imwrite("gt_rt_rotated.png", gt_rt)
             ######
 #         elif self.config["scene"] == "gibson" or self.config["scene"] == "mp3d":
 
-        self.gt_rt = cv2.resize(gt_rt, (32, 32))
-     
+        self.gt_rt = cv2.resize(padded_gt_rt, (50, 50))
+        # cv2.imwrite(env.config['scene_id'] + "gt_rt_final_resize.png", self.gt_rt/23 * 255)
     
     def get_room_type_map(self):
         return self.gt_rt
@@ -378,13 +386,29 @@ class SAViRTTask(PointNavRandomTask):
     
 if __name__ == "__main__":
     from igibson.envs.igibson_env import iGibsonEnv
-    
-    config = "/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/config/savi_rt_audiogoal.yaml"
-    env = iGibsonEnv(config_file=config, 
-                     mode="headless", 
-                     scene_id = "Rs_int",
-                     action_timestep=1.0 / 10.0, 
-                     physics_timestep=1.0 / 40.0)
-    env.reset()   
-    env.task.load_gt_rt_map(env)
-    env.close()
+
+    # config = "/viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/config/savi_rt_audiogoal.yaml"
+    # env = iGibsonEnv(config_file=config, 
+    #                  mode="headless", 
+    #                  scene_id = "Pomaria_1_int",
+    #                  action_timestep=1.0 / 10.0, 
+    #                  physics_timestep=1.0 / 40.0)
+    # env.reset()   
+    # env.task.load_gt_rt_map(env)
+    # env.close()
+    scenes = "Pomaria_1_int", "Benevolence_2_int", "Beechwood_1_int", "Ihlen_0_int", "Benevolence_1_int","Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int",  # "Benevolence_0_int"], 
+    # scenes = "Merom_1_int", "Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"
+    for s in scenes:
+        print(s)
+        maps_path = "/viscam/u/wangzz/iGibson/gibson2/data/ig_dataset/scenes/"  \
+                            + s + "/layout/"
+        floor = 0
+        gt_rt = np.array(Image.open(os.path.join(maps_path, "floor_semseg_{}.png".format(floor))))
+        if s == "Beechwood_1_int":
+            gt_rt = gt_rt[ 500:2220,250:1480]
+        print(gt_rt.shape)
+        # gt_rt = cv2.resize(gt_rt, (100, 100))
+        # padded_gt_rt = np.zeros((150, 150))
+        # padded_gt_rt[25:125, 25:125] = gt_rt
+
+        cv2.imwrite(s + "_gt_rt.png", gt_rt /23 * 255)

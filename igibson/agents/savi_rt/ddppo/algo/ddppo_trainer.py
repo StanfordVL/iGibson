@@ -222,7 +222,7 @@ class DDPPOTrainer(PPOTrainer):
         Returns:
             None
         """
-
+        torch.autograd.set_detect_anomaly(True)
         FreePort = args.free_port
         self.local_rank, tcp_store = init_distrib_slurm(
             FreePort,
@@ -238,8 +238,8 @@ class DDPPOTrainer(PPOTrainer):
 
         self.world_rank = distrib.get_rank()
         self.world_size = distrib.get_world_size()
-        self.config['TORCH_GPU_ID'] = self.world_rank
-        self.config['SIMULATOR_GPU_ID'] = self.world_rank
+        self.config['TORCH_GPU_ID'] = self.local_rank
+        self.config['SIMULATOR_GPU_ID'] = self.local_rank
         # Multiply by the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
             self.world_rank * self.config['NUM_PROCESSES']
@@ -250,7 +250,7 @@ class DDPPOTrainer(PPOTrainer):
         torch.manual_seed(self.config['SEED'])
 
         if torch.cuda.is_available():
-            self.device = torch.device("cuda", self.world_rank)
+            self.device = torch.device("cuda", self.local_rank)
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")
@@ -259,7 +259,7 @@ class DDPPOTrainer(PPOTrainer):
         scene_splits = data.split(self.config['NUM_PROCESSES'])
 
         def load_env(scene_ids):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=self.world_rank)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=self.local_rank)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_splits], blocking=False)

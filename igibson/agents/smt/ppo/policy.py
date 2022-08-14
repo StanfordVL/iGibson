@@ -318,7 +318,7 @@ class AudioNavSMTNet(Net):
             action_encoding_dims = 16
         else:
             action_encoding_dims = 0
-        nfeats = action_encoding_dims
+        nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims        
         
         if 'task_obs' in observation_space.spaces:
             nfeats += 2
@@ -426,6 +426,9 @@ class AudioNavSMTNet(Net):
         x_unflattened = []
         observations['visual_features'].copy_(self.visual_encoder(observations))
         observations['audio_features'].copy_(self.goal_encoder(observations))
+
+        x_unflattened.append(observations['visual_features'])
+        x_unflattened.append(observations['audio_features'])
 
         x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
         x_unflattened.append(observations['task_obs'][:, -2:])

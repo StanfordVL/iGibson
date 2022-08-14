@@ -258,8 +258,8 @@ class RolloutStorage:
             )
             adv_targ = self._flatten_helper(T, N, adv_targ)
             if self.use_external_memory:
-                em_store_batch = em_store_batch.view(-1, T * N, self.em_dim)
-                em_masks_batch = self._flatten_helper(T, N, em_masks_batch)
+                em_store_batch = em_store_batch.view(-1, T * N, self.em_dim).contiguous()
+                em_masks_batch = self._flatten_helper(T, N, em_masks_batch).contiguous()
 
             yield (
                 observations_batch,

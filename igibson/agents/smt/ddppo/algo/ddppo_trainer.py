@@ -202,7 +202,7 @@ class DDPPOTrainer(PPOTrainer):
 
         self.world_rank = distrib.get_rank()
         self.world_size = distrib.get_world_size()
-        self.config['TORCH_GPU_ID'] = self.world_rank
+        self.config['TORCH_GPU_ID'] = self.local_rank
         self.config['SIMULATOR_GPU_ID'] = self.world_rank
         # Multiply sby the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
@@ -214,7 +214,7 @@ class DDPPOTrainer(PPOTrainer):
         torch.manual_seed(self.config['SEED'])
 
         if torch.cuda.is_available():
-            self.device = torch.device("cuda", self.world_rank)
+            self.device = torch.device("cuda", self.local_rank)
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")

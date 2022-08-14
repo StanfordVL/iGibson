@@ -15,11 +15,13 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 import torch
 
-from ppo import ppo_trainer
+from ddppo.algo import ddppo_trainer
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--local_rank", type=int)
+    parser.add_argument("--free_port", type=int)
     parser.add_argument(
         "--run-type",
         choices=["train", "eval"],
@@ -37,7 +39,7 @@ def main():
     
     args = parser.parse_args()
 
-    trainer = ppo_trainer.PPOTrainer(config=args.exp_config) #include model directory
+    trainer = ddppo_trainer.DDPPOTrainer(config=args.exp_config) #include model directory
     torch.set_num_threads(1)
 
     level = logging.INFO
@@ -45,7 +47,7 @@ def main():
                         datefmt="%Y-%m-%d %H:%M:%S")
     
     if args.run_type == "train":
-        trainer.train()
+        trainer.train(args)
     elif args.run_type == "eval":
         trainer.eval()
 

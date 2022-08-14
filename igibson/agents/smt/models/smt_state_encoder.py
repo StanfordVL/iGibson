@@ -127,7 +127,7 @@ class SMTStateEncoder(nn.Module):
         # Compress features
         memory = torch.cat([memory, x.unsqueeze(0)])
         M, bs = memory.shape[:2]
-        memory = self.fusion_encoder(memory.view(M*bs, -1)).view(M, bs, -1)
+        memory = self.fusion_encoder(memory.view(M*bs, -1).contiguous()).view(M, bs, -1).contiguous()
 
         # Transformer operations
         t_masks = self._convert_masks_to_transformer_format(memory_masks)
@@ -201,8 +201,8 @@ class SMTStateEncoder(nn.Module):
         agent_pose_encoded = self.pose_encoder(agent_pose_formatted)
         M, bs = memory_pose_formatted.shape[:2]
         memory_pose_encoded = self.pose_encoder(
-            memory_pose_formatted.view(M * bs, -1)
-        ).view(M, bs, -1)
+            memory_pose_formatted.view(M * bs, -1).contiguous()
+        ).view(M, bs, -1).contiguous()
 
         return agent_pose_encoded, memory_pose_encoded
 

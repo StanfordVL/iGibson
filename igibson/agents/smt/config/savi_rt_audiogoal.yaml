@@ -1,13 +1,13 @@
-NUM_PROCESSES: 5
+NUM_PROCESSES: 4
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt_slurm_0808/train.log"
+LOG_FILE: "data/savi_rt_slurm_0809/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt_slurm_0808/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0809/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0808/tb"
-MODEL_DIR: "data/savi_rt_slurm_0808/"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0809/tb"
+MODEL_DIR: "data/savi_rt_slurm_0809/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 1
 SEED: 0
@@ -38,8 +38,8 @@ tau: 0.95
 use_normalized_advantage: False
 
 policy_type: 'smt'
-pretrained: True #False
-pretrained_weights: "data/savi_rt_slurm_0805/checkpoints/ckpt.184.pth"
+pretrained: False
+pretrained_weights: "" #"data/savi_rt_slurm_0805/checkpoints/ckpt.184.pth"
 reset_critic: False
 use_belief_predictor: False
 use_external_memory: True
@@ -56,7 +56,7 @@ use_rt_map: False
 enc_in_scale: [32,32]
 
 # smt
-smt_cfg_memory_size: 150
+smt_cfg_memory_size: 1
 smt_cfg_hidden_size: 256
 smt_cfg_nhead: 8
 smt_cfg_num_encoder_layers: 1

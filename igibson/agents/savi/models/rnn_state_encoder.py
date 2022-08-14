@@ -103,8 +103,8 @@ class RNNStateEncoder(nn.Module):
         t = int(x.size(0) / n)
 
         # unflatten
-        x = x.view(t, n, x.size(1))
-        masks = masks.view(t, n)
+        x = x.view(t, n, x.size(1)).contiguous()
+        masks = masks.view(t, n).contiguous()
 
         # steps in sequence which have zero for any agent. Assume t=0 has
         # a zero in it.
@@ -129,7 +129,7 @@ class RNNStateEncoder(nn.Module):
             rnn_scores, hidden_states = self.rnn(
                 x[start_idx:end_idx],
                 self._mask_hidden(
-                    hidden_states, masks[start_idx].view(1, -1, 1)
+                    hidden_states, masks[start_idx].view(1, -1, 1).contiguous()
                 ),
             )
 
@@ -137,7 +137,7 @@ class RNNStateEncoder(nn.Module):
 
         # x is a (T, N, -1) tensor
         x = torch.cat(outputs, dim=0)
-        x = x.view(t * n, -1)  # flatten
+        x = x.view(t * n, -1).contiguous()  # flatten
 
         hidden_states = self._pack_hidden(hidden_states)
         return x, hidden_states

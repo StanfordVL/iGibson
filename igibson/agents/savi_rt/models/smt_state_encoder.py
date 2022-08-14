@@ -89,7 +89,7 @@ class SMTStateEncoder(nn.Module):
 
         self.outc = outconv(1, self.rooms)
 
-        self.rt_map_output_size = 32
+        self.rt_map_output_size = 50
 
         # self.transformer = nn.Transformer(
         #     d_model=dim_feedforward,
@@ -148,7 +148,7 @@ class SMTStateEncoder(nn.Module):
         # Compress features
         memory = torch.cat([memory, x.unsqueeze(0)])
         M, bs = memory.shape[:2]
-        memory = self.fusion_encoder(memory.view(M*bs, -1)).view(M, bs, -1)
+        memory = self.fusion_encoder(memory.view(M*bs, -1).contiguous()).view(M, bs, -1).contiguous()
 
         # Transformer operations
         t_masks = self._convert_masks_to_transformer_format(memory_masks)
@@ -159,7 +159,7 @@ class SMTStateEncoder(nn.Module):
 
             rt_output = self.rt_map_decoder(memory_e, memory_e, memory_key_padding_mask=t_masks)[-1]
 
-            rt_output = rt_output.view(rt_output.shape[0], 1, 28, 28)
+            rt_output = rt_output.view(rt_output.shape[0], 1, 25, 25).contiguous()
 
             rt_output = self.outc(rt_output)
             
@@ -232,8 +232,8 @@ class SMTStateEncoder(nn.Module):
         agent_pose_encoded = self.pose_encoder(agent_pose_formatted)
         M, bs = memory_pose_formatted.shape[:2]
         memory_pose_encoded = self.pose_encoder(
-            memory_pose_formatted.view(M * bs, -1)
-        ).view(M, bs, -1)
+            memory_pose_formatted.view(M * bs, -1).contiguous()
+        ).view(M, bs, -1).contiguous()
 
         return agent_pose_encoded, memory_pose_encoded
 
@@ -249,17 +249,18 @@ class SMTStateEncoder(nn.Module):
             At the origin, x is forward, y is rightward,
             and heading is measured from x to -y.
         """
+        EPS = 1e-6
         heading_a = pose_a[..., 2]
         heading_b = pose_b[..., 2]
         # Compute relative pose
         r_ab = torch.norm(pose_a[..., :2] - pose_b[..., :2], dim=-1)
-        phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0])
+        phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0] + EPS)
         phi_ab = phi_ab - heading_a
         x_ab = r_ab * torch.cos(phi_ab)
         y_ab = r_ab * torch.sin(phi_ab)
         heading_ab = heading_b - heading_a
         # Normalize angles to lie between -pi to pi
-        heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab))
+        heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab) + EPS)
         # y is leftward
 
         return torch.stack([x_ab, y_ab, heading_ab], -1) # (..., 3)
@@ -283,12 +284,10 @@ class SMTStateEncoder(nn.Module):
 class outconv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(outconv, self).__init__()
-        self.upconv1 = nn.ConvTranspose2d(in_ch, in_ch, 3, stride=1)#nn.Conv2d(in_ch, out_ch, 1)
-        self.upconv2 = nn.ConvTranspose2d(in_ch, in_ch, 3, stride=1)#nn.Conv2d(in_ch, out_ch, 1)
+        self.upconv1 = nn.ConvTranspose2d(in_ch, in_ch, 2, stride=2)#nn.Conv2d(in_ch, out_ch, 1)
         self.upconv3 = nn.ConvTranspose2d(in_ch, out_ch, 1, stride=1)#nn.Conv2d(in_ch, out_ch, 1)
 
     def forward(self, x):
         x = self.upconv1(x)
-        x = self.upconv2(x)
         x = self.upconv3(x)
         return x

@@ -120,10 +120,10 @@ class BeliefPredictor(nn.Module):
             self.predictor.eval()
 
     def cnn_forward(self, observations):
-        spectrograms = observations["audio"].permute(0, 3, 1, 2)
+        spectrograms = observations["audio"].permute(0, 3, 1, 2).contiguous()
         if self.has_distractor_sound:
             labels = observations["category"]
-            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + spectrograms.shape[-2:])
+            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + spectrograms.shape[-2:]).contiguous()
             inputs = torch.cat([spectrograms, expanded_labels], dim=1)
         else:
             inputs = spectrograms
@@ -138,7 +138,7 @@ class BeliefPredictor(nn.Module):
         """
         batch_size = observations["audio"].size(0)
         if self.predict_label or self.predict_location:
-            spectrograms = observations["audio"].permute(0, 3, 1, 2)
+            spectrograms = observations["audio"].permute(0, 3, 1, 2).contiguous()
 
         if self.predict_location:
             # predicted pointgoal: X is rightward, Y is backward, heading increases X to Y, agent faces -Y

@@ -32,12 +32,14 @@ class AudioCNN(nn.Module):
         self._n_input_audio = observation_space.spaces[audiogoal_sensor].shape[2]
         self._audiogoal_sensor = audiogoal_sensor
 
-        self.outsize = np.array([32, 32])
+        self.outsize = np.array([16, 16])
         max_out_scale = np.amax(self.outsize)
         n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
         self.scaler = nn.ModuleList([
-            UNetUp(128, 128, bilinear=False, norm="batchnorm")
-            for i in range(n_upscale)
+            UNetUp(max(output_size // (2**i), 64),
+                   max(output_size // (2**(i + 1)), 64),
+                   bilinear=False,
+                   norm='batchnorm') for i in range(n_upscale)
         ])
 
         cnn_dims = np.array(
@@ -148,19 +150,18 @@ class AudioCNN(nn.Module):
 
         audio_observations = observations[self._audiogoal_sensor]
         # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-        audio_observations = audio_observations.permute(0, 3, 1, 2)
+        audio_observations = audio_observations.permute(0, 3, 1, 2).contiguous()
         cnn_input.append(audio_observations)
 
         if self._has_distractor_sound:
             labels = observations['category']
-            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + audio_observations.shape[-2:])
+            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + audio_observations.shape[-2:]).contiguous()
             cnn_input.append(expanded_labels)
 
         cnn_input = torch.cat(cnn_input, dim=1)
 
         feat = self.cnn(cnn_input)
-        print("audio feat", feat.shape)
-        feat = feat.view(-1 , 128, 1, 1)
+        feat = feat.view(-1 , 128, 1, 1).contiguous()
         for mod in self.scaler:
             feat = mod(feat)
         return feat

@@ -13,7 +13,7 @@ import torch.nn as nn
 from torchsummary import summary
 from igibson.agents.savi_rt.utils.utils import CategoricalNet, GaussianNet
 from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
-from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP
+from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP, SimpleWeightedCrossEntropy
 
 from igibson.agents.savi_rt.models.visual_cnn import VisualCNN
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
@@ -331,8 +331,8 @@ class AudioNavSMTNet(Net):
             nfeats += observation_space.spaces["bump"].shape[0]
             
         if self._use_rt_map_features:
-            assert "rt_map_features" in observation_space.spaces
-            nfeats += observation_space.spaces["rt_map_features"].shape[0]
+            # assert "rt_map_features" in observation_space.spaces
+            nfeats += 2 * 8 * 12 * 12 #observation_space.spaces["rt_map_features"].shape[0]
         
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
@@ -365,7 +365,7 @@ class AudioNavSMTNet(Net):
             self.pretrained_initialization(pretrained_path)
         
         self.rt_loss_fn_class = NonZeroWeightedCrossEntropy()
-        self.rt_loss_fn_occ = NonZeroWeightedCrossEntropy()
+        self.rt_loss_fn_occ = SimpleWeightedCrossEntropy()
 
         self.train()
 
@@ -410,6 +410,8 @@ class AudioNavSMTNet(Net):
         else:
             belief = None
 
+        # x -> (step*batch, aligned_feat + other_feat)
+        # memory -> (149 * batch, aligned_feat + other_feat)
         x_att, rt_map = self.smt_state_encoder(x, ext_memory, ext_memory_masks, goal=belief)
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
@@ -460,13 +462,11 @@ class AudioNavSMTNet(Net):
 
     def get_features(self, observations, prev_actions, masks):
         x_unflattened = []
-        print("visual final feat", self.visual_encoder(observations).shape)
-        print("audio final feat", self.goal_encoder(observations).shape)
-        observations['visual_features'].copy_(self.visual_encoder(observations))
-        observations['audio_features'].copy_(self.goal_encoder(observations))
-        observations["rt_map_features"].copy_(self.rt_predictor.cnn_forward(observations))
+        visual_feat = self.visual_encoder(observations)
+        audio_feat = self.goal_encoder(observations)
+        
         if self._use_rt_map_features:
-            x_unflattened.append(observations["rt_map_features"])
+            x_unflattened.append(self.rt_predictor.cnn_forward(visual_feat, audio_feat, observations))
 
         x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
         x_unflattened.append(observations['task_obs'][:, -2:])

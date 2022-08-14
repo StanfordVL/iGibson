@@ -143,17 +143,17 @@ class PPO(nn.Module):
                     - dist_entropy * self.entropy_coef
                 )
 
-                # origin rt map shape (batch, 23, 32, 32)
-                # permute to (batch, 32*32, 23)
-                rt_map = rt_map.permute(0, 2, 3, 1).view(rt_map.shape[0], -1, 23)
-                # reshape to (batch*32*32, 23)
+                # origin rt map shape (batch, 23, 50, 50)
+                # permute to (batch, 50, 50, 23)
+                rt_map = rt_map.permute(0, 2, 3, 1).contiguous().view(rt_map.shape[0], -1, 23).contiguous()
+                # reshape to (batch*50*50, 23)
                 rt_map = rt_map.reshape(-1, 23)
-                # ground truth of rt map (batch, 32, 32), reshape to (batch, 32*32)
-                rt_map_gt = to_tensor(obs_batch['rt_map_gt']).view(rt_map.shape[0], -1).to(self.device)
-                # again reshape tp (batch*32*32)
+                # ground truth of rt map (batch, 50, 50), reshape to (batch, 50*50)
+                rt_map_gt = to_tensor(obs_batch['rt_map_gt']).view(rt_map.shape[0], -1).contiguous().to(self.device)
+                # again reshape tp (batch*50*50)
                 rt_map_gt = rt_map_gt.reshape(-1)
                 # pass rt map and gt to the NonZeroWeightedCrossEntropy
-                rt_loss = self.actor_critic.net.rt_loss_fn(rt_map, rt_map_gt)
+                rt_loss = self.actor_critic.net.rt_loss_fn_class(rt_map, rt_map_gt)
                 
 
                 # accumulate the rt loss

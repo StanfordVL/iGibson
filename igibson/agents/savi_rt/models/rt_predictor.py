@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
+from os import device_encoding
 import torch
 import torch.nn as nn
 import numpy as np
 import torchvision.models as models
+import kornia.geometry.transform as korntransforms
+
 
 import torch
 import torch.nn as nn
@@ -12,7 +15,7 @@ import math
 from PIL import Image
 import scipy
 import math
-
+import cv2
 from igibson.agents.savi_rt.utils.utils import to_tensor
 from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
@@ -171,18 +174,12 @@ class RTPredictor(nn.Module):
  
         self.out_scale = (32, 32)
         self.n_channels_out = 128 # resnet 18
-        self.rt_map_input_size = 32
+        self.rt_map_input_size = 25
         self.rt_map_output_size = 28 #put it in self.config, also change in parallel_env 28
         self.rooms = 23
 
         self.padded_enc_in_scale = np.array([32,32])
 
-        for si in range(len(self.padded_enc_in_scale)):
-            self.padded_enc_in_scale[si] += 2 * int(
-                np.ceil(
-                    np.sqrt(2) * self.output_padding *
-                    self.padded_enc_in_scale[si] /
-                    float(self.cfg.decoder_model.output_gridsize[si])))
         # max_out_scale = np.amax(self.out_scale)
         # n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
         # unet = [UNetUp(max(self.n_channels_out // (2**i), 64),
@@ -212,25 +209,31 @@ class RTPredictor(nn.Module):
         # self.outc = outconv(1, self.rooms)
         
         self.visual_down_sampler_encoder = DownSampleEncoder(64)
-        self.audio_down_sampler_encoder = DownSampleEncoder(128)
+        self.audio_down_sampler_encoder = DownSampleEncoder(64)
        
     def feature_alignment(self, local_feature_maps, pos, orn, map_resolution):      
-        batch_sz, channels, local_sz, _ = local_feature_maps.shape # batch_sz*step_sz, 128, 32, 32
-        global_sz = self.rt_map_input_size # 50
+        batch_sz, channels, local_sz, _ = local_feature_maps.shape # batch_sz*step_sz, 64, 16, 16
+        global_sz = self.rt_map_input_size # 25
         
-        global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
+        global_maps = torch.zeros((batch_sz, channels, global_sz, global_sz), device = self.device)
+        # (step*batch, 64, 25, 25)
+
         global_maps[:, :, int(global_sz/2-local_sz/2):int(global_sz/2+local_sz/2),
                         int(global_sz/2-local_sz/2):int(global_sz/2+local_sz/2)] = local_feature_maps
-        transformed_global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
+        # cv2.imwrite("padded feat.png", global_maps[0][:3].permute(1, 2, 0).detach().cpu().numpy()*255)
         
-        for i in range(batch_sz):
-            transformed = scipy.ndimage.rotate(global_maps[i], -90+orn[i]*180.0/math.pi, 
-                                 axes=(1, 2), reshape=False)
-            delta_pos = pos[i, :2]/map_resolution[i]
-            transformed = scipy.ndimage.shift(transformed, [0, -delta_pos[1], delta_pos[0]])
-            transformed_global_maps[i] = transformed
-        # adding a weighting factor
-        return transformed_global_maps
+        # rotate and shift for each frame
+        global_maps = korntransforms.rotate(global_maps, -90+orn*180.0/math.pi, mode = 'nearest')
+        # cv2.imwrite("padded feat after rotate.png", global_maps[0][:3].permute(1, 2, 0).detach().cpu().numpy()*255)
+
+        delta_pos = -pos[:, :2]/(map_resolution[:] * 350 * 2) * 50
+
+        global_maps = korntransforms.translate(global_maps, delta_pos)
+        # cv2.imwrite("padded feat after translate.png", global_maps[0][:3].permute(1, 2, 0).detach().cpu().numpy()*255)
+
+        # transformed_global_maps[i] = torch.from_numpy(transformed)
+
+        return global_maps
         
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
@@ -245,55 +248,46 @@ class RTPredictor(nn.Module):
             
         
     def cnn_forward_visual(self, features):       
-        x_feat = features.view(-1, 128, 1, 1) #[batch size*step size, 128, 1,1]
+        x_feat = features.view(-1, 128, 1, 1).contiguous() #[batch size*step size, 128, 1,1]
         for mod in self.scaler:
             x_feat = mod(x_feat)
         return x_feat
 
     def cnn_forward_audio(self, features):
-        x_feat = self.audio_cnn(features).view(-1, 128, 1, 1)
+        x_feat = self.audio_cnn(features).view(-1, 128, 1, 1).contiguous()
         for mod in self.audio_scaler:
             x_feat = mod(x_feat)
         return x_feat
     
-    def cnn_forward(self, observations):
-        
-        visual_features = observations['visual_features']
-        audio_features = observations['audio_features']
-        
-        local_vmaps = visual_features # self.cnn_forward_visual(visual_features).cpu().detach().numpy()
-        local_amaps = audio_features #self.cnn_forward_audio(audio_features).cpu().detach().numpy()
-        print("localv", local_vmaps.shape)
-        print("locala", local_amaps.shape)
-        #[batch_sz*step_sz, 128, 32, 32]
+    def cnn_forward(self, visual_features, audio_features, observations):
 
+        # rgb -> (128, 20, 20) -> downsample -> (64, 16, 16) same for audio
         
-        curr_poses = observations["pose_sensor"][:, :2].cpu().detach().numpy()
-        curr_orns = observations["pose_sensor"][:, 2].cpu().detach().numpy()
-        map_resolution = observations["map_resolution"].cpu().detach().numpy()
+        local_vmaps = visual_features 
+        local_amaps = audio_features 
+        #[step_sz*batch_sz, 64, 16, 16]
+
+        # get the relative position and orientation of the robot (relative to the initial position)
+        curr_poses = observations["pose_sensor"][:, :2]#.cpu().detach().numpy()
+        curr_orns = observations["pose_sensor"][:, 2]#.cpu().detach().numpy()
+        map_resolution = observations["map_resolution"]#.cpu().detach().numpy()
         
-        global_vmaps = torch.from_numpy(self.feature_alignment(local_vmaps, curr_poses, curr_orns, map_resolution)).type(torch.FloatTensor).to(self.device)
-        global_amaps = torch.from_numpy(self.feature_alignment(local_amaps, curr_poses, curr_orns, map_resolution)).type(torch.FloatTensor).to(self.device)
-        print("globalv", global_vmaps.shape)
-        print("globala", global_amaps.shape)
+        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_orns, map_resolution).type(torch.FloatTensor).to(self.device)
+        global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_orns, map_resolution).type(torch.FloatTensor).to(self.device)
+        # [step_sz*batch_sz, 64, 25, 25]
 
-        # [batch_sz*step_sz, 128 , 32, 32]
-
-        global_vmaps = self.visual_down_sampler_encoder(global_vmaps)
         global_amaps = self.audio_down_sampler_encoder(global_amaps)
-        print("after downsample global", global_vmaps.shape)
+        global_vmaps = self.visual_down_sampler_encoder(global_vmaps)
+        # [step_sz*batch_sz, 8, 12, 12]
         
         #From 3d to 1D here
-        global_vmaps = global_vmaps.view(visual_features.shape[0], -1)
-        global_amaps = global_amaps.view(audio_features.shape[0], -1)
-        # [batch_sz*step_sz, 320000]
+        global_vmaps = global_vmaps.view(visual_features.shape[0], -1).contiguous()
+        global_amaps = global_amaps.view(audio_features.shape[0], -1).contiguous()
+        # [step_sz*batch_sz, 8*12*12]
 
-        global_maps_features = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
-        # [batch_sz*step_sz, 2, 320000] (view)-> [batch_sz*step_sz, 2*320000]
+        global_maps_features = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1).contiguous()
+        # [step_sz*batch_sz, 2, 8*25*25] (view)-> [step_sz*batch_sz, 2*8*25*25]
         
-        # global_maps_features = global_maps.view(visual_features.shape[0], 1, 
-        #                                self.rt_map_output_size, self.rt_map_output_size)
-        # global_maps = self.outc(global_maps_features)
         return global_maps_features
         
 class RTPredictorDDP(RTPredictor, DecentralizedDistributedMixinBelief):
