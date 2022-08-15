@@ -31,7 +31,7 @@ class CustomFixedCategorical(torch.distributions.Categorical):
         return (
             super()
             .log_prob(actions.squeeze(-1))
-            .view(actions.size(0), -1)
+            .view(actions.size(0), -1).contiguous()
             .sum(-1)
             .unsqueeze(-1)
         )
@@ -227,23 +227,24 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         generated image of a single frame.
     """
     egocentric_view_l: List[np.ndarray] = []
+    egocentric_view_d: List[np.ndarray] = []
     topdown_view_l: List[np.ndarray] = []
+    
     if "rgb" in observation:
         rgb = observation["rgb"]
         if not isinstance(rgb, np.ndarray):
             rgb = rgb.cpu().numpy()
-
         egocentric_view_l.append(rgb)
-
     # draw depth map if observation has depth info
-    elif "depth" in observation:
-        depth_map = observation["depth"].squeeze() * 255.0
+
+    if "depth" in observation:
+        depth_map = observation["depth_video"].squeeze() * 255.0
         if not isinstance(depth_map, np.ndarray):
             depth_map = depth_map.cpu().numpy()
 
         depth_map = depth_map.astype(np.uint8)
         depth_map = np.stack([depth_map for _ in range(3)], axis=2)
-        egocentric_view_l.append(depth_map)
+        egocentric_view_d.append(depth_map)
 
     # add image goal if observation has image_goal info
     if "top_down" in observation:
@@ -263,13 +264,15 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         len(egocentric_view_l) > 0
     ), "Expected at least one visual sensor enabled."
     egocentric_view = np.concatenate(egocentric_view_l, axis=1)
+    egocentric_view_d = np.concatenate(egocentric_view_d, axis=1)
     if "top_down" not in observation:
         topdown_view = egocentric_view
     else:
         topdown_view = np.concatenate(topdown_view_l, axis=1)
     frame = egocentric_view
     frame_topdown = topdown_view
-    return frame, frame_topdown
+    frame_depth = egocentric_view_d
+    return frame, frame_depth, frame_topdown
 
 def images_to_video(
     images: List[np.ndarray],
@@ -343,7 +346,7 @@ def generate_video(
     if len(images) < 1:
         return
 
-    video_name = f"{scene_name}_{sound}_{episode_id}_{metric_name}{metric_value:.2f}"
+    video_name = f"{scene_name}_{sound}_{episode_id}_{metric_name}_{metric_value:.2f}"
     if "disk" in video_option:
         assert video_dir is not None
         if audios is None:

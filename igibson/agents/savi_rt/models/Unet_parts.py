@@ -260,3 +260,5 @@ class ResNetRGBEncoderByProjection(nn.Module):
         for mod in self.resnet_block2.modules():
             if isinstance(mod, (nn.BatchNorm2d, nn.BatchNorm1d)):
                 mod.eval()
+
+                

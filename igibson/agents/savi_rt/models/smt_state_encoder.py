@@ -53,6 +53,8 @@ class SMTStateEncoder(nn.Module):
         self._activation = activation
         self._pose_indices = pose_indices
         self._pretraining = pretraining
+        self.rooms = 23
+
 
         if pose_indices is not None:
             pose_dims = pose_indices[1] - pose_indices[0]
@@ -62,21 +64,42 @@ class SMTStateEncoder(nn.Module):
         else:
             self._use_pose_encoding = False
 
+        print("using position encoding", self._use_pose_encoding)
+
         self.fusion_encoder = nn.Sequential(
             nn.Linear(input_size, dim_feedforward),
             nn.ReLU(),
             nn.Linear(dim_feedforward, dim_feedforward),
         )
 
-        self.transformer = nn.Transformer(
-            d_model=dim_feedforward,
-            nhead=nhead,
-            num_encoder_layers=num_encoder_layers,
-            num_decoder_layers=num_decoder_layers,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            activation=activation,
-        )
+        encoder_layer = nn.TransformerEncoderLayer(d_model=dim_feedforward, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout,
+                                                activation=activation)
+        encoder_norm = nn.LayerNorm(dim_feedforward)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+
+        policy_decoder_layer = nn.TransformerDecoderLayer(d_model=dim_feedforward, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout,
+                                                activation=activation)
+        policy_decoder_norm = nn.LayerNorm(dim_feedforward)
+        self.policy_decoder = nn.TransformerDecoder(policy_decoder_layer, num_decoder_layers, policy_decoder_norm)
+
+        rt_map_decoder_layer = nn.TransformerDecoderLayer(d_model=dim_feedforward, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout,
+                                                activation=activation)
+        rt_map_decoder_norm = nn.LayerNorm(dim_feedforward)
+        self.rt_map_decoder = nn.TransformerDecoder(rt_map_decoder_layer, num_decoder_layers, rt_map_decoder_norm)
+
+        self.outc = outconv(1, self.rooms)
+
+        self.rt_map_output_size = 50
+
+        # self.transformer = nn.Transformer(
+        #     d_model=dim_feedforward,
+        #     nhead=nhead,
+        #     num_encoder_layers=num_encoder_layers,
+        #     num_decoder_layers=num_decoder_layers,
+        #     dim_feedforward=dim_feedforward,
+        #     dropout=dropout,
+        #     activation=activation,
+        # )
 
     def _convert_masks_to_transformer_format(self, memory_masks):
         r"""The memory_masks is a FloatTensor with
@@ -125,17 +148,27 @@ class SMTStateEncoder(nn.Module):
         # Compress features
         memory = torch.cat([memory, x.unsqueeze(0)])
         M, bs = memory.shape[:2]
-        memory = self.fusion_encoder(memory.view(M*bs, -1)).view(M, bs, -1)
+        memory = self.fusion_encoder(memory.view(M*bs, -1).contiguous()).view(M, bs, -1).contiguous()
 
         # Transformer operations
         t_masks = self._convert_masks_to_transformer_format(memory_masks)
         if goal is not None:
-            x_att = self.transformer(
-                memory,
-                goal.unsqueeze(0),
-                src_key_padding_mask=t_masks,
-                memory_key_padding_mask=t_masks,
-            )[-1]
+            memory_e = self.encoder(memory, src_key_padding_mask=t_masks)
+            policy_output = self.policy_decoder(goal.unsqueeze(0), memory_e,
+                              memory_key_padding_mask=t_masks)[-1]
+
+            rt_output = self.rt_map_decoder(memory_e, memory_e, memory_key_padding_mask=t_masks)[-1]
+
+            rt_output = rt_output.view(rt_output.shape[0], 1, 25, 25).contiguous()
+
+            rt_output = self.outc(rt_output)
+            
+            # x_att = self.transformer(
+            #     memory,
+            #     goal.unsqueeze(0),
+            #     src_key_padding_mask=t_masks,
+            #     memory_key_padding_mask=t_masks,
+            # )[-1]
         else:
             decode_memory = False
             if decode_memory:
@@ -154,7 +187,7 @@ class SMTStateEncoder(nn.Module):
                     memory_key_padding_mask=t_masks,
                 )[-1]
 
-        return x_att
+        return policy_output, rt_output
 
     @property
     def hidden_state_size(self):
@@ -199,8 +232,8 @@ class SMTStateEncoder(nn.Module):
         agent_pose_encoded = self.pose_encoder(agent_pose_formatted)
         M, bs = memory_pose_formatted.shape[:2]
         memory_pose_encoded = self.pose_encoder(
-            memory_pose_formatted.view(M * bs, -1)
-        ).view(M, bs, -1)
+            memory_pose_formatted.view(M * bs, -1).contiguous()
+        ).view(M, bs, -1).contiguous()
 
         return agent_pose_encoded, memory_pose_encoded
 
@@ -216,17 +249,18 @@ class SMTStateEncoder(nn.Module):
             At the origin, x is forward, y is rightward,
             and heading is measured from x to -y.
         """
+        EPS = 1e-6
         heading_a = pose_a[..., 2]
         heading_b = pose_b[..., 2]
         # Compute relative pose
         r_ab = torch.norm(pose_a[..., :2] - pose_b[..., :2], dim=-1)
-        phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0])
+        phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0] + EPS)
         phi_ab = phi_ab - heading_a
         x_ab = r_ab * torch.cos(phi_ab)
         y_ab = r_ab * torch.sin(phi_ab)
         heading_ab = heading_b - heading_a
         # Normalize angles to lie between -pi to pi
-        heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab))
+        heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab) + EPS)
         # y is leftward
 
         return torch.stack([x_ab, y_ab, heading_ab], -1) # (..., 3)
@@ -247,3 +281,13 @@ class SMTStateEncoder(nn.Module):
     def pose_indices(self):
         return self._pose_indices
 
+class outconv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(outconv, self).__init__()
+        self.upconv1 = nn.ConvTranspose2d(in_ch, in_ch, 2, stride=2)#nn.Conv2d(in_ch, out_ch, 1)
+        self.upconv3 = nn.ConvTranspose2d(in_ch, out_ch, 1, stride=1)#nn.Conv2d(in_ch, out_ch, 1)
+
+    def forward(self, x):
+        x = self.upconv1(x)
+        x = self.upconv3(x)
+        return x

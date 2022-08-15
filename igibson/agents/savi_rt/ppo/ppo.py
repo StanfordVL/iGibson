@@ -9,6 +9,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from igibson.agents.savi_rt.utils.utils import to_tensor
+
 
 EPS_PPO = 1e-5
 
@@ -56,10 +58,17 @@ class PPO(nn.Module):
 
         return (advantages - advantages.mean()) / (advantages.std() + EPS_PPO)
 
-    def update(self, rollouts, rt_predictor_loss=None):
+    def update(self, rollouts, loss_weight=None):
         advantages = self.get_advantages(rollouts)
 
+        num_epoch = 5
+        num_mini_batch = 1
+
+        rt_num_correct = 0
+        rt_num_sample = 0
+
         value_loss_epoch = 0
+        rt_value_loss_epoch = 0
         action_loss_epoch = 0
         dist_entropy_epoch = 0
 
@@ -81,13 +90,13 @@ class PPO(nn.Module):
                     adv_targ,
                     external_memory,
                     external_memory_masks,
-                    _
                 ) = sample
                 # Reshape to do in a single forward pass for all steps
                 (
                     values,
                     action_log_probs,
                     dist_entropy,
+                    rt_map,
                     _,
                     _,
                 ) = self.actor_critic.evaluate_actions(
@@ -133,8 +142,31 @@ class PPO(nn.Module):
                     + action_loss
                     - dist_entropy * self.entropy_coef
                 )
-                if rt_predictor_loss is not None:
-                    total_loss += rt_predictor_loss
+
+                # origin rt map shape (batch, 23, 50, 50)
+                # permute to (batch, 50, 50, 23)
+                rt_map = rt_map.permute(0, 2, 3, 1).contiguous().view(rt_map.shape[0], -1, 23).contiguous()
+                # reshape to (batch*50*50, 23)
+                rt_map = rt_map.reshape(-1, 23)
+                # ground truth of rt map (batch, 50, 50), reshape to (batch, 50*50)
+                rt_map_gt = to_tensor(obs_batch['rt_map_gt']).view(rt_map.shape[0], -1).contiguous().to(self.device)
+                # again reshape tp (batch*50*50)
+                rt_map_gt = rt_map_gt.reshape(-1)
+                # pass rt map and gt to the NonZeroWeightedCrossEntropy
+                rt_loss = self.actor_critic.net.rt_loss_fn_class(rt_map, rt_map_gt)
+                
+
+                # accumulate the rt loss
+                rt_value_loss_epoch += rt_loss.item()
+                # get the prediction from (batch*32*32, 23) to (batch*32*32,)
+                rt_preds = torch.argmax(rt_map, dim=1)
+                # accumulate the correctly predicted pixel
+                rt_num_correct += torch.sum(torch.eq(rt_preds, rt_map_gt))
+                # accumulate the total pixels
+                rt_num_sample += rt_map_gt.shape[0]
+
+                if rt_loss is not None:
+                    total_loss = self.actor_critic.net.policy_loss_weight * total_loss + loss_weight*rt_loss
 
                 self.before_backward(total_loss)
                 total_loss.backward()
@@ -150,11 +182,14 @@ class PPO(nn.Module):
 
         num_updates = self.ppo_epoch * self.num_mini_batch
 
+        rt_value_loss_epoch /= num_epoch * num_mini_batch
+        rt_num_correct = rt_num_correct.item() / rt_num_sample
+
         value_loss_epoch /= num_updates
         action_loss_epoch /= num_updates
         dist_entropy_epoch /= num_updates
 
-        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
+        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch, rt_value_loss_epoch, rt_num_correct
 
     def before_backward(self, loss):
         pass

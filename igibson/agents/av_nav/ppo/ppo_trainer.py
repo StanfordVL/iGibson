@@ -9,8 +9,9 @@
 import os
 import time
 import logging
-from collections import deque
-from typing import Dict, List
+from collections import deque, defaultdict
+
+from typing import Dict, List, Any
 import json
 import random
 import glob
@@ -34,6 +35,13 @@ from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.parallel_env import ParallelNavEnv
 
 from igibson.agents.av_nav.utils.utils import observations_to_image, images_to_video, generate_video
+
+class DataParallelPassthrough(torch.nn.DataParallel):
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
 
 
 class PPOTrainer(BaseRLTrainer):
@@ -106,7 +114,7 @@ class PPOTrainer(BaseRLTrainer):
         """
         checkpoint = {
             "state_dict": self.agent.state_dict(),
-#             "config": self.config,
+            # "config": self.config,
         }
         torch.save(
             checkpoint, os.path.join(self.config['CHECKPOINT_FOLDER'], file_name)
@@ -146,9 +154,48 @@ class PPOTrainer(BaseRLTrainer):
         """
         return torch.load(checkpoint_path, *args, **kwargs)
 
+    METRICS_BLACKLIST = {"top_down_map", "collisions.is_collision", "last_observation.bump"}
+    
+    @classmethod
+    def _extract_scalars_from_info(
+        cls, info
+    ) -> Dict[str, float]:
+        result = {}
+        for k, v in info.items():
+            if k in cls.METRICS_BLACKLIST:
+                continue
+
+            if isinstance(v, dict):
+                result.update(
+                    {
+                        k + "." + subk: subv
+                        for subk, subv in cls._extract_scalars_from_info(
+                            v
+                        ).items()
+                        if (k + "." + subk) not in cls.METRICS_BLACKLIST
+                    }
+                )
+            # Things that are scalar-like will have an np.size of 1.
+            # Strings also have an np.size of 1, so explicitly ban those
+            elif np.size(v) == 1 and not isinstance(v, str):
+                result[k] = float(v)
+
+        return result
+
+    @classmethod
+    def _extract_scalars_from_infos(
+        cls, infos
+    ) -> Dict[str, List[float]]:
+
+        results = defaultdict(list)
+        for i in range(len(infos)):
+            for k, v in cls._extract_scalars_from_info(infos[i]).items():
+                results[k].append(v)
+
+        return results
+
     def _collect_rollout_step(
-        self, rollouts, current_episode_reward, current_episode_step, episode_rewards,
-            episode_spls, episode_counts, episode_steps
+        self, rollouts, current_episode_reward, running_episode_stats
     ):
         pth_time = 0.0
         env_time = 0.0
@@ -178,35 +225,39 @@ class PPOTrainer(BaseRLTrainer):
         env_time += time.time() - t_step_env
 
         t_update_stats = time.time()
-        batch = batch_obs(observations)
-        rewards = torch.tensor(rewards, dtype=torch.float)
+        batch = batch_obs(observations, device=self.device)
+        rewards = torch.tensor(rewards, dtype=torch.float, device=current_episode_reward.device)
         rewards = rewards.unsqueeze(1)
 
         masks = torch.tensor(
-            [[0.0] if done else [1.0] for done in dones], dtype=torch.float)
-        spls = torch.tensor(
-            [[info['spl']] for info in infos])
+            [[0.0] if done else [1.0] for done in dones], dtype=torch.float, device=current_episode_reward.device)
+        # spls = torch.tensor(
+        #     [[info['spl']] for info in infos])
 
         current_episode_reward += rewards
-        current_episode_step += 1
-        # current_episode_reward is accumulating rewards across multiple updates,
-        # as long as the current episode is not finished
-        # the current episode reward is added to the episode rewards only if the current episode is done
-        # the episode count will also increase by 1
-        episode_rewards += (1 - masks) * current_episode_reward
-        episode_spls += (1 - masks) * spls
-        episode_steps += (1 - masks) * current_episode_step
-        episode_counts += 1 - masks
+        running_episode_stats["reward"] += (1 - masks) * current_episode_reward
+        running_episode_stats["count"] += 1 - masks
+
+        for k, v in self._extract_scalars_from_infos(infos).items():
+            v = torch.tensor(
+                v, dtype=torch.float, device=current_episode_reward.device
+            ).unsqueeze(1)
+            if k not in running_episode_stats:
+                running_episode_stats[k] = torch.zeros_like(
+                    running_episode_stats["count"]
+                )
+            running_episode_stats[k] += (1 - masks) * v
+        
         current_episode_reward *= masks
-        current_episode_step *= masks
+
         rollouts.insert(
             batch,
             recurrent_hidden_states,
             actions,
             actions_log_probs,
             values,
-            rewards,
-            masks)
+            rewards.to(device=self.device),
+            masks.to(device=self.device))
 
         pth_time += time.time() - t_update_stats
 
@@ -253,20 +304,14 @@ class PPOTrainer(BaseRLTrainer):
         )
         
         data = dataset(self.config['scene'])
-#         self.scene_splits = data.split(self.config['NUM_PROCESSES'])
-        
-#         scene_ids = []
-#         for i in range(self.config['NUM_PROCESSES']):
-#             idx = np.random.randint(len(self.scene_splits[i]))
-#             scene_ids.append(self.scene_splits[i][idx])
-        
-        scene_ids = data.SCENE_SPLITS["train"]
-        
-        def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+        scene_splits = data.split(self.config['NUM_PROCESSES'])
+
+
+        def load_env(scene_ids):
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=0)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
-                         for sid in scene_ids], blocking=False)
+                         for sid in scene_splits], blocking=False)
   
         if not os.path.isdir(self.config['CHECKPOINT_FOLDER']):
             os.makedirs(self.config['CHECKPOINT_FOLDER'])
@@ -279,7 +324,7 @@ class PPOTrainer(BaseRLTrainer):
         
         rollouts = RolloutStorage(
             self.config['num_steps'],
-            self.envs.batch_size, #should be self.envs.batch_size-len(self._paused), self.envs.num_envs,
+            self.envs.batch_size,
             self.envs.observation_space,
             self.envs.action_space,
             self.config['hidden_size'],
@@ -436,10 +481,12 @@ class PPOTrainer(BaseRLTrainer):
 #         val_data = data.SCENE_SPLITS['val']
 #         idx = np.random.randint(len(val_data))
 #         scene_ids = [val_data[idx]]
-        scene_ids = data.SCENE_SPLITS["val"]
+        # scene_ids = [data.SCENE_SPLITS["val"]]
+        scene_ids = data.split(self.config['NUM_PROCESSES'], data_type="val")
+
         
         def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_id, device_idx=0)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_ids])
@@ -473,6 +520,9 @@ class PPOTrainer(BaseRLTrainer):
         stats_episodes = dict()  # dict of dicts that stores stats per episode
 
         rgb_frames = [
+            [] for _ in range(num_procs)
+        ]  # type: List[List[np.ndarray]]
+        depth_frames = [
             [] for _ in range(num_procs)
         ]  # type: List[List[np.ndarray]]
         audios = [
@@ -513,8 +563,9 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    frame, frame_topdown = observations_to_image(observations[i], infos[i])
+                    frame, frame_depth, frame_topdown = observations_to_image(observations[i], infos[i])
                     rgb_frames[i].append(frame)
+                    depth_frames[i].append(frame_depth)
                     topdown_frames[i].append(frame_topdown)
                     
             batch = batch_obs(observations, self.device)
@@ -542,7 +593,7 @@ class PPOTrainer(BaseRLTrainer):
                     # use scene_id + episode_id as unique id for storing stats
                     stats_episodes[
                         (
-                            scene_ids[i],
+                            scene_ids[i][0],
                             count,
                         )
                     ] = episode_stats
@@ -555,10 +606,25 @@ class PPOTrainer(BaseRLTrainer):
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
                             images=rgb_frames[i][:-1],
-                            scene_name=scene_ids[i],
+                            scene_name=scene_ids[i][0],
                             sound='telephone',
                             sr=44100,
-                            episode_id=0,
+                            episode_id="rgb",
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=depth_frames[i][:-1],
+                            scene_name=scene_ids[i][0],
+                            sound='telephone',
+                            sr=44100,
+                            episode_id="depth",
                             checkpoint_idx=checkpoint_index,
                             metric_name='spl',
                             metric_value=infos[i]['spl'],
@@ -570,10 +636,10 @@ class PPOTrainer(BaseRLTrainer):
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
                             images=topdown_frames[i][:-1],
-                            scene_name=scene_ids[i],
+                            scene_name=scene_ids[i][0],
                             sound='telephone',
                             sr=44100,
-                            episode_id=1,
+                            episode_id="topdown",
                             checkpoint_idx=checkpoint_index,
                             metric_name='spl',
                             metric_value=infos[i]['spl'],
@@ -585,6 +651,7 @@ class PPOTrainer(BaseRLTrainer):
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
+                        depth_frames[i] = []
                         audios[i] = []
                         topdown_frames[i] = []
                     

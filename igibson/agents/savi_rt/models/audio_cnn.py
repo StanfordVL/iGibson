@@ -12,6 +12,11 @@ import torch.nn as nn
 
 from utils.utils import Flatten
 
+from igibson.agents.savi_rt.models.Unet_parts import UNetUp
+import math
+
+
+
 class AudioCNN(nn.Module):
     r"""A Simple 3-Conv CNN followed by a fully connected layer
 
@@ -26,6 +31,16 @@ class AudioCNN(nn.Module):
         super().__init__()
         self._n_input_audio = observation_space.spaces[audiogoal_sensor].shape[2]
         self._audiogoal_sensor = audiogoal_sensor
+
+        self.outsize = np.array([16, 16])
+        max_out_scale = np.amax(self.outsize)
+        n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
+        self.scaler = nn.ModuleList([
+            UNetUp(max(output_size // (2**i), 64),
+                   max(output_size // (2**(i + 1)), 64),
+                   bilinear=False,
+                   norm='batchnorm') for i in range(n_upscale)
+        ])
 
         cnn_dims = np.array(
             observation_space.spaces[audiogoal_sensor].shape[:2], dtype=np.float32
@@ -135,15 +150,18 @@ class AudioCNN(nn.Module):
 
         audio_observations = observations[self._audiogoal_sensor]
         # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-        audio_observations = audio_observations.permute(0, 3, 1, 2)
+        audio_observations = audio_observations.permute(0, 3, 1, 2).contiguous()
         cnn_input.append(audio_observations)
 
         if self._has_distractor_sound:
             labels = observations['category']
-            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + audio_observations.shape[-2:])
+            expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + audio_observations.shape[-2:]).contiguous()
             cnn_input.append(expanded_labels)
 
         cnn_input = torch.cat(cnn_input, dim=1)
 
-        return self.cnn(cnn_input)
-
+        feat = self.cnn(cnn_input)
+        feat = feat.view(-1 , 128, 1, 1).contiguous()
+        for mod in self.scaler:
+            feat = mod(feat)
+        return feat

@@ -37,7 +37,7 @@ MatterportToResonanceMaterialMap = {
 
 def buildMatterportCategories():
     matterportSemanticClassToCategory = {}
-    with open("category_mapping.tsv") as fd:
+    with open("../../audio/category_mapping.tsv") as fd:
         rd = csv.reader(fd, delimiter="\t", quotechar='"')
         for i, row in enumerate(rd):
             if i > 0:

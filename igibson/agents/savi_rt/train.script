@@ -1,25 +1,52 @@
 #!/bin/bash
 #
-#SBATCH --job-name=savi_rt
-#SBATCH --partition=svl
+#SBATCH --job-name=audiogoal_occl1
+#SBATCH --partition=svl --qos=normal --nodelist=svl15
 #SBATCH --nodes=1
-#SBATCH --nodelist=svl6
-#SBATCH --ntasks-per-node=1
-#SBATCH --mem=60G
-#SBATCH --gres=gpu:1
+#SBATCH --ntasks=2
+#SBATCH --ntasks-per-node=2
+#SBATCH --mem=25G
+#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=6
 #SBATCH --time 192:00:00
-#SBATCH --output=slurm/slurm_%A.out
-#SBATCH --error=slurm/slurm_%A.err
-#SBATCH --mail-user=gdharan@stanford.edu
+#SBATCH --output=/viscam/u/li2053/logs/sonic_slurm_%A.out
+#SBATCH --error=/viscam/u/li2053/logs/sonic_slurm_%A.err
+#SBATCH --mail-user=li2053@stanford.edu
 #SBATCH --mail-type=ALL
 ######################
 # Begin work section #
 ######################
-echo “SLURM_JOBID=“$SLURM_JOBID
-echo “SLURM_JOB_NODELIST”=$SLURM_JOB_NODELIST
-echo “SLURM_NNODES”=$SLURM_NNODES
-echo “SLURMTMPDIR=“$SLURMTMPDIR
-echo “working directory = “$SLURM_SUBMIT_DIR
-. /cvgl2/u/gdharan/anaconda3/bin/activate igibson_new
-python3 run.py --exp-config $1
+echo "SLURM_JOBID="$SLURM_JOBID
+echo "SLURM_JOB_NODELIST"=$SLURM_JOB_NODELIST
+echo "SLURM_NNODES"=$SLURM_NNODES
+echo "SLURMTMPDIR="$SLURMTMPDIR
+echo "working directory = "$SLURM_SUBMIT_DIR
+
+##########################################s
+# Setting up virtualenv / conda / docker #
+##########################################
+# example here if using virtualenv
+source /sailhome/li2053/.bashrc
+conda activate igibson
+echo "Virtual Env Activated"
+
+##############################################################
+# Setting up LD_LIBRARY_PATH or other env variable if needed #
+##############################################################
+# export LD_LIBRARY_PATH=/usr/local/cuda-11.3/lib64:/usr/lib/x86_64-linux-gnu 
+echo "Working with the LD_LIBRARY_PATH: "$LD_LIBRARY_PATH
+
+export MASTER_ADDR=$(srun --ntasks=1 hostname 2>&1 | tail -n1)
+
+set -x
+
+cd /viscam/u/li2053/iGibson-dev/igibson/agents/savi_rt/
+srun python -u -m run --exp-config config/savi_rt_audiogoal_rt_only.yaml
+
+# export GLOG_minloglevel=2
+# export MAGNUM_LOG=quiet
+# export MASTER_PORT=8080
+
+# set -x
+# # FREEPORT = $(python find_free_port.py 2>&1)
+# python -m torch.distributed.launch --nproc_per_node 4 run.py --exp-config config/savi_rt_audiogoal.yaml --free_port $(python find_free_port.py 2>&1)

@@ -54,7 +54,7 @@ class TwoWheelRobot(LocomotionRobot):
                 [-lin_vel, 0],
                 [0, ang_vel],
                 [0, -ang_vel],
-                [0, 0],
+#                 [0, 0],
             ]
 
         self.action_list = action_list

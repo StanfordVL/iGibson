@@ -178,8 +178,6 @@ class AudioNavBaselineNet(Net):
         self._pointgoal = False
         self._n_pointgoal = 0
         
-        self._label = 'category' in observation_space.spaces
-        
         # for goal descriptors
         self._use_label_belief = False
         self._use_location_belief = False
@@ -187,7 +185,11 @@ class AudioNavBaselineNet(Net):
 
         if 'task_obs' in observation_space.spaces:
             self._pointgoal = True
-            self._n_pointgoal = observation_space.spaces["task_obs"].shape[0]
+            self._n_pointgoal = 2
+            
+        if 'bump' in observation_space.spaces:
+            self._bump = True
+            
         if 'audio' in observation_space.spaces:
             self._audiogoal = True
             audiogoal_sensor = "audio"
@@ -197,7 +199,7 @@ class AudioNavBaselineNet(Net):
         
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
                          (self._n_pointgoal if self._pointgoal else 0) + (self._hidden_size if self._audiogoal else 0) + \
-                         (observation_space.spaces['category'].shape[0] if self._label else 0) + \
+                         (observation_space.spaces["bump"].shape[0] if self._bump else 0) + \
                          (observation_space.spaces['category_belief'].shape[0] if self._use_label_belief else 0) + \
                          (observation_space.spaces['location_belief'].shape[0] if self._use_location_belief else 0)
         
@@ -230,7 +232,9 @@ class AudioNavBaselineNet(Net):
         x = []
 
         if self._pointgoal:
-            x.append(observations["task_obs"])
+            x.append(observations["task_obs"][:, -2:])
+        if self._bump:
+            x.append(observations["bump"])
         if self._audiogoal:
             x.append(self.audio_encoder(observations))
         if not self.is_blind:
@@ -241,7 +245,7 @@ class AudioNavBaselineNet(Net):
 
         assert not torch.isnan(x2).any().item()
 
-        return x2, rnn_hidden_states1
+        return x2, rnn_hidden_states1, None
 
     
     
@@ -277,7 +281,7 @@ class AudioNavSMTNet(Net):
         self._action_size = action_space.n if is_discrete else action_space.shape[0]     
         self._use_belief_encoder = use_belief_encoding
         self._normalize_category_distribution = normalize_category_distribution
-        self._use_category_input = use_category_input
+        self._use_category_input = use_category_input #distractor sound
         
         assert "audio" in observation_space.spaces
         self.goal_encoder = AudioCNN(observation_space, 128, "audio")
@@ -293,6 +297,10 @@ class AudioNavSMTNet(Net):
         
         if 'task_obs' in observation_space.spaces:
             nfeats += 2
+            
+        if 'bump' in observation_space.spaces:
+            self._bump = True
+            nfeats += observation_space.spaces["bump"].shape[0]
         
         if self._use_category_input:
             nfeats += len(CATEGORIES)
@@ -316,7 +324,7 @@ class AudioNavSMTNet(Net):
             **kwargs
         )
 
-        if self._use_belief_encoder:
+        if self._use_belief_encoder: # False
             self.belief_encoder = nn.Linear(self._hidden_size, self._hidden_size)
 
         if use_pretrained:
@@ -409,6 +417,11 @@ class AudioNavSMTNet(Net):
         x.append(self.action_encoder(self._get_one_hot(prev_actions)))
         x.append(self.goal_encoder(observations))
         x.append(observations['task_obs'][:, -2:])
+        if self._bump:
+            if len(observations["bump"].size()) == 3:
+                x.append(torch.squeeze(observations["bump"], 2))
+            else:
+                x.append(observations["bump"])
         if self._use_category_input:
             x.append(observations["category"])
         x.append(observations["pose_sensor"])

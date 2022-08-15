@@ -28,12 +28,13 @@ from igibson.agents.savi.ddppo.algo.ddp_utils import (
     save_interrupted_state,
 )
 from igibson.agents.savi.ddppo.algo.ddppo import DDPPO
-from igibson.agents.savi.models.belief_predictor import BeliefPredictor, BeliefPredictorDDP
+from igibson.agents.savi.ppo.ppo import PPO
+from igibson.agents.savi.models.belief_predictor import BeliefPredictor #, BeliefPredictorDDP
 from igibson.agents.savi.models.rollout_storage import RolloutStorage
 from igibson.agents.savi.ppo.ppo_trainer import PPOTrainer
 from igibson.agents.savi.ppo.policy import AudioNavSMTPolicy, AudioNavBaselinePolicy
 from igibson.envs.parallel_env import ParallelNavEnv
-from utils import dataset
+from utils.dataset import dataset
 from utils.utils import batch_obs, linear_decay
 from utils.tensorboard_utils import TensorboardWriter
 from utils.environment import AVNavRLEnv
@@ -69,9 +70,9 @@ class DDPPOTrainer(PPOTrainer):
 
         has_distractor_sound = self.config['HAS_DISTRACTOR_SOUND']
         if self.config["robot"]["action_type"] == "discrete":
-            is_discrete = True
+            self.is_discrete = True
         elif self.config["robot"]["action_type"] == "continuous":
-            is_discrete=False
+            self.is_discrete=False
         else:
             raise ValueError("Robot action_type ('continuous' or 'discrete') must be defined in config")
         
@@ -80,7 +81,7 @@ class DDPPOTrainer(PPOTrainer):
                 observation_space=self.envs.observation_space,
                 action_space=self.envs.action_space,
                 hidden_size=self.config['hidden_size'],
-                is_discrete=is_discrete,
+                is_discrete=self.is_discrete,
                 min_std=self.config['min_std'], max_std=self.config['max_std'],
                 min_log_std=self.config['min_log_std'], max_log_std=self.config['max_log_std'], 
                 use_log_std=self.config['use_log_std'], use_softplus=self.config['use_softplus'],
@@ -90,7 +91,7 @@ class DDPPOTrainer(PPOTrainer):
             )
 
             if self.config['use_belief_predictor']:
-                bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
+                bp_class = BeliefPredictor
                 self.belief_predictor = bp_class(self.config, self.device, None, None,
                                                  self.config['hidden_size'], self.envs.batch_size, has_distractor_sound
                                                  ).to(device=self.device)
@@ -101,7 +102,7 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders()
+#                 self.belief_predictor.freeze_encoders() # correct?
 
         elif self.config['policy_type'] == 'smt':
             self.actor_critic = AudioNavSMTPolicy(
@@ -109,7 +110,7 @@ class DDPPOTrainer(PPOTrainer):
                 action_space=self.envs.action_space,
                 hidden_size=self.config['smt_cfg_hidden_size'],
                 
-                is_discrete=is_discrete,
+                is_discrete=self.is_discrete,
                 min_std=self.config['min_std'], max_std=self.config['max_std'],
                 min_log_std=self.config['min_log_std'], max_log_std=self.config['max_log_std'], 
                 use_log_std=self.config['use_log_std'], use_softplus=self.config['use_softplus'],
@@ -137,7 +138,7 @@ class DDPPOTrainer(PPOTrainer):
             if self.config['use_belief_predictor']:
                 smt = self.actor_critic.net.smt_state_encoder
                 # pretraining: online_training
-                bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
+                bp_class = BeliefPredictor
                 self.belief_predictor = bp_class(self.config, self.device, smt._input_size, smt._pose_indices,
                                                  smt.hidden_state_size, self.envs.batch_size, has_distractor_sound
                                                  ).to(device=self.device)
@@ -186,7 +187,19 @@ class DDPPOTrainer(PPOTrainer):
             nn.init.orthogonal_(self.actor_critic.critic.fc.weight)
             nn.init.constant_(self.actor_critic.critic.fc.bias, 0)
             
-        self.agent = DDPPO(
+#         self.agent = DDPPO(
+#             actor_critic=self.actor_critic,
+#             clip_param=self.config['clip_param'],
+#             ppo_epoch=self.config['ppo_epoch'],
+#             num_mini_batch=self.config['num_mini_batch'],
+#             value_loss_coef=self.config['value_loss_coef'],
+#             entropy_coef=self.config['entropy_coef'],
+#             lr=self.config['lr'],
+#             eps=self.config['eps'],
+#             max_grad_norm=self.config['max_grad_norm'],
+#             use_normalized_advantage=self.config['use_normalized_advantage'],
+#         )
+        self.agent = PPO(
             actor_critic=self.actor_critic,
             clip_param=self.config['clip_param'],
             ppo_epoch=self.config['ppo_epoch'],
@@ -206,20 +219,24 @@ class DDPPOTrainer(PPOTrainer):
         Returns:
             None
         """
-        self.local_rank, tcp_store = init_distrib_slurm(
-            self.config['distrib_backend']
-        )
-        add_signal_handlers()
+#         self.local_rank, tcp_store = init_distrib_slurm(
+#             self.config['distrib_backend']
+#         )
+#         add_signal_handlers()
 
-        # Stores the number of workers that have finished their rollout
-        num_rollouts_done_store = distrib.PrefixStore(
-            "rollout_tracker", tcp_store
-        )
-        num_rollouts_done_store.set("num_done", "0")
+#         # Stores the number of workers that have finished their rollout
+#         num_rollouts_done_store = distrib.PrefixStore(
+#             "rollout_tracker", tcp_store
+#         )
+#         num_rollouts_done_store.set("num_done", "0")
 
-        self.world_rank = distrib.get_rank()
-        self.world_size = distrib.get_world_size()
-        self.config['TORCH_GPU_ID'] = self.local_rank
+#         self.world_rank = distrib.get_rank()
+#         self.world_size = distrib.get_world_size()
+        self.local_rank = self.config["TORCH_GPU_ID"]
+        self.world_rank = 0
+        self.world_size = 1
+#         self.config['TORCH_GPU_ID'] = self.local_rank
+
         self.config['SIMULATOR_GPU_ID'] = self.local_rank
         # Multiply by the number of simulators to make sure they also get unique seeds
         self.config['SEED'] += (
@@ -235,21 +252,15 @@ class DDPPOTrainer(PPOTrainer):
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")
-
-        dataset.initialize(self.config['NUM_PROCESSES'])
-        scene_splits = dataset.getValue()
         
-        scene_ids = []
-        for i in range(self.config['NUM_PROCESSES']):
-            idx = np.random.randint(len(scene_splits[i]))
-            scene_ids.append(scene_splits[i][idx])
+        data = dataset(self.config['scene'])
+        scene_splits = data.split(self.config['NUM_PROCESSES'])
 
-
-        def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+        def load_env(scene_ids):
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
-                         for sid in scene_ids], blocking=False)
+                         for sid in scene_splits], blocking=False)
         
         if (
             not os.path.isdir(self.config['CHECKPOINT_FOLDER'])
@@ -258,9 +269,9 @@ class DDPPOTrainer(PPOTrainer):
             os.makedirs(self.config['CHECKPOINT_FOLDER'])
 
         self._setup_actor_critic_agent()
-        self.agent.init_distributed(find_unused_params=True)
-        if self.config['use_belief_predictor'] and self.config['online_training']:
-            self.belief_predictor.init_distributed(find_unused_params=True)
+#         self.agent.init_distributed(find_unused_params=True)
+#         if self.config['use_belief_predictor'] and self.config['online_training']:
+#             self.belief_predictor.init_distributed(find_unused_params=True)
 
         if self.world_rank == 0:
             logger.info(
@@ -381,31 +392,31 @@ class DDPPOTrainer(PPOTrainer):
                         update, self.config['NUM_UPDATES']
                     )
 
-                if EXIT.is_set():
-                    self.envs.close()
+#                 if EXIT.is_set():
+#                     self.envs.close()
 
-                    if REQUEUE.is_set() and self.world_rank == 0:
-                        requeue_stats = dict(
-                            env_time=env_time,
-                            pth_time=pth_time,
-                            count_steps=count_steps,
-                            count_checkpoints=count_checkpoints,
-                            start_update=update,
-                            prev_time=(time.time() - t_start) + prev_time,
-                        )
-                        state_dict = dict(
-                                state_dict=self.agent.state_dict(),
-                                optim_state=self.agent.optimizer.state_dict(),
-                                lr_sched_state=lr_scheduler.state_dict(),
-                                config=self.config,
-                                requeue_stats=requeue_stats,
-                            )
-                        if self.config.RL.PPO.use_belief_predictor:
-                            state_dict['belief_predictor'] = self.belief_predictor.state_dict()
-                        save_interrupted_state(state_dict)
+#                     if REQUEUE.is_set() and self.world_rank == 0:
+#                         requeue_stats = dict(
+#                             env_time=env_time,
+#                             pth_time=pth_time,
+#                             count_steps=count_steps,
+#                             count_checkpoints=count_checkpoints,
+#                             start_update=update,
+#                             prev_time=(time.time() - t_start) + prev_time,
+#                         )
+#                         state_dict = dict(
+#                                 state_dict=self.agent.state_dict(),
+#                                 optim_state=self.agent.optimizer.state_dict(),
+#                                 lr_sched_state=lr_scheduler.state_dict(),
+#                                 config=self.config,
+#                                 requeue_stats=requeue_stats,
+#                             )
+#                         if self.config.RL.PPO.use_belief_predictor:
+#                             state_dict['belief_predictor'] = self.belief_predictor.state_dict()
+#                         save_interrupted_state(state_dict)
 
-                    requeue_job()
-                    return
+#                     requeue_job()
+#                     return
 
                 count_steps_delta = 0
                 self.agent.eval() # set to eval mode
@@ -426,15 +437,15 @@ class DDPPOTrainer(PPOTrainer):
 
                     # This is where the preemption of workers happens.  If a
                     # worker detects it will be a straggler, it preempts itself!
-                    if (
-                        step
-                        >= self.config['num_steps'] * self.SHORT_ROLLOUT_THRESHOLD
-                    ) and int(num_rollouts_done_store.get("num_done")) > (
-                        self.config['sync_frac'] * self.world_size
-                    ):
-                        break
+#                     if (
+#                         step
+#                         >= self.config['num_steps'] * self.SHORT_ROLLOUT_THRESHOLD
+#                     ) and int(num_rollouts_done_store.get("num_done")) > (
+#                         self.config['sync_frac'] * self.world_size
+#                     ):
+#                         break
 
-                num_rollouts_done_store.add("num_done", 1)
+#                 num_rollouts_done_store.add("num_done", 1)
 
                 self.agent.train()
                 if self.config['use_belief_predictor']:
@@ -459,7 +470,7 @@ class DDPPOTrainer(PPOTrainer):
                 stats = torch.stack(
                     [running_episode_stats[k] for k in stats_ordering], 0
                 )
-                distrib.all_reduce(stats)
+#                 distrib.all_reduce(stats)
 
                 for i, k in enumerate(stats_ordering):
                     window_episode_stats[k].append(stats[i].clone())
@@ -468,11 +479,11 @@ class DDPPOTrainer(PPOTrainer):
                     [value_loss, action_loss, dist_entropy, location_predictor_loss, prediction_accuracy, count_steps_delta],
                     device=self.device,
                 )
-                distrib.all_reduce(stats)
+#                 distrib.all_reduce(stats)
                 count_steps += stats[5].item()
 
                 if self.world_rank == 0:
-                    num_rollouts_done_store.set("num_done", "0")
+#                     num_rollouts_done_store.set("num_done", "0")
 
                     losses = [
                         stats[0].item() / self.world_size,

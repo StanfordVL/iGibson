@@ -198,7 +198,10 @@ class PPOTrainer(BaseRLTrainer):
         pth_time += time.time() - t_sample_action
 
         t_step_env = time.time()
-        outputs = self.envs.step([a[0].item() for a in actions])
+        if self.is_discrete:
+            outputs = self.envs.step([a[0].item() for a in actions])
+        else:
+            outputs = self.envs.step([a.tolist() for a in actions])
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -245,7 +248,10 @@ class PPOTrainer(BaseRLTrainer):
             step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}
             self.belief_predictor.update(step_observation, dones)
             for sensor in ['location_belief', 'category_belief']:
+                if sensor not in rollouts.observations.items():
+                    continue
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
+#             print("category_belief", step_observation["category_belief"])
         pth_time += time.time() - t_update_stats
 
         return pth_time, env_time, self.envs.batch_size
@@ -282,7 +288,7 @@ class PPOTrainer(BaseRLTrainer):
                     external_memory_masks,
                 ) = sample
                 bp.optimizer.zero_grad()
-                inputs = obs_batch['audio'].permute(0, 3, 1, 2)
+                inputs = obs_batch['audio'].permute(0, 3, 1, 2).contiguous()
                 preds = bp.cnn_forward(obs_batch) # [rightward, backward]
 
                 masks = (torch.sum(torch.reshape(obs_batch['audio'],
@@ -293,7 +299,7 @@ class PPOTrainer(BaseRLTrainer):
                 masked_preds = masks.expand_as(preds) * preds # [rightward, backward]
                 masked_gts = masks.expand_as(transformed_gts) * transformed_gts
                 loss = bp.regressor_criterion(masked_preds, masked_gts) # (input, target)
-                bp.before_backward(loss)
+#                 bp.before_backward(loss) # for DDP
                 
                 loss.backward()
                 # self.after_backward(loss)
@@ -384,15 +390,13 @@ class PPOTrainer(BaseRLTrainer):
         ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
         
         data = dataset(self.config['scene'])
-        val_data = data.SCENE_SPLITS["val"]
-        idx = np.random.randint(len(val_data))
-        scene_ids = [val_data[idx]]
+        scene_splits = data.split(self.config['NUM_PROCESSES'], data_type="val")
         
-        def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+        def load_env(scene_ids):
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
-                         for sid in scene_ids])
+                         for sid in scene_splits])
 
             
         observation_space = self.envs.observation_space
@@ -433,7 +437,8 @@ class PPOTrainer(BaseRLTrainer):
             test_em = None
             
         prev_actions = torch.zeros(
-            self.config['EVAL_NUM_PROCESS'], 1, device=self.device, dtype=torch.long
+            self.config['EVAL_NUM_PROCESS'], 2 if self.config["robot"]["action_type"] == "continuous" else 1, 
+                                            device=self.device, dtype=torch.long
         )
         not_done_masks = torch.zeros(
             self.config['EVAL_NUM_PROCESS'], 1, device=self.device
@@ -459,6 +464,9 @@ class PPOTrainer(BaseRLTrainer):
         rgb_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]  # type: List[List[np.ndarray]]
+        depth_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]
         audios = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]
@@ -485,7 +493,10 @@ class PPOTrainer(BaseRLTrainer):
                     test_em.masks if self.config['use_external_memory'] else None,
                 )
                 prev_actions.copy_(actions)
-            outputs = self.envs.step([a[0].item() for a in actions])
+            if self.is_discrete:
+                outputs = self.envs.step([a[0].item() for a in actions])
+            else:
+                outputs = self.envs.step([a.tolist() for a in actions])
 
             observations, rewards, dones, infos = [
                 list(x) for x in zip(*outputs)
@@ -528,8 +539,9 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    frame = observations_to_image(observations[i], infos[i])
-                    rgb_frames[i].append(frame)
+                    frame_rgb, frame_depth = observations_to_image(observations[i], infos[i])
+                    rgb_frames[i].append(frame_rgb)
+                    depth_frames[i].append(frame_depth)
                     
             rewards = torch.tensor(
                 rewards, dtype=torch.float, device=self.device
@@ -539,6 +551,8 @@ class PPOTrainer(BaseRLTrainer):
                 if not_done_masks[i].item() == 0:
                     episode_stats = dict()
                     episode_stats['spl'] = infos[i]['spl']
+                    episode_stats['sna'] = infos[i]['sna']
+                    episode_stats['success'] = int(infos[i]['success'])
                     episode_stats["reward"] = current_episode_reward[i].item()    
                     if self.config['use_belief_predictor']:
                         episode_stats['descriptor_pred_gt'] = descriptor_pred_gt[i][:-1]
@@ -550,7 +564,7 @@ class PPOTrainer(BaseRLTrainer):
                     # use scene_id + episode_id as unique id for storing stats
                     stats_episodes[
                         (
-                            scene_ids[i],
+                            "eval_result",
                             count,
                         )
                     ] = episode_stats
@@ -563,7 +577,7 @@ class PPOTrainer(BaseRLTrainer):
                             video_option=self.config['VIDEO_OPTION'],
                             video_dir=self.config['VIDEO_DIR'],
                             images=rgb_frames[i][:-1],
-                            scene_name=scene_ids[i],
+                            scene_name="rgb_video_out",
                             sound='_',
                             sr=44100,
                             episode_id=0,
@@ -575,13 +589,30 @@ class PPOTrainer(BaseRLTrainer):
                             audios=None,
                             fps=fps
                         )
+#                         generate_video(
+#                             video_option=self.config['VIDEO_OPTION'],
+#                             video_dir=self.config['VIDEO_DIR'],
+#                             images=depth_frames[i][:-1],
+#                             scene_name="depth_video_out",
+#                             sound='_',
+#                             sr=44100,
+#                             episode_id=0,
+#                             checkpoint_idx=checkpoint_index,
+#                             metric_name='spl',
+#                             metric_value=infos[i]['spl'],
+#                             tb_writer=writer,
+# #                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
+#                             audios=None,
+#                             fps=fps
+#                         )
 
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
+                        depth_frames[i] = []
                         audios[i] = []
         
-            count += 1
+                count += 1
                     
             if not self.config['use_belief_predictor']:
                 descriptor_pred_gt = None
@@ -601,10 +632,18 @@ class PPOTrainer(BaseRLTrainer):
         episode_reward_mean = aggregated_stats["reward"] / num_episodes
         episode_metrics_mean = {}
         episode_metrics_mean['spl'] = aggregated_stats['spl'] / num_episodes
+        episode_metrics_mean['sna'] = aggregated_stats['sna'] / num_episodes
+        episode_metrics_mean['success'] = aggregated_stats['success'] / num_episodes
 
         logger.info(f"Average episode reward: {episode_reward_mean:.6f}")
         logger.info(
                 f"Average episode {'spl'}: {episode_metrics_mean['spl']:.6f}"
+            )
+        logger.info(
+                f"Average episode {'sna'}: {episode_metrics_mean['sna']:.6f}"
+            )
+        logger.info(
+                f"Average episode {'success'}: {episode_metrics_mean['success']:.6f}"
             )
 
         writer.add_scalar("{}/reward".format('val'), episode_reward_mean, checkpoint_index)
@@ -617,5 +656,7 @@ class PPOTrainer(BaseRLTrainer):
             'episode_reward_mean': episode_reward_mean
         }
         result['episode_{}_mean'.format('spl')] = episode_metrics_mean['spl']
+        result['episode_{}_mean'.format('sna')] = episode_metrics_mean['sna']
+        result['episode_{}_mean'.format('sr')] = episode_metrics_mean['success']
         return result
 

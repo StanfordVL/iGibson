@@ -34,7 +34,6 @@ class AudioCNN(nn.Module):
         self._has_distractor_sound = has_distractor_sound
         if has_distractor_sound:
             self._n_input_category = 21
-            print('Concatenate category label with spectrogram!')
         else:
             self._n_input_category = 0
 
@@ -135,7 +134,7 @@ class AudioCNN(nn.Module):
 
         audio_observations = observations[self._audiogoal_sensor]
         # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-        audio_observations = audio_observations.permute(0, 3, 1, 2)
+        audio_observations = audio_observations.permute(0, 3, 1, 2).contiguous()
         cnn_input.append(audio_observations)
 
         if self._has_distractor_sound:

@@ -5,15 +5,11 @@ class dataset:
         
         if scene == 'igibson':
             self.SCENE_SPLITS = {
-                "train": ["Pomaria_1_int", "Benevolence_2_int", "Beechwood_1_int", "Ihlen_0_int", "Benevolence_1_int", 
-                          "Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],  # "Benevolence_0_int"], 
-                "val": ["Merom_1_int"]#"Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
+                "train": ["Pomaria_1_int", "Pomaria_1_int"], #, "Benevolence_2_int", "Beechwood_1_int", "Ihlen_0_int", "Benevolence_1_int", 
+                        #   "Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],  # "Benevolence_0_int"], 
+                "val": ["Pomaria_1_int"] # ["Merom_1_int", "Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
             }
-#             self.SCENE_SPLITS = {
-#                 "train": ["Rs_int"],
-#                 "val": ["Rs_int"]
-#             }
-        if scene == 'mp3d':
+        if scene == 'gibson' or scene == 'mp3d':
             self.SCENE_SPLITS = {
                 'train': ['sT4fr6TAbpF', 'E9uDoFAP3SH', 'VzqfbhrpDEA', 'kEZ7cmS4wCh', '29hnd4uzFmX', 'ac26ZMwG7aT',
                           'i5noydFURQK', 's8pcmisQ38h', 'rPc6DW4iMge', 'EDJbREhghzL', 'mJXqzFtmKg4', 'B6ByNegPMKs',
@@ -36,15 +32,15 @@ class dataset:
             }
             
         
-    def split(self, num_processes):
+    def split(self, num_processes, data_type="train"):
         self.scene_splits = [[] for _ in range(num_processes)]
-        for idx, scene in enumerate(self.SCENE_SPLITS['train']):
+        for idx, scene in enumerate(self.SCENE_SPLITS[data_type]):
             self.scene_splits[idx % len(self.scene_splits)].append(scene)
-        assert sum(map(len, self.scene_splits)) == len(self.SCENE_SPLITS['train'])
+        assert sum(map(len, self.scene_splits)) == len(self.SCENE_SPLITS[data_type])
         return self.scene_splits
 
 # for igibson
-CATEGORIES = ['chair', 'table', 'picture', 'bottom_cabinet', 'cushion', 'sofa', 'bed', 'plant', 'sink', 'toilet', 'stool', 'standing_tv', 'shower', 'bathtub', 'counter']
+CATEGORIES = ['chair', 'table', 'picture', 'bottom_cabinet', 'cushion', 'sofa', 'bed', 'shelf', 'sink', 'toilet', 'stool', 'standing_tv', 'shower', 'bathtub', 'counter']
 # 15
 
 CATEGORY_MAP = {
@@ -55,7 +51,7 @@ CATEGORY_MAP = {
                 'cushion': 4,
                 'sofa': 5,
                 'bed': 6,
-                'plant': 7,
+                'shelf': 7,
                 'sink': 8,
                 'toilet': 9,
                 'stool': 10,
@@ -68,7 +64,7 @@ CATEGORY_MAP = {
 
 
 # # for mp3d
-# CATEGORIES = ['chair', 'table', 'picture', 'cabinet', 'cushion', 'sofa', 'bed', 'chest_of_drawers', 'plant', 'sink', 'toilet', 'stool', 'towel', 'tv_monitor', 'shower', 'bathtub', 'counter', 'fireplace', 'gym_equipment', 'seating', 'clothes']
+# CATEGORIES = ['chair', 'table', 'picture', 'cabinet', 'cushion', 'sofa', 'bed', 'chest_of_drawers', 'shelf', 'sink', 'toilet', 'stool', 'towel', 'tv_monitor', 'shower', 'bathtub', 'counter', 'fireplace', 'gym_equipment', 'seating', 'clothes']
 # CATEGORY_MAP = {
 #                 'chair': 3,
 #                 'table': 5,
@@ -78,7 +74,7 @@ CATEGORY_MAP = {
 #                 'sofa': 10,
 #                 'bed': 11,
 #                 'chest_of_drawers': 13,
-#                 'plant': 14,
+#                 'shelf': 14,
 #                 'sink': 15,
 #                 'toilet': 18,
 #                 'stool': 19,
@@ -92,19 +88,3 @@ CATEGORY_MAP = {
 #                 'seating': 34,
 #                 'clothes': 38
 #             }
-
-
-
-def initialize(num_processes):
-    global scene_splits
-    scene_splits = [[] for _ in range(num_processes)]
-    for idx, scene in enumerate(SCENE_SPLITS['train']):
-        scene_splits[idx % len(scene_splits)].append(scene)
-    assert sum(map(len, scene_splits)) == len(SCENE_SPLITS['train'])
-    
-def getValue():
-    global scene_splits
-    return scene_splits
-
-def getValValue():
-    return SCENE_SPLITS['val']

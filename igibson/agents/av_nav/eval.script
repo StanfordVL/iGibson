@@ -20,5 +20,5 @@ echo “SLURM_JOB_NODELIST”=$SLURM_JOB_NODELIST
 echo “SLURM_NNODES”=$SLURM_NNODES
 echo “SLURMTMPDIR=“$SLURMTMPDIR
 echo “working directory = “$SLURM_SUBMIT_DIR
-. /cvgl2/u/gdharan/anaconda3/bin/activate igibson_new
+0. /cvgl2/u/gdharan/anaconda3/bin/activate igibson_new
 python3 run.py --run-type eval --exp-config $1

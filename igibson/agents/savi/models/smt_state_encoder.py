@@ -125,7 +125,7 @@ class SMTStateEncoder(nn.Module):
         # Compress features
         memory = torch.cat([memory, x.unsqueeze(0)])
         M, bs = memory.shape[:2]
-        memory = self.fusion_encoder(memory.view(M*bs, -1)).view(M, bs, -1)
+        memory = self.fusion_encoder(memory.view(M*bs, -1).contiguous()).view(M, bs, -1).contiguous()
 
         # Transformer operations
         t_masks = self._convert_masks_to_transformer_format(memory_masks)
@@ -199,8 +199,8 @@ class SMTStateEncoder(nn.Module):
         agent_pose_encoded = self.pose_encoder(agent_pose_formatted)
         M, bs = memory_pose_formatted.shape[:2]
         memory_pose_encoded = self.pose_encoder(
-            memory_pose_formatted.view(M * bs, -1)
-        ).view(M, bs, -1)
+            memory_pose_formatted.view(M * bs, -1).contiguous()
+        ).view(M, bs, -1).contiguous()
 
         return agent_pose_encoded, memory_pose_encoded
 
@@ -216,9 +216,8 @@ class SMTStateEncoder(nn.Module):
             At the origin, x is forward, y is rightward,
             and heading is measured from x to -y.
         """
-        # Negate the heading to get angle from x to y
-        heading_a = -pose_a[..., 2]
-        heading_b = -pose_b[..., 2]
+        heading_a = pose_a[..., 2]
+        heading_b = pose_b[..., 2]
         # Compute relative pose
         r_ab = torch.norm(pose_a[..., :2] - pose_b[..., :2], dim=-1)
         phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0])
@@ -228,11 +227,11 @@ class SMTStateEncoder(nn.Module):
         heading_ab = heading_b - heading_a
         # Normalize angles to lie between -pi to pi
         heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab))
-        # Negate the heading to get angle from x to -y
-        heading_ab = -heading_ab
+        # y is leftward
 
         return torch.stack([x_ab, y_ab, heading_ab], -1) # (..., 3)
 
+    
     def _format_pose(self, pose):
         """
         Args:
@@ -247,4 +246,6 @@ class SMTStateEncoder(nn.Module):
     @property
     def pose_indices(self):
         return self._pose_indices
+
+
 

@@ -101,7 +101,6 @@ class VisualCNN(nn.Module):
                     kernel_size=np.array(kernel_size, dtype=np.float32),
                     stride=np.array(stride, dtype=np.float32),
                 )
-
             self.cnn = nn.Sequential(
                 nn.Conv2d(
                     in_channels=self._n_input_rgb + self._n_input_depth,
@@ -128,7 +127,6 @@ class VisualCNN(nn.Module):
                 nn.Linear(64 * cnn_dims[0] * cnn_dims[1], output_size),
                 nn.ReLU(True),
             )
-
         layer_init(self.cnn)
 
     @property
@@ -140,16 +138,16 @@ class VisualCNN(nn.Module):
         if self._n_input_rgb > 0:
             rgb_observations = observations["rgb"]
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            rgb_observations = rgb_observations.permute(0, 3, 1, 2)
-            rgb_observations = rgb_observations / 255.0  # normalize RGB
+            rgb_observations = torch.permute(rgb_observations, (0, 3, 1, 2)).contiguous()
+            # rgb_observations = rgb_observations / 255.0  # normalize RGB
             cnn_input.append(rgb_observations)
 
         if self._n_input_depth > 0:
             depth_observations = observations["depth"]
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            depth_observations = depth_observations.permute(0, 3, 1, 2)
+            depth_observations = torch.permute(depth_observations, (0, 3, 1, 2)).contiguous().view(depth_observations.shape[0], self._n_input_depth, 128, 128)
             cnn_input.append(depth_observations)
 
-        cnn_input = torch.cat(cnn_input, dim=1)
+        cnn_input = torch.cat(cnn_input, dim=1).contiguous()
 
         return self.cnn(cnn_input)

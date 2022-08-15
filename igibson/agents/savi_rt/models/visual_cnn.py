@@ -9,6 +9,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torchvision.models as tmodels
+import math
+from igibson.agents.savi_rt.models.Unet_parts import UNetUp
+
 
 # from ss_baselines.common.utils import Flatten
 from utils.utils import Flatten, d3_40_colors_rgb
@@ -44,10 +49,28 @@ class VisualCNN(nn.Module):
             self._n_input_map = 0
        
         # kernel size for different CNN layers
-        self._cnn_layers_kernel_size = [(8, 8), (4, 4), (3, 3)]
+        self._cnn_layers_kernel_size = [(7, 7), (4, 4), (3, 3)]
 
         # strides for different CNN layers
-        self._cnn_layers_stride = [(4, 4), (2, 2), (2, 2)]
+        self._cnn_layers_stride = [(2, 2), (2, 2), (2, 2)]
+
+        # paddings for different CNN layers
+        self._cnn_layers_padding = [(3, 3), (2, 2), (2, 2)]
+
+        self.resnet = tmodels.resnet18(pretrained=True)
+
+        self.n_channels_out = 128
+        
+        self.out_scale = np.array([16, 16])
+
+        max_out_scale = np.amax(self.out_scale)
+        n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
+        self.scaler = nn.ModuleList([
+            UNetUp(max(self.n_channels_out // (2**i), 64),
+                   max(self.n_channels_out // (2**(i + 1)), 64),
+                   bilinear=False,
+                   norm='batchnorm') for i in range(n_upscale)
+        ])
 
         if self._n_input_rgb > 0:
             cnn_dims = np.array(
@@ -77,31 +100,37 @@ class VisualCNN(nn.Module):
             self.cnn = nn.Sequential(
                 nn.Conv2d(
                     in_channels=self._n_input_rgb + self._n_input_depth + self._n_input_map,
-                    out_channels=32,
+                    out_channels=64,
                     kernel_size=self._cnn_layers_kernel_size[0],
                     stride=self._cnn_layers_stride[0],
+                    padding=self._cnn_layers_padding[0],
                 ),
-                nn.ReLU(True),
-                nn.Conv2d(
-                    in_channels=32,
-                    out_channels=64,
-                    kernel_size=self._cnn_layers_kernel_size[1],
-                    stride=self._cnn_layers_stride[1],
-                ),
-                nn.ReLU(True),
-                nn.Conv2d(
-                    in_channels=64,
-                    out_channels=64,
-                    kernel_size=self._cnn_layers_kernel_size[2],
-                    stride=self._cnn_layers_stride[2],
-                ),
-                #  nn.ReLU(True),
-                Flatten(),
-                nn.Linear(64 * cnn_dims[0] * cnn_dims[1], output_size),
-                nn.ReLU(True),
+                self.resnet.bn1,
+                self.resnet.relu,
+                self.resnet.maxpool,
+                self.resnet.layer1,
+                self.resnet.layer2, #(512, H/8, W/8)
+                
+                # nn.Conv2d(
+                #     in_channels=32,
+                #     out_channels=64,
+                #     kernel_size=self._cnn_layers_kernel_size[1],
+                #     stride=self._cnn_layers_stride[1],
+                # ),
+                # nn.ReLU(True),
+                # nn.Conv2d(
+                #     in_channels=64,
+                #     out_channels=64,
+                #     kernel_size=self._cnn_layers_kernel_size[2],
+                #     stride=self._cnn_layers_stride[2],
+                # ),
+                # #  nn.ReLU(True),
+                # Flatten(),
+                # nn.Linear(64 * cnn_dims[0] * cnn_dims[1], output_size),
+                # nn.ReLU(True),
             )
 
-        self.layer_init()
+        # self.layer_init()
 
     def _conv_output_dim(
         self, dimension, padding, dilation, kernel_size, stride
@@ -161,24 +190,28 @@ class VisualCNN(nn.Module):
         cnn_input = []
         if self._n_input_rgb > 0:
             rgb_observations = observations["rgb"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            rgb_observations = rgb_observations.permute(0, 3, 1, 2)
-            rgb_observations = rgb_observations / 255.0  # normalize RGB
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            rgb_observations = rgb_observations.permute(0, 3, 1, 2).contiguous()
+            # rgb_observations = rgb_observations / 255.0  # normalize RGB
             cnn_input.append(rgb_observations)
 
         if self._n_input_depth > 0:
             depth_observations = observations["depth"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            depth_observations = depth_observations.permute(0, 3, 1, 2)
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            depth_observations = depth_observations.permute(0, 3, 1, 2).contiguous()
             cnn_input.append(depth_observations)
             
         if self._n_input_map > 0:
             map_observations = observations["floorplan_map"]
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            map_observations = map_observations.permute(0, 3, 1, 2)
+            # permute tensor to dimension [step*batch x CHANNEL x HEIGHT X WIDTH]
+            map_observations = map_observations.permute(0, 3, 1, 2).contiguous()
             cnn_input.append(map_observations)
         cnn_input = torch.cat(cnn_input, dim=1)
-        return self.cnn(cnn_input)
+        feat = self.cnn(cnn_input)
+        feat = F.adaptive_avg_pool2d(feat, 1)
+        for mod in self.scaler:
+            feat = mod(feat)
+        return feat
 
 
 def convert_semantics_to_rgb(semantics):
