@@ -179,7 +179,7 @@ def collect_demo(
     env = iGibsonEnv(
         config_file=config,
         mode=mode,
-        action_timestep=1 / 30.0,
+        action_timestep=1 / 60.0,
         physics_timestep=1 / 300.0,
         rendering_settings=rendering_settings,
     )
@@ -233,6 +233,9 @@ def collect_demo(
         # Consecutive success for POST_SUCCESS_STEPS steps
         if steps_after_success >= POST_SUCCESS_STEPS:
             break
+        
+        # update post processing
+        env.simulator.update_post_processing_effect()
 
     assert env.current_step > PHYSICS_WARMING_TIMESTEPS, "No actions were applied."
 
