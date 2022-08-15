@@ -10,7 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython import embed
 from igibson.utils.mesh_util import ortho
-
 import cv2
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh

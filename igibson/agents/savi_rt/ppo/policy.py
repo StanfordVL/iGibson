@@ -268,7 +268,6 @@ class AudioNavBaselineNet(Net):
 
         return x2, rnn_hidden_states1, None
 
-
     
     
 class AudioNavSMTNet(Net):

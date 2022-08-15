@@ -75,7 +75,6 @@ class DDPPOTrainer(PPOTrainer):
         has_distractor_sound = self.config['HAS_DISTRACTOR_SOUND']
         if self.config["robot"]["action_type"] == "discrete":
             self.is_discrete = True
-
         elif self.config["robot"]["action_type"] == "continuous":
             self.is_discrete=False
         else:

@@ -168,5 +168,4 @@ def init_distrib_slurm(
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
     )
-
     return local_rank, tcp_store

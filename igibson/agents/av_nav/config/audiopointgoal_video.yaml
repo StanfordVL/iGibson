@@ -78,11 +78,11 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [task_obs, depth, audio, bump, top_down]
+output: [task_obs, depth, audio, bump, rgb, top_down]
 map_size: 1000 
 # for Rs
 #task_obs, 
-extra_rgb: false
+extra_rgb: true
 
 # image
 # ASUS Xtion PRO LIVE

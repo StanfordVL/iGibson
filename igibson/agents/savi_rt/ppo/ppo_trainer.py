@@ -87,7 +87,6 @@ class PPOTrainer(BaseRLTrainer):
         }
         if self.config['use_belief_predictor']:
             checkpoint["belief_predictor"] = self.belief_predictor.state_dict()
-
         if extra_state is not None:
             checkpoint["extra_state"] = extra_state
 
@@ -765,4 +764,3 @@ class PPOTrainer(BaseRLTrainer):
         }
         result['episode_{}_mean'.format('spl')] = episode_metrics_mean['spl']
         return result
-
