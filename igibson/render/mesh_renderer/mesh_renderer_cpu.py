@@ -54,12 +54,16 @@ class MeshRenderer(object):
         self.simulator = simulator
         self.rendering_settings = rendering_settings
         self.shaderProgram = None
-        self.windowShaderProgram = None
+        self.blurShaderProgram, self.lensShaderProgram, self.retinaShaderProgram = None, None, None
         self.fbo = None
+        self.fbo_lens, self.fbo_retina = None, None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
         self.color_tex_scene_flow, self.color_tex_optical_flow, self.color_tex_ins_seg = None, None, None
+        self.color_tex_bloom, self.color_tex_lens, self.color_tex_retina = None, None, None
         self.depth_tex = None
         self.VAOs = []
+        self.quadVAO, self.quadVBO = None, None
+        self.fbo_blurs, self.color_tex_blurs = [None, None], [None, None]
         self.VBOs = []
         self.textures = []
         self.objects = []
@@ -196,6 +200,10 @@ class MeshRenderer(object):
                 else:
                     self.shaderProgram = self.get_shader_program(glsl_version, "vert.shader", "frag.shader")
                 self.textShaderProgram = self.get_shader_program(glsl_version, "text_vert.shader", "text_frag.shader")
+                self.blurShaderProgram = self.get_shader_program(glsl_version, "post_processing_vert.shader", "blur_frag.shader")
+                self.lensShaderProgram = self.get_shader_program(glsl_version, "post_processing_vert.shader", "lens_frag.shader")
+                self.retinaShaderProgram = self.get_shader_program(glsl_version, "post_processing_vert.shader", "retina_frag.shader")
+
 
             self.skyboxShaderProgram = self.get_shader_program("410", "skybox_vs.glsl", "skybox_fs.glsl")
 
@@ -301,6 +309,19 @@ class MeshRenderer(object):
         Set up framebuffers for the renderer.
         """
         [
+            self.quadVAO, 
+            self.quadVBO, 
+            self.fbo_lens, 
+            self.color_tex_lens,
+            self.fbo_retina, 
+            self.color_tex_retina,
+            self.fbo_blurs[0],
+            self.fbo_blurs[1],
+            self.color_tex_blurs[0],
+            self.color_tex_blurs[1],
+        ] = self.r.setup_framebuffer_meshrenderer_post_processing(self.width, self.height, self.retinaShaderProgram, self.lensShaderProgram)
+
+        [
             self.fbo,
             self.color_tex_rgb,
             self.color_tex_normal,
@@ -309,6 +330,7 @@ class MeshRenderer(object):
             self.color_tex_3d,
             self.color_tex_scene_flow,
             self.color_tex_optical_flow,
+            self.color_tex_bloom,
             self.depth_tex,
         ] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
@@ -1005,6 +1027,27 @@ class MeshRenderer(object):
                     self.camera,
                 )
             self.r.renderOptimized(self.optimized_VAO)
+            self.r.renderLens(
+                self.lensShaderProgram, 
+                self.quadVAO, 
+                self.fbo_lens,
+                self.color_tex_rgb,
+                self.depth_tex,
+            )
+            # self.r.renderBloom(
+            #     self.blurShaderProgram, 
+            #     self.quadVAO, 
+            #     self.color_tex_bloom,
+            #     self.fbo_blurs,
+            #     self.color_tex_blurs,
+            # )
+            self.r.renderRetina(
+                self.retinaShaderProgram, 
+                self.quadVAO, 
+                self.fbo_retina, 
+                self.color_tex_lens,
+                self.color_tex_blurs[0],
+            )
         else:
             for instance in self.instances:
                 if instance not in hidden and not instance.hidden:
@@ -1118,8 +1161,11 @@ class MeshRenderer(object):
             self.color_tex_optical_flow,
             self.color_tex_ins_seg,
             self.text_manager.render_tex,
-        ] + [i for i in self.text_manager.tex_ids]
-        fbo_list = [self.fbo, self.text_manager.FBO]
+            self.color_tex_bloom,
+            self.color_tex_lens,
+            self.color_tex_retina,
+        ] + [i for i in self.text_manager.tex_ids] + self.color_tex_blurs
+        fbo_list = [self.fbo, self.fbo_lens, self.fbo_retina, self.text_manager.FBO] + self.fbo_blurs
         if self.msaa:
             clean_list += [
                 self.color_tex_rgb_ms,
@@ -1155,8 +1201,15 @@ class MeshRenderer(object):
         self.color_tex_scene_flow = None
         self.color_tex_optical_flow = None
         self.color_tex_ins_seg = None
+        self.color_tex_bloom = None
+        self.color_tex_lens = None
+        self.color_tex_retina = None
         self.depth_tex = None
         self.fbo = None
+        self.fbo_blurs, self.fbo_retina, self.fbo_lens = None, None, None
+        self.quadVAO = None
+        self.quadVBO = None
+        self.color_tex_blurs = None
         self.VAOs = []
         self.VBOs = []
         self.textures = []

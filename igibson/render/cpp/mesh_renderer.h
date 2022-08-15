@@ -122,6 +122,8 @@ public:
 
     py::list setup_framebuffer_meshrenderer_ms(int width, int height);
 
+    py::list setup_framebuffer_meshrenderer_post_processing(int width, int height, GLuint shaderProgramWindow, GLuint shaderProgramLens);
+
     int compile_shader_meshrenderer(char *vertexShaderSource, char *fragmentShaderSource);
 
     py::list load_object_meshrenderer(int shaderProgram, py::array_t<float> vertexData);
@@ -228,6 +230,12 @@ public:
 		py::array_t<float> eye_pos);
 
 	void renderOptimized(GLuint VAO);
+
+    void renderBloom(int shaderProgramBlur, GLuint quadVAO, unsigned int brightTextureBuffer, py::array_t<int> blurFBOs, py::array_t<int> blurTextureBuffers);
+    
+    void renderLens(int shaderProgramLens, GLuint quadVAO, unsigned int fbo_lens, unsigned int colorTextureBuffer, unsigned int depthTextureBuffer);
+    
+    void renderRetina(int shaderProgramRetina, GLuint quadVAO, unsigned int fbo_window, unsigned int colorTextureBuffer, unsigned int bloomTextureBuffer);
 
 	void loadSkyBox(int shaderProgram, float skybox_size);
 	void renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P);

@@ -102,7 +102,7 @@ class SimulatorVR(Simulator):
             rendering_settings,
             use_pb_gui,
         )
-
+        self.visual_object_cache = {}
         # Get expected number of vsync frames per iGibson frame Note: currently assumes a 90Hz VR system
         self.vsync_frame_num = int(round(self.render_timestep / self.vsync_frame_dur))
 
@@ -753,12 +753,12 @@ class SimulatorVR(Simulator):
         left pupil diameter, right pupil diameter (both in millimeters)
         Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
         """
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_pupil_pos, right_pupil_pos = self.eye_tracking_data
         # Set other values to 0 to avoid very small/large floating point numbers
         if not is_valid:
-            return [False, [0, 0, 0], [0, 0, 0], 0, 0]
+            return [False, [0, 0, 0], [0, 0, 0], 0, 0, [0, 0], [0, 0]]
         else:
-            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
+            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_pupil_pos, right_pupil_pos]
 
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
         """
@@ -838,3 +838,16 @@ class SimulatorVR(Simulator):
         assert device in ["left_controller", "right_controller"]
 
         self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
+
+    def update_post_processing_effect(self):
+        """
+        update post processing visual impairment mode and effect
+        """
+        vr_height_device = "right_controller"
+        if self.query_vr_event(vr_height_device, "post_processing_toggle"):
+            _, touch_x, _, _ = self.get_button_data_for_controller(vr_height_device)
+            if touch_x < -0.7:
+                self.renderer.update_post_processing_mode()
+        is_valid, _, _, _, _, pos, _ = self.get_eye_tracking_data()
+        if is_valid:
+            self.renderer.update_post_processing_effect(pos)

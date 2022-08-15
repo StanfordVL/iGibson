@@ -99,6 +99,9 @@ public:
 		// Both in mm
 		float leftPupilDiameter;
 		float rightPupilDiameter;
+		// in [0,1]
+		glm::vec2 leftPupilPos;
+		glm::vec2 rightPupilPos;
 	};
 
 	EyeTrackingData eyeTrackingData;
@@ -122,6 +125,10 @@ public:
 	py::list getDeviceCoordinateSystem(char* device);
 
 	py::list getEyeTrackingData();
+
+	void updateUniform1i(int shaderProgram, char * uniform, int target);
+
+	void updateUniform1f(int shaderProgram, char * uniform, float target);
 
 	py::list getVROffset();
 	
@@ -158,6 +165,10 @@ public:
 	void showOverlay(char* name);
 
 	void updateOverlayTexture(char* name, GLuint texID);
+
+	void updateOverlayWidth(char* name, float width);
+
+	void VRRendererContext::updateOverlayPosition(char* name, float pos_x, float pos_y, float pos_z);
 	
 private:
 	glm::mat4 convertSteamVRMatrixToGlmMat4(const vr::HmdMatrix34_t& matPose);

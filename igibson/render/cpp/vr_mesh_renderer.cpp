@@ -176,6 +176,13 @@ py::list VRRendererContext::getEyeTrackingData() {
 	dir.append(gibDir.y);
 	dir.append(gibDir.z);
 	
+	py::list left_pupil_pos;
+	py::list right_pupil_pos;
+	left_pupil_pos.append(eyeTrackingData.leftPupilPos.x);
+	left_pupil_pos.append(eyeTrackingData.leftPupilPos.y);
+	right_pupil_pos.append(eyeTrackingData.rightPupilPos.x);
+	right_pupil_pos.append(eyeTrackingData.rightPupilPos.y);
+
 	// Set validity to false if eye tracking is not being used
 	if (this->useEyeTracking) {
 		eyeData.append(eyeTrackingData.isValid);
@@ -187,17 +194,31 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(dir);
 	eyeData.append(eyeTrackingData.leftPupilDiameter);
 	eyeData.append(eyeTrackingData.rightPupilDiameter);
+	eyeData.append(left_pupil_pos);
+	eyeData.append(right_pupil_pos);
 	// Return dummy data with false validity if eye tracking is not enabled (on non-Windows system)
 	#else
-	py::list dummy_origin, dummy_dir;
+	py::list dummy_origin, dummy_dir, dummy_pos_l, dummy_pos_r;
 	float dummy_diameter_l, dummy_diameter_r;
 	eyeData.append(false);
 	eyeData.append(dummy_origin);
 	eyeData.append(dummy_dir);
 	eyeData.append(dummy_diameter_l);
 	eyeData.append(dummy_diameter_r);
+	eyeData.append(dummy_pos_l);
+	eyeData.append(dummy_pos_r);
 	#endif
 	return eyeData;
+}
+
+void VRRendererContext::updateUniform1i(int shaderProgram, char * uniform, int target) {
+	glUseProgram(shaderProgram);
+	glUniform1i(glGetUniformLocation(shaderProgram, uniform), target);
+}
+
+void VRRendererContext::updateUniform1f(int shaderProgram, char * uniform, float target) {
+	glUseProgram(shaderProgram);
+	glUniform1f(glGetUniformLocation(shaderProgram, uniform), target);
 }
 
 // Returns whether the current VR system supports eye tracking
@@ -595,6 +616,19 @@ void VRRendererContext::updateOverlayTexture(char* name, GLuint texID) {
 	}
 }
 
+void VRRendererContext::updateOverlayWidth(char* name, float width) {
+	vr::VROverlay()->SetOverlayWidthInMeters(this->overlayNamesToHandles[std::string(name)], width);
+}
+
+void VRRendererContext::updateOverlayPosition(char* name, float pos_x, float pos_y, float pos_z) {
+	vr::HmdMatrix34_t transform = {
+		1.0f, 0.0f, 0.0f, pos_x,
+		0.0f, 1.0f, 0.0f, pos_y,
+		0.0f, 0.0f, 1.0f, pos_z
+	};
+	vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(this->overlayNamesToHandles[std::string(name)], vr::k_unTrackedDeviceIndex_Hmd, &transform);
+}
+
 // Private methods
 
 // Converts a SteamVR Matrix to a glm mat4
@@ -745,6 +779,12 @@ void VRRendererContext::pollAnipal() {
 			// Record pupil measurements
 			eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
 			eyeTrackingData.rightPupilDiameter = this->eyeData.verbose_data.right.pupil_diameter_mm;
+			auto leftPupilPosRaw = this->eyeData.verbose_data.left.pupil_position_in_sensor_area;
+			glm::vec2 leftPupilPos(leftPupilPosRaw.x, leftPupilPosRaw.y);
+			eyeTrackingData.leftPupilPos = leftPupilPos;
+			auto rightPupilPosRaw = this->eyeData.verbose_data.right.pupil_position_in_sensor_area;
+			glm::vec2 rightPupilPos(rightPupilPosRaw.x, rightPupilPosRaw.y);
+			eyeTrackingData.rightPupilPos = rightPupilPos;
 		}
 	}
 }
@@ -792,8 +832,11 @@ void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, int* controller, 
 	if (press_id == vr::VREvent_ButtonUnpress || press_id == vr::VREvent_ButtonUntouch) {
 		*press = 0;
 	}
-	else if (press_id == vr::VREvent_ButtonPress || press_id == vr::VREvent_ButtonTouch) {
+	else if (press_id == vr::VREvent_ButtonPress) {
 		*press = 1;
+	}
+	else if (press_id == vr::VREvent_ButtonTouch) { // we want to distinguish button touch and press for post processing
+		*press = 2;
 	}
 	else {
 		*press = -1;
@@ -845,6 +888,8 @@ PYBIND11_MODULE(VRRendererContext, m) {
 
 	pymodule.def("setup_framebuffer_meshrenderer_ms", &VRRendererContext::setup_framebuffer_meshrenderer_ms,
 		"setup framebuffer in meshrenderer with MSAA");
+	pymodule.def("setup_framebuffer_meshrenderer_post_processing", &VRRendererContext::setup_framebuffer_meshrenderer_post_processing,
+		"setup post processing framebuffer in meshrenderer");
 	pymodule.def("blit_buffer", &VRRendererContext::blit_buffer, "blit buffer");
 
 	pymodule.def("compile_shader_meshrenderer", &VRRendererContext::compile_shader_meshrenderer,
@@ -879,6 +924,9 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("updateUVData", &VRRendererContext::updateUVData, "TBA");
 	pymodule.def("updateDynamicData", &VRRendererContext::updateDynamicData, "TBA");
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
+	pymodule.def("renderBloom", &VRRendererContext::renderBloom, "TBA");
+	pymodule.def("renderLens", &VRRendererContext::renderLens, "TBA");
+	pymodule.def("renderRetina", &VRRendererContext::renderRetina, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");
 
 	// for skybox
@@ -902,6 +950,8 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("getDataForVRTracker", &VRRendererContext::getDataForVRTracker);
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
+	pymodule.def("updateUniform1i", &VRRendererContext::updateUniform1i);
+	pymodule.def("updateUniform1f", &VRRendererContext::updateUniform1f);
 	pymodule.def("hasEyeTrackingSupport", &VRRendererContext::hasEyeTrackingSupport);
 	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
 	pymodule.def("initVR", &VRRendererContext::initVR);
@@ -921,6 +971,8 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("hideOverlay", &VRRendererContext::hideOverlay);
 	pymodule.def("showOverlay", &VRRendererContext::showOverlay);
 	pymodule.def("updateOverlayTexture", &VRRendererContext::updateOverlayTexture);
+	pymodule.def("updateOverlayWidth", &VRRendererContext::updateOverlayWidth);
+	pymodule.def("updateOverlayPosition", &VRRendererContext::updateOverlayPosition);
 
 	// verbosity
 	pymodule.def_readwrite("verbosity", &VRRendererContext::verbosity);

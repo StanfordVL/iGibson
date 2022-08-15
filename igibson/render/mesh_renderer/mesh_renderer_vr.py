@@ -7,6 +7,9 @@ from igibson.utils.constants import AVAILABLE_MODALITIES
 from igibson.utils.utils import dump_config, parse_config, parse_str_config
 
 
+DIOPTRES_SCALING = 0.332763369417523
+
+
 class VrOverlayBase(object):
     """
     Base class representing a VR overlay. Use one of the subclasses to create a specific overlay.
@@ -42,6 +45,13 @@ class VrOverlayBase(object):
         """
         return self.show_state
 
+    def update_width(self, width):
+        self.width = width
+        self.renderer.vrsys.updateOverlayWidth(self.overlay_name, width)
+
+    def update_pos(self, pos):
+        self.pos = pos
+        self.renderer.vrsys.updateOverlayPosition(self.overlay_name, pos[0], pos[1], pos[2])
 
 class VrHUDOverlay(VrOverlayBase):
     """
@@ -220,6 +230,18 @@ class MeshRendererVR(MeshRenderer):
         self.msaa = False
         self.vr_hud = None
 
+        # post processing mode
+        self.post_processing_mode = 0
+        self.dioptres = -2.0
+        self.presbyopia_near_point = 600.0
+        # post processing overlay
+        self.post_processing_overlay1_width = 3
+        self.post_processing_overlay2_width = 3.5
+        self.post_processing_overlay1 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/amd4.png", self.post_processing_overlay1_width)
+        self.post_processing_overlay2 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/gla1.png", self.post_processing_overlay2_width)
+        self.post_processing_overlay1.set_overlay_show_state(False)
+        self.post_processing_overlay2.set_overlay_show_state(False)
+
     def gen_vr_hud(self):
         """
         Generates VR HUD (heads-up-display).
@@ -264,7 +286,7 @@ class MeshRendererVR(MeshRenderer):
             )
 
             super().render(modes=("rgb"), return_buffer=False)
-            self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
+            self.vrsys.postRenderVRForEye("left", self.color_tex_retina)
             # Render and submit right eye
             self.V = right_view
             self.P = right_proj
@@ -273,7 +295,7 @@ class MeshRendererVR(MeshRenderer):
             # We don't need to render the shadow pass a second time for the second eye
             # We also don't need to render the text pass a second time
             super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
-            self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
+            self.vrsys.postRenderVRForEye("right", self.color_tex_retina)
 
             # Update HUD so it renders in the HMD
             if self.vr_hud is not None:
@@ -294,6 +316,52 @@ class MeshRendererVR(MeshRenderer):
         super().release()
         if self.vr_settings.use_vr:
             self.vrsys.releaseVR()
+    
+    def update_post_processing_mode(self):
+        """
+        Update post processing visual impairment mode
+        0: Normal
+        1: Cataract 
+        2: AMD 
+        3: Glaucoma
+        4: presbyopia
+        5: Myopia / Hyperopia
+        6: light overexposure
+        """
+        self.post_processing_mode = (self.post_processing_mode + 1) % 7
+        self.vrsys.updateUniform1i(self.retinaShaderProgram, "postProcessingMode", self.post_processing_mode)
+        if self.post_processing_mode == 2:
+            self.post_processing_overlay1.set_overlay_show_state(True)
+        elif self.post_processing_mode == 3:
+            self.post_processing_overlay1.set_overlay_show_state(False)
+            self.post_processing_overlay2.set_overlay_show_state(True)
+        elif self.post_processing_mode == 4:
+            self.post_processing_overlay2.set_overlay_show_state(False)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", self.presbyopia_near_point)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 1.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
+            self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
+        elif self.post_processing_mode == 5:
+            if self.dioptres < 0: # myopia
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING)
+            else:   # hyperopia
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
+        elif self.post_processing_mode == 6:
+            self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 0)
+
+
+    def update_post_processing_effect(self, pos):
+        if self.post_processing_mode == 2:
+            self.post_processing_overlay1.update_pos([pos[0] - 0.5, 0.5 - pos[1], -1])
+        elif self.post_processing_mode == 3:
+            self.post_processing_overlay2.update_pos([pos[0] - 0.5, 0.5 - pos[1], -1])
 
 
 if __name__ == "__main__":

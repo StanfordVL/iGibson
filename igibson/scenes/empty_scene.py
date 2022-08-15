@@ -22,6 +22,7 @@ class EmptyScene(Scene):
         self.objects = []
         self.render_floor_plane = render_floor_plane
         self.floor_plane_rgba = floor_plane_rgba
+        self.objects_by_category = {"walls": []}
 
     def get_objects(self):
         return list(self.objects)

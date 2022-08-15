@@ -36,7 +36,7 @@ shared_settings:
   # Serial number of VR torso tracker - this can be found by connecting/pairing the tracker,
   # then going into Steam VR settings -> controllers -> manage vive trackers
   # Note: replace this with your own tracker serial number or leave blank to not use one
-  torso_tracker_serial: "LHR-DF82C682"
+  torso_tracker_serial: "LHR-BDE12AB6"
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
@@ -58,6 +58,8 @@ device_settings:
       reset_agent: [2, 1]
       # This action registers a press (1) of the HTC Vive controller application menu button (1)
       overlay_toggle: [1, 1]
+      # This action registers a press (1) of the HTC Vive controller application menu button (1)
+      post_processing_toggle: [32, 1]
   OCULUS:
     eye_tracking: False
     action_button_map:

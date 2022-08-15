@@ -243,7 +243,7 @@ void MeshRendererContext::blit_buffer(int width, int height, GLuint fb1, GLuint 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb2);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 8; i++) {
         glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
         glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -303,9 +303,9 @@ void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::
 
 py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int height) {
     GLuint *fbo_ptr = (GLuint *) malloc(sizeof(GLuint));
-    GLuint *texture_ptr = (GLuint *) malloc(8 * sizeof(GLuint));
+    GLuint *texture_ptr = (GLuint *) malloc(9 * sizeof(GLuint));
     glGenFramebuffers(1, fbo_ptr);
-    glGenTextures(8, texture_ptr);
+    glGenTextures(9, texture_ptr);
     int fbo = fbo_ptr[0];
     int color_tex_rgb = texture_ptr[0];
     int color_tex_normal = texture_ptr[1];
@@ -314,7 +314,8 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     int color_tex_3d = texture_ptr[4];
     int color_tex_scene_flow = texture_ptr[5];
     int color_tex_optical_flow = texture_ptr[6];
-    int depth_tex = texture_ptr[7];
+    int color_tex_bloom = texture_ptr[7];
+    int depth_tex = texture_ptr[8];
 
     glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
     // Note: VR textures need these settings, otherwise they won't display on the HMD
@@ -322,6 +323,8 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_normal);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_semantics);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -334,7 +337,16 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     glBindTexture(GL_TEXTURE_2D, color_tex_optical_flow);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, depth_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+    glBindTexture(GL_TEXTURE_2D, color_tex_bloom);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_tex_rgb, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, color_tex_normal, 0);
@@ -343,9 +355,10 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, color_tex_3d, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, color_tex_scene_flow, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, color_tex_optical_flow, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT7, GL_TEXTURE_2D, color_tex_bloom, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
     glViewport(0, 0, width, height);
-    GLenum *bufs = (GLenum *) malloc(7 * sizeof(GLenum));
+    GLenum *bufs = (GLenum *) malloc(8 * sizeof(GLenum));
     bufs[0] = GL_COLOR_ATTACHMENT0;
     bufs[1] = GL_COLOR_ATTACHMENT1;
     bufs[2] = GL_COLOR_ATTACHMENT2;
@@ -353,7 +366,8 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     bufs[4] = GL_COLOR_ATTACHMENT4;
     bufs[5] = GL_COLOR_ATTACHMENT5;
     bufs[6] = GL_COLOR_ATTACHMENT6;
-    glDrawBuffers(7, bufs);
+    bufs[7] = GL_COLOR_ATTACHMENT7;
+    glDrawBuffers(8, bufs);
     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     py::list result;
     result.append(fbo);
@@ -364,6 +378,7 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     result.append(color_tex_3d);
     result.append(color_tex_scene_flow);
     result.append(color_tex_optical_flow);
+    result.append(color_tex_bloom);
     result.append(depth_tex);
     return result;
 }
@@ -428,6 +443,110 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer_ms(int width, int h
     result.append(color_tex_scene_flow);
     result.append(color_tex_optical_flow);
     result.append(depth_tex);
+    return result;
+}
+
+py::list MeshRendererContext::setup_framebuffer_meshrenderer_post_processing(int width, int height, GLuint shaderProgramRetina, GLuint shaderProgramLens) {
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+    // screen quad VAO and VBO
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    // setup uniforms
+    glUseProgram(shaderProgramLens);
+    glUniform1i(glGetUniformLocation(shaderProgramLens, "s_color"), 0); 
+    glUniform1i(glGetUniformLocation(shaderProgramLens, "s_depth"), 1); 
+    glUseProgram(shaderProgramRetina);
+    glUniform1i(glGetUniformLocation(shaderProgramRetina, "s_color"), 0); 
+    glUniform1i(glGetUniformLocation(shaderProgramRetina, "s_bloom"), 1); 
+    glUniform1i(glGetUniformLocation(shaderProgramRetina, "postProcessingMode"), 0); 
+
+    // lens buffers
+    unsigned int lensFramebuffer;
+    glGenFramebuffers(1, &lensFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, lensFramebuffer);
+    unsigned int lensTextureBuffer;
+    glGenTextures(1, &lensTextureBuffer);
+    glBindTexture(GL_TEXTURE_2D, lensTextureBuffer);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lensTextureBuffer, 0);
+    
+    // retina buffers
+    unsigned int retinaFramebuffer;
+    glGenFramebuffers(1, &retinaFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, retinaFramebuffer);
+    unsigned int retinaTextureBuffer;
+    glGenTextures(1, &retinaTextureBuffer);
+    glBindTexture(GL_TEXTURE_2D, retinaTextureBuffer);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, retinaTextureBuffer, 0);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+    // blur buffers
+    unsigned int blurFBOs[2];
+    unsigned int blurTextureBuffers[2];
+    glGenFramebuffers(2, blurFBOs);
+    glGenTextures(2, blurTextureBuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, blurFBOs[i]);
+        glBindTexture(GL_TEXTURE_2D, blurTextureBuffers[i]);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
+        );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blurTextureBuffers[i], 0
+        );
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    py::list result;
+    result.append(quadVAO);
+    result.append(quadVBO);
+    result.append(lensFramebuffer);
+    result.append(lensTextureBuffer);
+    result.append(retinaFramebuffer);
+    result.append(retinaTextureBuffer);
+    result.append(blurFBOs[0]);
+    result.append(blurFBOs[1]);
+    result.append(blurTextureBuffers[0]);
+    result.append(blurTextureBuffers[1]);
     return result;
 }
 
@@ -1784,6 +1903,65 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		    printf("WARN: not all objects are drawn\n");
 		}
 		glMultiDrawElements(GL_TRIANGLES, &this->multidrawCounts[0], GL_UNSIGNED_INT, &this->multidrawStartIndices[0], draw_count);
+	}
+
+    // Blur rendering function
+    void MeshRendererContext::renderBloom(int shaderProgramBlur, GLuint quadVAO, unsigned int brightTextureBuffer, py::array_t<int> blurFBOs, py::array_t<int> blurTextureBuffers) {
+        bool horizontal = true, first_iteration = true;
+        int amount = 10;
+        int *blurFBOs_ptr = (int *) blurFBOs.request().ptr;
+        int *blurTextureBuffers_ptr = (int *) blurTextureBuffers.request().ptr;
+        glUseProgram(shaderProgramBlur);
+        glBindVertexArray(quadVAO);
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, blurFBOs_ptr[horizontal]); 
+            glUniform1i(glGetUniformLocation(shaderProgramBlur, "horizontal"), horizontal);
+            glBindTexture(GL_TEXTURE_2D, first_iteration ? brightTextureBuffer : blurTextureBuffers_ptr[!horizontal]); 
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+	}
+
+    // Lens rendering function
+    void MeshRendererContext::renderLens(int shaderProgramLens, GLuint quadVAO, unsigned int fbo_lens, unsigned int colorTextureBuffer, unsigned int depthTextureBuffer) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_lens);
+        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // clear all relevant buffers
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessary actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shaderProgramLens);
+        glBindVertexArray(quadVAO);
+        glActiveTexture (GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, colorTextureBuffer);
+        glActiveTexture (GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, depthTextureBuffer);        
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+	}
+
+    // retina rendering function
+    void MeshRendererContext::renderRetina(int shaderProgramRetina, GLuint quadVAO, unsigned int fbo_retina, unsigned int colorTextureBuffer, unsigned int bloomTextureBuffer) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_retina);
+        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // clear all relevant buffers
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessary actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shaderProgramRetina);
+        glBindVertexArray(quadVAO);
+        glActiveTexture (GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, colorTextureBuffer);
+        glActiveTexture (GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, bloomTextureBuffer);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 	}
 
 void MeshRendererContext::clean_meshrenderer_optimized(std::vector<GLuint> color_attachments, std::vector<GLuint> textures, std::vector<GLuint> fbo, std::vector<GLuint> vaos, std::vector<GLuint> vbos, std::vector<GLuint> ebos) {
