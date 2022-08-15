@@ -55,14 +55,14 @@ def main(selection="user", headless=False, short_exec=False):
 
 
     bvr_config = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
-    exp_config = "audiogoal_continuous.yaml"
+    exp_config = "C:/Users/capri28/Documents/iGibson-dev/igibson/examples/vr/audiogoal_continuous.yaml"
     #ppo_trainer = PPOTrainer(exp_config)
     #ppo_trainer.device = (
     #        torch.device("cuda", ppo_trainer.config['TORCH_GPU_ID'])
     #        if torch.cuda.is_available()
     #        else torch.device("cpu")
     #    )
-    env = AVNavRLEnv(config_file=exp_config, mode='vr', scene_id='Rs_int', rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    env = AVNavRLEnv(config_file=exp_config, mode='vr', scene_splits=['Rs_int'], rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
     #bvr_robot = env.robots[0]
     
     #ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
