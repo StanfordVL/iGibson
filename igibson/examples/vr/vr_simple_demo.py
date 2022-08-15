@@ -56,8 +56,8 @@ def main(selection="user", headless=False, short_exec=False):
 
     bvr_config = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
     exp_config = "C:/Users/capri28/Documents/iGibson-dev/igibson/examples/vr/audiogoal_continuous.yaml"
-    #ppo_trainer = PPOTrainer(exp_config)
-    #ppo_trainer.device = (
+    # ppo_trainer = PPOTrainer(exp_config)
+    # ppo_trainer.device = (
     #        torch.device("cuda", ppo_trainer.config['TORCH_GPU_ID'])
     #        if torch.cuda.is_available()
     #        else torch.device("cpu")
@@ -65,9 +65,9 @@ def main(selection="user", headless=False, short_exec=False):
     env = AVNavRLEnv(config_file=exp_config, mode='vr', scene_splits=['Rs_int'], rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
     #bvr_robot = env.robots[0]
     
-    #ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
-    #ckpt_dict = ppo_trainer.load_checkpoint(r"C:\Users\Takara\Repositories\iGibson\igibson\agents\av_nav\data\audiogoal_continuous\checkpoints\ckpt.307.pth", map_location="cpu")
-    #ppo_trainer.agent.load_state_dict(ckpt_dict["state_dict"])
+    # ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
+    # ckpt_dict = ppo_trainer.load_checkpoint(r"C:\Users\Takara\Repositories\iGibson\igibson\agents\av_nav\data\audiogoal_continuous\checkpoints\ckpt.307.pth", map_location="cpu")
+    # ppo_trainer.agent.load_state_dict(ckpt_dict["state_dict"])
 
     #config = parse_config(bvr_config)
     #bvr_robot = BehaviorRobot(**config["robot"])
