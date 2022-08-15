@@ -3,18 +3,48 @@ from sys import platform
 
 import numpy as np
 import pybullet as p
-# from PIL import Image
+from PIL import Image
 import cv2
+
+from scipy.spatial.transform import Rotation as R
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_available_ig_scenes
-from igibson.utils.utils import let_user_pick
+from igibson.utils.derivative_dataset.generators import uniform_generator, gaussian_target_generator
+from igibson.utils.derivative_dataset.pertubers import texture_randomization, object_randomization
 
 RENDER_WIDTH = 1080
 RENDER_HEIGHT = 720
+
+PERTURBERS = [
+    lambda env: None,
+    texture_randomization,
+    object_randomization
+    # igibson.utils.derivative_dataset.perturbers.joint_randomization,
+    # igibson.utils.derivative_dataset.perturbers.light_randomization,
+    # igibson.utils.derivative_dataset.perturbers.clutter_sampling,
+    ]
+
+
+
+GENERATORS = [
+    uniform_generator,
+    # gaussian_target_generator
+    # igibson.utils.derivative_dataset.generators.robot_pov_generator,
+    # igibson.utils.derivative_dataset.generators.object_focused_generator,
+    # igibson.utils.derivative_dataset.generators.,
+]
+
+FILTERS = [
+    # igibson.utils.derivative_dataset.filters.too_close_to_object
+    # igibson.utils.derivative_dataset.filters.too_high
+]
+
+
+
 
 def main( headless=True, short_exec=False):
     """
@@ -22,68 +52,49 @@ def main( headless=True, short_exec=False):
     Shows how to load directly scenes without the Environment interface
     Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path
     """
-    available_ig_scenes = get_first_options()
+    available_ig_scenes = get_available_ig_scenes()
     scene_id = available_ig_scenes[12]
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     if platform == "darwin":
         settings.texture_scale = 0.5
     s = Simulator(
         mode="gui_interactive" if not headless else "headless",
-        image_width=1080, image_height=720, vertical_fov=60,
+        image_width=RENDER_WIDTH, image_height=RENDER_HEIGHT, vertical_fov=60,
         rendering_settings=settings
     )
-
+    perturber = PERTURBERS[2]   # TODO: Pick randomly
     scene = InteractiveIndoorScene(
         scene_id,
         build_graph=True,
+        texture_randomization = True,
+        object_randomization=True
     )
     s.import_scene(scene)
 
-    random_floor = scene.get_random_floor()
-    for i in range(10):
+    #scene = simulator.scene
 
-        random_floor = scene.get_random_floor()
-        camera_pos = scene.get_random_point(random_floor)[1]
-        camera_pitch , camera_yaw, camera_roll = 0, 0, np.random.uniform(low=-np.pi/4, high=np.pi/18)
-        camera_target_pos = camera_pos + [0, 0, (camera_pos[1] + (1 /np.cos(camera_roll)))]
-        # s.renderer.set_camera(camera_pos, camera_orn)
-        view_matrix = p.computeViewMatrixFromYawPitchRoll(
-        cameraTargetPosition=camera_pos,
-        distance=1,
-        yaw=camera_yaw,
-        pitch=camera_roll,
-        roll=camera_pitch,
-        upAxisIndex=2)
-        proj_matrix = p.computeProjectionMatrixFOV(
-        fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-        nearVal=0.1, farVal=100.0)
-
-        _, _, rgba, depth, segmask  = p.getCameraImage(width=RENDER_WIDTH,
-                                                       height=RENDER_HEIGHT,
-                                                       viewMatrix=view_matrix,
-                                                       projectionMatrix=proj_matrix,
-                                                       shadow=1,
-                                                       flags=p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX,
-                                                       renderer=p.ER_BULLET_HARDWARE_OPENGL)
+    for _ in range(100):
+        s.step()
 
 
-        rgba = np.array(rgba).astype('uint8')
-        rgba = rgba.reshape((RENDER_HEIGHT, RENDER_WIDTH, 4))
-        rgb = rgba[:, :, :3]
-        rgb = rgb[:,:,::-1]
+    for generator in GENERATORS:
+        for i in range(10):
+            perturber(scene)
+            camera_pos, camera_target, camera_up = generator(scene)
 
-        rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        cv2.imwrite('/scr/monaavr/test_img/rgbtest' + str(i) + '.jpg', rgb )
+            if any(filter(s, camera_pos, camera_target, camera_up) for filter in FILTERS):
+                continue
 
+            renderer : MeshRenderer = s.renderer
+            s.renderer.set_camera(camera_pos, camera_target, camera_up)
+            rgb, segmask = s.renderer.render(('rgb', 'seg'))
 
-    if not headless:
-        input("Press enter")
+            rgb_img = Image.fromarray(np.uint8(rgb[:, :, :3] * 255))
+            rgb_img.save(f'/scr/monaavr/test_img/rgbtest{i}.png')
+            segmask = Image.fromarray(np.uint8(segmask[..., 0] * 255))
+            segmask.save(f'/scr/monaavr/test_img/segmasktest{i}.png')
 
     s.disconnect()
-
-
-def get_first_options():
-    return get_available_ig_scenes()
 
 
 if __name__ == "__main__":
