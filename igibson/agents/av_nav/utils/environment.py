@@ -38,9 +38,9 @@ class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
-    def __init__(self, config_file, mode, scene_splits, device_idx):
+    def __init__(self, config_file, mode, scene_splits, device_idx=0, **kwargs):
         scene_id = np.random.choice(scene_splits)
-        super().__init__(config_file, scene_id, mode, device_idx=device_idx)
+        super().__init__(config_file, scene_id, mode, device_idx=device_idx, **kwargs)
         self.config["scene_splits"] = scene_splits
         
     def load(self):

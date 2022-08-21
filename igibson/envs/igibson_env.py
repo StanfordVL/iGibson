@@ -651,7 +651,8 @@ class iGibsonEnv(BaseEnv):
             self.audio_system.reset()
         self.randomize_domain()
         # Move robot away from the scene.
-        self.robots[0].set_position([100.0, 100.0, 100.0])
+        for i in range(len(self.robots)):
+            self.robots[i].set_position([100.0, 100.0, 100.0])
         self.task.reset(self)
         self.simulator.sync(force_sync=True)
         state = self.get_state()

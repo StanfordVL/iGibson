@@ -244,7 +244,7 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def render(
+    def vr_rengider(
         self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
     ):
         """

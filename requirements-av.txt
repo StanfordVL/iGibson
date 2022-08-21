@@ -4,3 +4,5 @@ librosa
 moviepy
 imageio
 scikit-image
+kornia
+pyaudio
