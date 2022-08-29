@@ -31,14 +31,6 @@ from skimage.measure import block_reduce
 import matplotlib.pyplot as plt
 import transforms3d as tf3d
 
-hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
-hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
-light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
-)
-background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
-
-
 def main(selection="user", headless=False, short_exec=False):
     # VR rendering settings
 
@@ -49,7 +41,7 @@ def main(selection="user", headless=False, short_exec=False):
            if torch.cuda.is_available()
            else torch.device("cpu")
        )
-    env = AVNavRLEnv(config_file=exp_config, mode='headless', scene_splits=['Rs_int'])
+    env = AVNavRLEnv(config_file=exp_config, mode='headless', scene_splits=['Pomaria_1_int'])
     # p.setAdditionalSearchPath(pybullet_data.getDataPath())
     # objects = [
     #     ("table/table.urdf", (1.00000, 0., 0.000000), (0.000000, 0.000000, 0.0, 1.0)),
@@ -90,11 +82,10 @@ def main(selection="user", headless=False, short_exec=False):
 
     env.reset()
     delta = tf3d.quaternions.axangle2quat([0, 0, 1], 0)
-    print(delta)
     start = np.array([1.0, 0., 0., 0.])
     final = tf3d.quaternions.qmult(start, delta)
-    print(final)
     final = [final[1], final[2],final[3],final[0]]
+    print("final", final)
     env.robots[0].set_position_orientation([0., 0.5, 0.1], final)
 
     
@@ -126,7 +117,8 @@ def main(selection="user", headless=False, short_exec=False):
     prev_control = np.zeros((2,))
     while True:
         try:
-            state, _,_,_ = env.step(np.array([0., .0]))
+            state, _,_,_ = env.step(np.array([-0.1,.1]))
+            print(env.robots[0].get_position_orientation())
             j_control, ctl_type = env.robots[0]._actions_to_control(np.array([0.5, 1.0]))
             lin_vel = env.robots[0].wheel_radius * (j_control[0] + j_control[1]) / 2
             ang_vel = env.robots[0].wheel_radius * (j_control[1] - j_control[0]) / (env.robots[0].wheel_axle_length)
@@ -222,14 +214,14 @@ def plot_audio():
     
     print(data.shape)
     data = np.array(data, dtype=np.float32, order='C') / 32768.0
-    data = data[:44100*3,:]
+    # data = data[:44100*3,:]
     print(np.amin(data), np.amax(data))
     spec = get_spectrogram(data)
     print(spec.shape)
     plot_spectrogram(spec[:, :, 0], "l_spec.png")
     plot_spectrogram(spec[:, :, 1], "r_spec.png")
-    plot_wave_form(data[:, 0], fname="l_wave_form.png")
-    plot_wave_form(data[:, 1], fname="r_wave_form.png")
+    plot_wave_form(data, fname="l_wave_form.png")
+    # plot_wave_form(data[:, 1], fname="r_wave_form.png")
 
 def concat_audios():
     audios = []
@@ -247,5 +239,5 @@ def concat_audios():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     main()
-    # plot_audio()
+    plot_audio()
     # concat_audios()

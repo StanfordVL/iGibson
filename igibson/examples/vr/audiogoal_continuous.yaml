@@ -48,8 +48,8 @@ trav_map_erosion: 2
 should_open_all_doors: true
 clutter: false
 texture_scale: 0.1
-load_object_categories: ["walls", "floors"]
-not_load_object_categories: ['door', 'ceilings']
+load_object_categories: ["walls", floors"]
+not_load_object_categories: ['door', 'doors',"ceilings"]
 
 # task
 task: audiogoal_nav
@@ -88,8 +88,8 @@ fisheye: false
 # image_height: 120
 image_width: 128
 image_height: 128
-image_width_video: 768
-image_height_video: 768
+image_width_video: 1280
+image_height_video: 1280
 vertical_fov: 45
 # depth
 depth_low: 0.8
