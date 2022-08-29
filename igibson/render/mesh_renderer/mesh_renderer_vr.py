@@ -244,12 +244,13 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def vr_rengider(
+    def render(
         self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
     ):
         """
         Renders VR scenes.
         """
+
         if self.vr_settings.use_vr:
             left_proj, left_view, left_cam_pos, right_proj, right_view, right_cam_pos = self.vrsys.preRenderVR()
 

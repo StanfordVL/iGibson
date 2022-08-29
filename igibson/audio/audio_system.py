@@ -13,6 +13,7 @@ import wave
 import numpy as np
 import pybullet as p
 from scipy.io.wavfile import write
+import scipy.io.wavfile as wavfile
 
 # Mesh object required to be populated for AudioSystem
 class AcousticMesh:
@@ -65,6 +66,8 @@ class AudioSystem(object):
         self.occl_multiplier = occl_multiplier
         self.occl_intensity = -1
         self.num_ambisonic_channels = 4
+        _, self.bg_noise = wavfile.read("background_noise.wav")
+        self.bg_noise = (self.bg_noise.reshape((-1,)) * 32768.0).astype(np.int16)
 
         def getViewerOrientation():
             #from numpy-quaternion github
@@ -81,7 +84,12 @@ class AudioSystem(object):
             self.get_pos = lambda: self.s.get_data_for_vr_device("hmd")[1]
             self.get_ori = lambda: self.s.get_data_for_vr_device("hmd")[2]
         else:
-            self.get_pos = self.listener.eyes.get_position
+            def get_pos():
+                pose = np.zeros((3,))
+                pose[:2] = self.listener.eyes.get_position()[:2]
+                pose[2] = 0.73
+                return pose
+            self.get_pos =self.listener.eyes.get_position
             self.get_ori = self.listener.eyes.get_orientation
 
 
@@ -253,7 +261,7 @@ class AudioSystem(object):
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
             else:
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, np.zeros(self.framesPerBuf, dtype=np.int16))
-
+        print(self.get_ori)
         audio.SetListenerPositionAndRotation(listener_pos, self.get_ori())
         if self.reverb:
             closest_probe_key = self.getClosestReverbProbe(listener_pos)
@@ -262,6 +270,14 @@ class AudioSystem(object):
                 self.current_probe_key = closest_probe_key
 
         self.current_output = audio.ProcessListener(self.framesPerBuf)
+        # adding noise
+        # start_idx = int(np.random.choice(int(self.bg_noise.shape[0] - len(self.current_output)), 1)[0])
+        # if start_idx % 2 != 0:
+        #     start_idx -= 1
+        # noise = self.bg_noise[start_idx:(start_idx + len(self.current_output))]
+        # self.current_output = self.current_output + noise * 0.6
+        # self.current_output[self.current_output > 32768] = 32768
+        # self.current_output[self.current_output < -32768] = -32768
 
         if self.renderAmbisonics:
             self.ambisonic_output = audio.RenderAmbisonics(self.framesPerBuf)

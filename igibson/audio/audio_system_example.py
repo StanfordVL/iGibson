@@ -71,7 +71,7 @@ def vr_input_example():
     
 
     # Audio System Initialization!
-    audioSystem = AudioSystem(s, listener, acousticMesh, is_Viewer=False, writeToFile="example", stream_input=True)
+    audioSystem = AudioSystem(s, listener, acousticMesh, is_Viewer=False, writeToFile="mic_out", stream_input=True)
     audioSystem.registerSource(
                 bvr_robot._parts['eye'].body_id,
                 "",

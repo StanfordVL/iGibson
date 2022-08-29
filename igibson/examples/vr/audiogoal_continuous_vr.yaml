@@ -11,7 +11,7 @@ TENSORBOARD_DIR: "data/audiogoal_continuous/tb"
 TEST_EPISODE_COUNT: 500
 SEED: 0
 TORCH_GPU_ID: 0
-VIDEO_OPTION: ['disk']
+VIDEO_OPTION: []
 # RL PPO
 hidden_size: 512
 ppo_epoch: 4
@@ -47,12 +47,9 @@ trav_map_resolution: 0.1
 trav_map_erosion: 2
 should_open_all_doors: true
 clutter: false
-texture_scale: 0.1
-load_object_categories: ["walls", "floors"]
-not_load_object_categories: ['door', 'ceilings']
 
 # task
-task: audiogoal_nav
+task: audiogoal_nav_vr
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
@@ -76,7 +73,7 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [task_obs, depth, audio, bump, top_down]
+output: [task_obs, depth, audio, bump]
 #task_obs, 
 extra_rgb: false
 
@@ -88,8 +85,6 @@ fisheye: false
 # image_height: 120
 image_width: 128
 image_height: 128
-image_width_video: 768
-image_height_video: 768
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -100,9 +95,9 @@ scan_noise_rate: 0.0
 
 # audio
 #audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/440Hz_44100Hz.wav"
-audio_dir: "telephone.wav"
-AUDIO_DIR: "mixed_noise_tele"
-# VR_audio_source: True
+# audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/telephone.wav"
+AUDIO_DIR: "vr_out"
+VR_audio_source: True
 
 # visual objects # not needed
 visible_target: False

@@ -357,11 +357,13 @@ class iGibsonEnv(BaseEnv):
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
             if len(self.config["VIDEO_OPTION"])!=0:
-                state['depth_video'] = state['depth']
-                state['rgb_video'] = state['rgb']
-                state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,1), np.mean)
+                if 'rgb' in state.keys():
+                    state['rgb_video'] = state['rgb']
+                    state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
+                if 'depth' in state.keys():
+                    state['depth_video'] = state['depth']
+                    state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,1), np.mean)
 #                 if not self.config["extra_rgb"]:
-                state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
             # (img_height, img_height, 1)
             # because the rendered robot camera should have the same image size for rgb and depth
         if "scan_occ" in self.sensors:
@@ -651,8 +653,8 @@ class iGibsonEnv(BaseEnv):
             self.audio_system.reset()
         self.randomize_domain()
         # Move robot away from the scene.
-        for i in range(len(self.robots)):
-            self.robots[i].set_position([100.0, 100.0, 100.0])
+        # for i in range(len(self.robots)):
+        self.robots[0].set_position([100.0, 100.0, 100.0])
         self.task.reset(self)
         self.simulator.sync(force_sync=True)
         state = self.get_state()

@@ -44,83 +44,79 @@ def main(selection="user", headless=False, short_exec=False):
         light_modulation_map_filename=light_modulation_map_filename,
         enable_shadow=True,
         enable_pbr=True,
-        msaa=True,
+        msaa=False,
         light_dimming_factor=1.0,
     )
-    #s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
-
-    #scene = InteractiveIndoorScene(
-    #    "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
-    #)
-
 
     bvr_config = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
     exp_config = "C:/Users/capri28/Documents/iGibson-dev/igibson/examples/vr/audiogoal_continuous.yaml"
-    # ppo_trainer = PPOTrainer(exp_config)
-    # ppo_trainer.device = (
-    #        torch.device("cuda", ppo_trainer.config['TORCH_GPU_ID'])
-    #        if torch.cuda.is_available()
-    #        else torch.device("cpu")
-    #    )
+    ppo_trainer = PPOTrainer(exp_config)
+    ppo_trainer.device = (
+           torch.device("cuda", ppo_trainer.config['TORCH_GPU_ID'])
+           if torch.cuda.is_available()
+           else torch.device("cpu")
+       )
     env = AVNavRLEnv(config_file=exp_config, mode='vr', scene_splits=['Rs_int'], rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
-    #bvr_robot = env.robots[0]
+    # bvr_robot = env.robots[0]
     
-    # ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
-    # ckpt_dict = ppo_trainer.load_checkpoint(r"C:\Users\Takara\Repositories\iGibson\igibson\agents\av_nav\data\audiogoal_continuous\checkpoints\ckpt.307.pth", map_location="cpu")
-    # ppo_trainer.agent.load_state_dict(ckpt_dict["state_dict"])
+    ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
+    ckpt_dict = ppo_trainer.load_checkpoint(r"C:\Users\Takara\Repositories\iGibson\igibson\agents\av_nav\data\audiogoal_continuous\checkpoints\ckpt.307.pth", map_location="cpu")
+    ppo_trainer.agent.load_state_dict(ckpt_dict["state_dict"])
 
-    #config = parse_config(bvr_config)
-    #bvr_robot = BehaviorRobot(**config["robot"])
-    #env.simulator.import_object(bvr_robot)
-    #bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
-    #env.simulator.switch_main_vr_robot(bvr_robot)
+    config = parse_config(bvr_config)
+    bvr_robot = BehaviorRobot(**config["robot"])
+    env.simulator.import_object(bvr_robot)
+    bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
+    env.simulator.switch_main_vr_robot(bvr_robot)
     env.simulator.main_vr_robot = None
+    env.robot[0] = bvr_robot
 
 
-    #rnn_hidden_states = torch.zeros(
-    #        ppo_trainer.agent.actor_critic.net.num_recurrent_layers,
-    #        1,
-    #        ppo_trainer.config['hidden_size'],
-    #        device=ppo_trainer.agent.device,
-    #        )
+    rnn_hidden_states = torch.zeros(
+           ppo_trainer.agent.actor_critic.net.num_recurrent_layers,
+           1,
+           ppo_trainer.config['hidden_size'],
+           device=ppo_trainer.agent.device,
+           )
 
-    #prev_actions = torch.zeros(
-    #        1, env.action_space.shape[0], device=ppo_trainer.agent.device, dtype=torch.long
-    #    )
-    #not_done_masks = torch.zeros(
-    #        1, 1, device=ppo_trainer.agent.device
-    #    )
+    prev_actions = torch.zeros(
+           1, env.action_space.shape[0], device=ppo_trainer.agent.device, dtype=torch.long
+       )
+    not_done_masks = torch.zeros(
+           1, 1, device=ppo_trainer.agent.device
+       )
 
 
-    source_obj = VisualMarker(
-        visual_shape=p.GEOM_CYLINDER,
-        rgba_color=[0, 0, 1, 0.3],
-        radius=0.1,
-        length= 0.2,
-        initial_offset=[0, 0, 0.2 / 2.0],
-    )
+    # source_obj = VisualMarker(
+    #     visual_shape=p.GEOM_CYLINDER,
+    #     rgba_color=[0, 0, 1, 0.3],
+    #     radius=0.1,
+    #     length= 0.2,
+    #     initial_offset=[0, 0, 0.2 / 2.0],
+    # )
 
-    env.simulator.import_object(source_obj)
+    # env.simulator.import_object(source_obj)
 
     # The visual object indicating the target location may be visible
-    for instance in source_obj.renderer_instances:
-        instance.hidden = True
+    # for instance in source_obj.renderer_instances:
+    #     instance.hidden = True
 
 
     # Main simulation loop
     obs = env.reset()
-    source_pos = env.simulator.get_vr_pos()
-    source_obj.set_position(source_pos)
+    # source_pos = env.simulator.get_vr_pos()
+    # source_obj.set_position(source_pos)
     env.audio_system.registerSource(
-                source_obj,
+                bvr_robot._parts["eye"].head_visual_marker.get_body_ids()[0],
                 "",
                 enabled=True,
                 repeat=True
             )
     while True:
         #bvr_robot.apply_action(env.simulator.gen_vr_robot_action())
-        obs = env.step(env.simulator.gen_vr_robot_action())
-        source_obj.set_position(env.simulator.get_vr_pos())
+        # obs = env.step(env.simulator.gen_vr_robot_action())
+        env.step()
+        # source_obj.set_position(env.simulator.get_vr_pos())
         #with torch.no_grad():
             #_, action, _, rnn_hidden_states = ppo_trainer.agent.actor_critic.act(
             #    obs,
@@ -132,6 +128,9 @@ def main(selection="user", headless=False, short_exec=False):
         #prev_actions.copy_(action[0].tolist())
 
         # End demo by pressing overlay toggle
+        env.audio_system.step()
+        bvr_robot.apply_action(env.simulator.gen_vr_robot_action())
+
         if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
             break
 

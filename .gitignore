@@ -94,6 +94,17 @@ coverage.xml
 
 #audio
 igibson/audio/resonance_audio/*
+igibson/examples/vr/background_noise.wav
+igibson/examples/vr/mixed_noise_tele.wav
+igibson/examples/vr/mixed_noise_tele_3.wav
+igibson/examples/vr/no_vr_out.wav
+igibson/examples/vr/noise/*
+igibson/examples/vr/td_video.mp4
+igibson/examples/vr/video.mp4
+mic_out.wav
+telesound.wav
+vr_out.wav
+example.wav
 
 igibson/agents/savi_rt/pkgs*/*
 igibson/agents/smt/pkgs*/*

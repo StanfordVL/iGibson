@@ -18,7 +18,7 @@ class AudioGoalNavTask(PointNavRandomTask):
 
     def reset_agent(self, env):
         super().reset_agent(env)
-        self.target_obj.set_position(self.target_pos)
+        self.target_obj.set_position([0., -3., 0.])#self.target_pos)
         audio_obj_id = self.target_obj.get_body_ids()[0]
         env.audio_system.registerSource(audio_obj_id, self.config['audio_dir'], enabled=True)
         env.audio_system.setSourceRepeat(audio_obj_id)
@@ -42,8 +42,8 @@ class AudioGoalNavTask(PointNavRandomTask):
         env.simulator.import_object(self.target_obj)
 
         # The visual object indicating the target location may be visible
-        for instance in self.target_obj.renderer_instances:
-            instance.hidden = not self.visible_target
+        # for instance in self.target_obj.renderer_instances:
+        #     instance.hidden = not self.visible_target
 
     def get_task_obs(self, env):
         """

@@ -105,7 +105,6 @@ class MeshRenderer(object):
 
         elif self.platform == "Windows" or self.__class__.__name__ == "MeshRendererVR":
             from igibson.render.mesh_renderer import VRRendererContext  # type: ignore
-
             self.r = VRRendererContext.VRRendererContext(
                 width,
                 height,
@@ -1266,10 +1265,7 @@ class MeshRenderer(object):
         view_direction = mat.dot(np.array([1, 0, 0]))
         up_direction = mat.dot(np.array([0, 0, 1]))
         self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
-        if robot.model_name == "Turtlebot":
-            items = self.render(modes=modes, hidden=hide_instances)
-        else:
-            items = self.vr_render(modes=modes, hidden=hide_instances)
+        items = self.render(modes=modes, hidden=hide_instances)
         for item in items:
             frames.append(item)
 

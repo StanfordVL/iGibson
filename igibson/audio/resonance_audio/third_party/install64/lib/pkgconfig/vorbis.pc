@@ -1,9 +1,9 @@
 # libvorbis pkg-config source file
 
-prefix=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64
-exec_prefix=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/bin
-libdir=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/lib
-includedir=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/include
+prefix=C:/Users/capri28/Documents/iGibson-dev/igibson/audio/resonance_audio/third_party/install64
+exec_prefix=C:/Users/capri28/Documents/iGibson-dev/igibson/audio/resonance_audio/third_party/install64/bin
+libdir=C:/Users/capri28/Documents/iGibson-dev/igibson/audio/resonance_audio/third_party/install64/lib
+includedir=C:/Users/capri28/Documents/iGibson-dev/igibson/audio/resonance_audio/third_party/install64/include
 
 Name: vorbis
 Description: vorbis is the primary Ogg Vorbis library
