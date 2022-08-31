@@ -37,7 +37,7 @@ class ShapeNetObject(StatefulObject):
         """
         Load the object into pybullet
         """
-        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.filename, meshScale=self.scale)
+        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.filename, meshScale=(self.scale,) * 3)
         body_id = p.createMultiBody(
             basePosition=self.pose["position"],
             baseOrientation=self.pose["orientation_quat"],
