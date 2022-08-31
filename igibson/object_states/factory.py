@@ -1,4 +1,5 @@
-import networkx as nx
+# import networkx as nx
+import rustworkx as rx
 
 from igibson.object_states import *
 from igibson.object_states.object_state_base import BaseObjectState
@@ -167,11 +168,11 @@ def get_state_dependency_graph():
     Produce dependency graph of supported object states.
     """
     dependencies = {state: state.get_dependencies() + state.get_optional_dependencies() for state in get_all_states()}
-    return nx.DiGraph(dependencies)
+    return rx.PyDiGraph(dependencies)
 
 
 def get_states_by_dependency_order():
     """
     Produce a list of all states in topological order of dependency.
     """
-    return list(reversed(list(nx.algorithms.topological_sort(get_state_dependency_graph()))))
+    return list(reversed(list(rx.topological_sort(get_state_dependency_graph()))))

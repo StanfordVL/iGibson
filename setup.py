@@ -165,6 +165,7 @@ setup(
         "urllib3>=1.20",
         "progressbar>=2.5",
         "packaging",
+        "rustworkx",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

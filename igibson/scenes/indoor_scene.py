@@ -5,7 +5,8 @@ import sys
 from abc import ABCMeta
 
 import cv2
-import networkx as nx
+# import networkx as nx
+import rustworkx as rx
 import numpy as np
 from future.utils import with_metaclass
 from PIL import Image
@@ -114,7 +115,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param trav_map: traversability map
         """
         log.debug("Building traversable graph")
-        g = nx.Graph()
+        g = rx.PyGraph()
         for i in range(self.trav_map_size):
             for j in range(self.trav_map_size):
                 if trav_map[i, j] == 0:
@@ -127,7 +128,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
                         g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
 
         # only take the largest connected component
-        largest_cc = max(nx.connected_components(g), key=len)
+        largest_cc = max(rx.connected_components(g), key=len)
         g = g.subgraph(largest_cc).copy()
 
         self.floor_graph.append(g)
@@ -216,7 +217,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
             g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
+        path_map = np.array(rx.astar_shortest_path(g, source_map, target_map, heuristic=l2_distance))
 
         path_world = self.map_to_world(path_map)
         geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
