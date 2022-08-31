@@ -116,16 +116,19 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         """
         log.debug("Building traversable graph")
         g = rx.PyGraph()
+        node_idx_dict = {}
         for i in range(self.trav_map_size):
             for j in range(self.trav_map_size):
                 if trav_map[i, j] == 0:
                     continue
-                g.add_node((i, j))
+                node_idx = g.add_node((i, j))
+                node_idx_dict[(i, j)] = node_idx
                 # 8-connected graph
                 neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
                 for n in neighbors:
                     if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
-                        g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+                        neighbor_node_idx = node_idx_dict[n] # check if n is in dictionary
+                        g.add_edge(neighbor_node_idx, node_idx, l2_distance(n, (i, j)))
 
         # only take the largest connected component
         largest_cc = max(rx.connected_components(g), key=len)
