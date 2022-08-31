@@ -213,12 +213,12 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         if not g.has_node(target_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
-            g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
+            g.add_edge(closest_node, target_map, l2_distance(closest_node, target_map))
 
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
-            g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
+            g.add_edge(closest_node, source_map, l2_distance(closest_node, source_map))
 
         path_map = np.array(rx.astar_shortest_path(g, source_map, target_map, heuristic=l2_distance))
 
