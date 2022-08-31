@@ -718,7 +718,8 @@ class BehaviorTask(BaseTask):
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
-                matches = nx.bipartite.maximum_matching(graph, top_nodes=top_nodes)
+                # matches = nx.bipartite.maximum_matching(graph, top_nodes=top_nodes)
+                matches = rx.max_weight_matching(graph, max_cardinality=True)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
                     log.warning(("Object scope finalized:"))
                     for obj_inst, obj in matches.items():

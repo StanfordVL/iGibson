@@ -1,6 +1,7 @@
 import os
 
-import networkx as nx
+# import networkx as nx
+import rustworkx as rx
 import numpy as np
 import pybullet as p
 
@@ -181,7 +182,7 @@ def test_open():
 def test_state_graph():
     # Construct the state graph
     G = get_state_dependency_graph()
-    assert nx.algorithms.is_directed_acyclic_graph(G), "State dependency graph needs to be a DAG."
+    assert rx.is_directed_acyclic_graph(G), "State dependency graph needs to be a DAG."
 
     # Get the dependency-sorted list of states.
     ordered_states = get_states_by_dependency_order()
