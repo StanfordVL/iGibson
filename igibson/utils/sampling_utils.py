@@ -304,7 +304,7 @@ def sample_cuboid_on_object(
             # Check that the points are all within some acceptable distance of the plane.
             distances = get_distance_to_plane(hit_positions, plane_centroid, plane_normal)
             if np.any(distances > hit_to_plane_threshold):
-                if igibson.debug_sampling:
+                if True:#igibson.debug_sampling:
                     refusal_reasons["dist_to_plane"].append("distances to plane: %r" % (distances,))
                 continue
 
@@ -343,7 +343,7 @@ def sample_cuboid_on_object(
             results[i] = (cuboid_centroid, plane_normal, rotation.as_quat(), hit_link, refusal_reasons)
             break
 
-    if igibson.debug_sampling:
+    if True:#igibson.debug_sampling:
         print("Sampling rejection reasons:")
         counter = Counter()
 
@@ -489,7 +489,7 @@ def check_sample_cuboid_on_object(
             # Check that the points are all within some acceptable distance of the plane.
             distances = get_distance_to_plane(hit_positions, plane_centroid, plane_normal)
             if np.any(distances > hit_to_plane_threshold):
-                if igibson.debug_sampling:
+                if True: #igibson.debug_sampling:
                     refusal_reasons["dist_to_plane"].append("distances to plane: %r" % (distances,))
                 continue
 
@@ -528,7 +528,7 @@ def check_sample_cuboid_on_object(
             results[i] = (cuboid_centroid, plane_normal, rotation.as_quat(), hit_link, refusal_reasons)
             break
 
-    if igibson.debug_sampling:
+    if True: #igibson.debug_sampling:
         print("Sampling rejection reasons:")
         counter = Counter()
 
@@ -575,7 +575,7 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
         parallel_hit_normal_angles_to_hit_normal < _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE
     )
     if not all_rays_hit_with_similar_normal:
-        if igibson.debug_sampling:
+        if True: #igibson.debug_sampling:
             refusal_log.append("angles %r" % (np.rad2deg(parallel_hit_normal_angles_to_hit_normal),))
 
         return False
@@ -586,7 +586,7 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
 def check_rays_hit_object(cast_results, body_id, refusal_log):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
     if not all(hit_body_id == body_id for hit_body_id in hit_body_ids):
-        if igibson.debug_sampling:
+        if True: #igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)
 
         return False
@@ -597,7 +597,7 @@ def check_rays_hit_object(cast_results, body_id, refusal_log):
 def check_hit_max_angle_from_z_axis(hit_normal, max_angle_with_z_axis, refusal_log):
     hit_angle_with_z = np.arccos(np.clip(np.dot(hit_normal, np.array([0, 0, 1])), -1.0, 1.0))
     if hit_angle_with_z > max_angle_with_z_axis:
-        if igibson.debug_sampling:
+        if True: #igibson.debug_sampling:
             refusal_log.append("normal %r" % hit_normal)
 
         return False
@@ -654,7 +654,7 @@ def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log, this_cu
         rayFromPositions=all_pairs[:, 0, :], rayToPositions=all_pairs[:, 1, :], numThreads=0
     )
     if not all(ray[0] == -1 for ray in check_cast_results):
-        if igibson.debug_sampling:
+        if True: #igibson.debug_sampling:
             refusal_log.append("check ray info: %r" % (check_cast_results,))
 
         return False

@@ -180,7 +180,7 @@ def sample_kinematics(
             objA.set_position_orientation(pos, orientation)
             success = not detect_collision(objA.get_body_id())  # len(p.getContactPoints(objA.get_body_id())) == 0
 
-        if igibson.debug_sampling:
+        if True: #igibson.debug_sampling:
             print("sample_kinematics", success)
             embed()
 

@@ -49,7 +49,18 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
         # Then check vertical adjacency - it's the second least
         # costly.
         adjacency = self.obj.states[VerticalAdjacency].get_value()
-        return (
-            other.get_body_id() in adjacency.negative_neighbors
-            and other.get_body_id() not in adjacency.positive_neighbors
-        )
+
+        # NOTE (njk): This below if-else logic is different than the
+        # original iGibson code. It's necessary because a shelf
+        # has multiple levels and thus, when an object is in one of the
+        # shelves, it is in both the negative_neighbors and
+        # positive_neighbors.
+        if other.category == 'shelf':
+            result = other.get_body_id() in adjacency.negative_neighbors
+        else:
+            result = (
+                other.get_body_id() in adjacency.negative_neighbors
+                and other.get_body_id() not in adjacency.positive_neighbors
+            )
+
+        return result

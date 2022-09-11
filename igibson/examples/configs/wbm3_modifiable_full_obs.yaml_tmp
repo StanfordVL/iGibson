@@ -1,5 +1,5 @@
 # scene
-scene_id: Pomaria_1_int
+scene_id: Rs_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -15,7 +15,7 @@ robot: BehaviorRobot
 
 # task
 # task: cleaning_cupboards
-task: sorting_books
+task: re-shelving_library_books
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
