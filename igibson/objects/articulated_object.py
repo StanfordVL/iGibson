@@ -8,7 +8,7 @@ import time
 import xml.etree.ElementTree as ET
 
 import cv2
-import networkx as nx
+import rustworkx as nx
 import numpy as np
 import pybullet as p
 import trimesh
@@ -693,15 +693,16 @@ class URDFObject(StatefulObject):
                 # Add visual meshes of the child link to the parent link for fixed joints because they will be merged
                 # by pybullet after loading
                 vms_before_merging = set([item for _, vms in link_name_to_vm_urdf.items() for item in vms])
-                directed_graph = nx.DiGraph()
+                directed_graph = nx.PyDiGraph()
                 child_to_parent = dict()
                 for joint in sub_urdf_tree.findall("joint"):
                     if joint.attrib["type"] == "fixed":
                         child_link_name = joint.find("child").attrib["link"]
                         parent_link_name = joint.find("parent").attrib["link"]
-                        directed_graph.add_edge(child_link_name, parent_link_name)
+                        parent = directed_graph.add_node(parent_link_name)
+                        directed_graph.add_child(parent, child_link_name, True)
                         child_to_parent[child_link_name] = parent_link_name
-                for child_link_name in list(nx.algorithms.topological_sort(directed_graph)):
+                for child_link_name in list(nx.topological_sort(directed_graph)):
                     if child_link_name in child_to_parent:
                         parent_link_name = child_to_parent[child_link_name]
                         link_name_to_vm_urdf[parent_link_name].extend(link_name_to_vm_urdf[child_link_name])

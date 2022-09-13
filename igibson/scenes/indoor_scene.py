@@ -5,7 +5,7 @@ import sys
 from abc import ABCMeta
 
 import cv2
-import networkx as nx
+import rustworkx as nx
 import numpy as np
 from future.utils import with_metaclass
 from PIL import Image
@@ -114,21 +114,32 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param trav_map: traversability map
         """
         log.debug("Building traversable graph")
-        g = nx.Graph()
+        g = nx.PyGraph(
+            attrs=dict(
+                node_mapping={},
+                edge_mapping={},
+            )
+        )
         for i in range(self.trav_map_size):
             for j in range(self.trav_map_size):
-                if trav_map[i, j] == 0:
-                    continue
-                g.add_node((i, j))
-                # 8-connected graph
-                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                for n in neighbors:
-                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
-                        g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+                if trav_map[i, j] != 0:
+                    g.attrs['node_mapping'][(i, j)] = g.add_node((i, j))
+        for node in g.nodes():
+            i, j = node
+            # 8-connected graph
+            neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+            for n in neighbors:
+                if n in g.attrs['node_mapping']:
+                    g.extend_from_weighted_edge_list([(
+                        g.attrs['node_mapping'][node],
+                        g.attrs['node_mapping'][n],
+                        l2_distance(n, (i, j))
+                    )
+                    ])
 
         # only take the largest connected component
         largest_cc = max(nx.connected_components(g), key=len)
-        g = g.subgraph(largest_cc).copy()
+        g = g.subgraph(list(largest_cc), preserve_attrs=True).copy()
 
         self.floor_graph.append(g)
 
@@ -138,7 +149,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         # Dangerous! if the traversability graph is not computed from the loaded map but from a file, it could overwrite
         # it silently.
         trav_map[:, :] = 0
-        for node in g.nodes:
+        for node in g.nodes():
             trav_map[node[0], node[1]] = 255
 
     def get_random_point(self, floor=None):
@@ -187,7 +198,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         """
         map_xy = tuple(self.world_to_map(world_xy))
         g = self.floor_graph[floor]
-        return g.has_node(map_xy)
+        return map_xy in g.attrs['node_mapping']
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         """
@@ -206,17 +217,25 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
 
         g = self.floor_graph[floor]
 
-        if not g.has_node(target_map):
+        if target_map not in g.attrs['node_mapping']:
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
             g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
 
-        if not g.has_node(source_map):
+        if source_map not in g.attrs['node_mapping']:
             nodes = np.array(g.nodes)
             closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
             g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
+        path_map = nx.dijkstra_shortest_paths(
+            g,
+            g.attrs['node_mapping'][source_map],
+            g.attrs['node_mapping'][target_map],
+            weight_fn=float
+        )
+        path_map = path_map[g.attrs['node_mapping'][target_map]]
+
+        path_map = np.array([g.nodes()[idx] for idx in path_map])
 
         path_world = self.map_to_world(path_map)
         geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))

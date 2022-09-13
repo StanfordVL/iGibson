@@ -3,7 +3,7 @@ import datetime
 import logging
 from collections import OrderedDict
 
-import networkx as nx
+import rustworkx as nx
 import pybullet as p
 from bddl.activity import (
     Conditions,
@@ -700,7 +700,7 @@ class BehaviorTask(BaseTask):
             success = False
             # Loop through each room instance
             for room_inst in room_insts:
-                graph = nx.Graph()
+                graph = nx.PyGraph()
                 # For this given room instance, gether mapping from obj instance to a list of simulator obj
                 obj_inst_to_obj_per_room_inst = {}
                 for obj_inst in filtered_object_scope[room_type]:
@@ -717,7 +717,7 @@ class BehaviorTask(BaseTask):
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
-                matches = nx.bipartite.maximum_matching(graph, top_nodes=top_nodes)
+                matches = nx.max_weight_matching(graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
                     log.warning(("Object scope finalized:"))
                     for obj_inst, obj in matches.items():
