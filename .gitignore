@@ -83,3 +83,6 @@ igibson/render/mesh_renderer/libcryptopp.so.8.6
 
 # igibson run json files
 *my_igibson_run.json
+
+# Temp modifiable file.
+wbm3_modifiable_full_obs.yaml_tmp
