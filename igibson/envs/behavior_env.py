@@ -79,6 +79,12 @@ class BehaviorEnv(iGibsonEnv):
 
         self.log_writer = None
 
+        # Set iggui viewing position to start at the robot's initial position.
+        robot_init_pos = self.simulator.robots[0].get_position()
+        self.simulator.viewer.px = robot_init_pos[0]
+        self.simulator.viewer.py = robot_init_pos[1]
+        self.simulator.viewer.pz = robot_init_pos[2]
+
         # Make sure different parallel environments will have different random seeds
         # np.random.seed(os.getpid())
         # np.random.seed(0) # For now, force this to be 0 so we have reproducible behavior!
