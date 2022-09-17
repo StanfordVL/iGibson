@@ -6,13 +6,10 @@ import re
 import shutil
 import subprocess
 import sys
-from distutils.command.build_py import build_py as _build_py
 from distutils.version import LooseVersion
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
-from setuptools.command.develop import develop
-from setuptools.command.install import install
 
 use_clang = False
 
@@ -128,44 +125,13 @@ else:
         long_description = fh.read()
 
 setup(
-    name="igibson",
-    version="2.2.0",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
     url="https://github.com/StanfordVL/iGibson",
     zip_safe=False,
     packages=find_packages(),
-    install_requires=[
-        "gym>=0.12",
-        "numpy>=1.16.0",
-        "scipy>=1.4",
-        "pybullet-svl>=3.1.6.4",
-        "transforms3d>=0.3.1",
-        "opencv-python>=3.4.8",
-        "Pillow>=5.4.0",
-        "networkx>=2.0",
-        "PyYAML",
-        "tqdm",
-        "freetype-py",
-        "matplotlib",
-        "cloudpickle",
-        "aenum",
-        "GPUtil",
-        "ipython",
-        "future",
-        "trimesh",
-        "h5py",
-        "gitpython",
-        "py360convert",
-        "six",
-        "pandas",
-        "packaging",
-        "bddl~=1.0.1",
-        "urllib3>=1.20",
-        "progressbar>=2.5",
-        "packaging",
-    ],
+    install_requires=[],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],

@@ -1,3 +1,44 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="igibson"
+version="2.2.1"
+readme = "README.md"
+requires-python = ">=2.8"
+license = {text = "MIT"}
+dependencies = [
+    "gym>=0.12",
+    "numpy>=1.16.0",
+    "scipy>=1.4",
+    "pybullet-svl>=3.1.6.4",
+    "transforms3d>=0.3.1",
+    "opencv-python>=3.4.8",
+    "Pillow>=5.4.0",
+    "networkx>=2.0",
+    "PyYAML",
+    "tqdm",
+    "freetype-py",
+    "matplotlib",
+    "cloudpickle",
+    "aenum",
+    "GPUtil",
+    "ipython",
+    "future",
+    "trimesh",
+    "h5py",
+    "gitpython",
+    "py360convert",
+    "six",
+    "pandas",
+    "packaging",
+    "bddl~=1.0.1",
+    "urllib3>=1.20",
+    "progressbar>=2.5",
+    "packaging",
+]
+
 [tool.black]
 line-length = 120
 target-version = ['py36', 'py37', 'py38']
