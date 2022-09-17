@@ -237,8 +237,9 @@ class MeshRendererVR(MeshRenderer):
         # post processing overlay
         self.post_processing_overlay1_width = 3
         self.post_processing_overlay2_width = 3.5
-        self.post_processing_overlay1 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/amd4.png", self.post_processing_overlay1_width)
-        self.post_processing_overlay2 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/gla1.png", self.post_processing_overlay2_width)
+        # self.post_processing_overlay2_width = 8
+        self.post_processing_overlay1 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
+        self.post_processing_overlay2 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/visual_disease_demo_mtls/gla3.png", self.post_processing_overlay2_width)
         self.post_processing_overlay1.set_overlay_show_state(False)
         self.post_processing_overlay2.set_overlay_show_state(False)
 
@@ -359,10 +360,26 @@ class MeshRendererVR(MeshRenderer):
 
     def update_post_processing_effect(self, pos):
         if self.post_processing_mode == 2:
-            self.post_processing_overlay1.update_pos([pos[0] - 0.5, 0.5 - pos[1], -1])
+            self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
         elif self.post_processing_mode == 3:
-            self.post_processing_overlay2.update_pos([pos[0] - 0.5, 0.5 - pos[1], -1])
+            self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
 
+    def updatre_post_processing_extent(self):
+        if self.post_processing_mode == 5:
+            if self.dioptres == -3:
+                self.dioptres = 3
+            else:
+                self.dioptres -= 0.5  
+            if self.dioptres < 0: # myopia
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING)
+            else:   # hyperopia
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

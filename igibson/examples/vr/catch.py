@@ -95,15 +95,26 @@ def main():
     cur_eye_pos_record = []
     gaze_max_dist = 1.5
 
-
+    trial_offset = 10
+    total_trial = 0
+    success_trial = 0
     # Main simulation loop
     while True:
         # Make sure eye marker never goes to sleep so it is always ready to track gaze
         # eye_marker.force_wakeup()
         s.step()        
 
+        ball_pos = ball.get_position()
+
         cur_time = time.time()
         if (cur_time - start_time > episode_len):
+            if trial_offset:
+                trial_offset -= 1
+            elif ball_pos[2] > 0.25:
+                total_trial += 1
+                success_trial += 1
+            else:
+                total_trial += 1
             start_time = cur_time
             rand_z = random.random() * 0.5 + 2 
             ball.set_position((-3, init_y_pos , rand_z))
@@ -114,8 +125,8 @@ def main():
             all_eye_pos_record.append(cur_eye_pos_record[:150])
             cur_ball_pos_record = []
             cur_eye_pos_record = []
+            continue
 
-        ball_pos = ball.get_position()
         if (len(cur_ball_pos_record) < 150):
             cur_ball_pos_record.append(ball_pos[2])
 
@@ -140,6 +151,7 @@ def main():
         s.update_post_processing_effect()
 
     s.disconnect()
+    print(f"Total: {total_trial}, Success: {success_trial}, SR: {success_trial / total_trial}")
     np.save("visual_disease/ball_pos.npy", np.array(all_ball_pos_record[2:]))
     np.save("visual_disease/eye_pos.npy", np.array(all_eye_pos_record[2:]))
 

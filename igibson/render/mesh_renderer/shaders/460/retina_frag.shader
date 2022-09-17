@@ -107,7 +107,7 @@ void main()
     vec3 texColor = texture(s_color, TexCoords).rgb;
     vec3 bloomColor = texture(s_bloom, TexCoords).rgb;
 
-    vec2 center = vec2(0.5 - eyeOffset * 0.04, 0.5);
+    vec2 center = vec2(0.4, 0.6);
     // ======================== gaussian noise =============================
     float noise = sqrt(-2.0 * log(rand(TexCoords * 2))) * sin(2.0 * PI * rand(TexCoords)); // Box-Muller Transform
 
@@ -145,9 +145,24 @@ void main()
             FragColor = vec4(texColor, 1.0);
             break;
         case 6: // ad hoc (light overexposure)
+             // 1. blur
+            vec3 sampleTex1[9];
+            for(int i = 0; i < 9; i++)
+            {
+                sampleTex1[i] = vec3(texture(s_color, TexCoords.st + offsets[i]));
+            }
+            vec3 col1 = vec3(0.0);
+            for(int i = 0; i < 9; i++)
+                col1 += sampleTex1[i] * kernel[i];
+            // 2. reduce contrast
+            vec3 tempColor1 = col1 * (1 - c) + vec3(0.5 * c);
+            FragColor = vec4(tempColor1, 1.0);
+            break;
+            // 3. Color shift
+            tempColor1 = tempColor1 * (1 - t) + TintColor * t;
             vec3 color = vec3(1.4, 1.2, 1.0) * lensflare(TexCoords, center);
             color = cc(color, .5, .1);
-            FragColor = vec4(mix(color, texColor, 0.5), 1.0);
+            FragColor = vec4(mix(color, tempColor1, 0.7), 1.0);
             break;
     }
 }  

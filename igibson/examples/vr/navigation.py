@@ -31,7 +31,7 @@ light_modulation_map_filename = os.path.join(
 )
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
-num_of_duck = 10
+num_of_duck = 1
 
 def main():
     # VR rendering settings
@@ -65,13 +65,13 @@ def main():
     ]
     for i in range(4):
         wall = ArticulatedObject(
-            f"{os.getcwd()}/igibson/examples/vr/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         )
         s.import_object(wall)
         wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
 
     # object setup
-    random_pos = random.sample(range(100), num_of_duck)
+    random_pos = random.sample(range(50, 100), num_of_duck)
     initial_x, initial_y = -5, -5
     objs = []
     heights = [random.random() * 0.5 + 1.2 for _ in range(100)]
@@ -91,9 +91,11 @@ def main():
     # robot setup
     bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([-6, -6, 1], [0, 0, 0, 1])
+    bvr_robot.set_position_orientation([0, -6, 1], [0, 0, 0, 1])
 
     robot_pos = []
+
+    start_time = 0
 
     # Main simulation loop
     while True:
@@ -106,6 +108,10 @@ def main():
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
             break
+
+        # Start counting time by pressing overlay toggle
+        if s.query_vr_event("right_controller", "overlay_toggle"):
+            start_time = time.time()
 
         # update post processing
         s.update_post_processing_effect()
@@ -123,6 +129,7 @@ def main():
             break
 
     s.disconnect()
+    print(f"Total time: {time.time() - start_time}")
     np.save("visual_disease/navigation_robot_pos.npy", np.array(robot_pos))
 
 if __name__ == "__main__":

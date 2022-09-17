@@ -848,6 +848,8 @@ class SimulatorVR(Simulator):
             _, touch_x, _, _ = self.get_button_data_for_controller(vr_height_device)
             if touch_x < -0.7:
                 self.renderer.update_post_processing_mode()
+            elif touch_x > 0.7:
+                self.renderer.updatre_post_processing_extent()
         is_valid, _, _, _, _, pos, _ = self.get_eye_tracking_data()
         if is_valid:
             self.renderer.update_post_processing_effect(pos)
