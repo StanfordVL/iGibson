@@ -234,7 +234,7 @@ def let_user_pick(options, print_intro=True, random_selection=False):
     return None
 
 # To dynamically modify wbm3_modifiable_full_obs.yaml file
-def modify_config_file(config_file, task_name, scene_id, randomize_init_state):
+def modify_config_file(config_file, task_name, scene_id, randomize_init_state, seed):
     # Read in the file
     with open(config_file, 'r') as file :
         filedata = file.read()
@@ -245,7 +245,7 @@ def modify_config_file(config_file, task_name, scene_id, randomize_init_state):
     filedata = filedata.replace('online_sampling_placeholder', str(randomize_init_state))
     #print(filedata)
     
-    config_file = config_file + "_tmp"
+    config_file = config_file + "_tmp" + str(seed)
 
     # Write the file out again
     with open(config_file, 'w') as file:

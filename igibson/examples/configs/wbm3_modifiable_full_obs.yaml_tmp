@@ -1,5 +1,5 @@
 # scene
-scene_id: Wainscott_1_int
+scene_id: Ihlen_1_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -15,7 +15,7 @@ robot: BehaviorRobot
 
 # task
 # task: cleaning_cupboards
-task: opening_presents
+task: throwing_away_leftovers
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
