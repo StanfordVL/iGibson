@@ -245,7 +245,7 @@ def modify_config_file(config_file, task_name, scene_id, randomize_init_state, s
     filedata = filedata.replace('online_sampling_placeholder', str(randomize_init_state))
     #print(filedata)
     
-    config_file = config_file + "_tmp" + str(seed)
+    config_file = config_file + "_tmp_" + task_name + str(scene_id) + str(seed)
 
     # Write the file out again
     with open(config_file, 'w') as file:
