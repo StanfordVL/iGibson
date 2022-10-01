@@ -12,4 +12,6 @@ with h5py.File(filename, "r") as dataset:
     for img in dataset["rgb"]:
         img = np.array(Image.fromarray((255 * img[:, :, :3]).astype(np.uint8)))
         output_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.imshow("test", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
     output_video.release()
