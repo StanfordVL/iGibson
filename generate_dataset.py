@@ -26,6 +26,7 @@ class GenerateDataset(object):
         self.sim = Simulator(
             image_height=IMAGE_HEIGHT,
             image_width=IMAGE_WIDTH,
+            mode = 'headless',
         )
 
         scene = InteractiveIndoorScene(scene_id="Ihlen_1_int")
@@ -149,10 +150,11 @@ class GenerateDataset(object):
                 self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
                 self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
                 self.sim.step()
+                # cv2.imshow("test", frames[0])
+                # cv2.waitKey(1)
 
                 self.frame_count += 1
                 self.curr_frame_idx += 1
-                self.sim.step()
 
                 if self.curr_frame_idx == FRAME_BATCH_SIZE:
                     self.write_to_file()
