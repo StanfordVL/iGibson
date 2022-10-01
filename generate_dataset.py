@@ -90,40 +90,54 @@ class GenerateDataset(object):
                                        self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
         self.curr_frame_idx = 0
 
+    def get_shortest_path(self, prev_point, next_point):
+        initial_path = self.sim.scene.get_shortest_path(
+            self.floor, prev_point[:2], next_point[:2], True)[0]
+        interpolated_points = []
+        for i in range(1, len(initial_path)):
+            temp_points = self.sim.scene.get_shortest_path(
+                self.floor, initial_path[i-1], initial_path[i], True)[0]
+            for new_point in temp_points:
+                interpolated_points.append(new_point)
+
+        path_length = len(interpolated_points)
+        z_diff = (next_point[2] - prev_point[2]) / float(path_length)
+        z_path = np.array([prev_point[2] + (z_diff * i)
+                          for i in range(path_length)]).reshape((1, path_length))
+        output_path = np.concatenate(
+            (np.array(interpolated_points), z_path.T), axis=1)
+
+        return output_path
+
     def generate(self):
-        # TODO: Does it suffice to use random points or is it better to use specific points?
-        # objects = self.sim.scene.get_objects()
-        # object_nav_transitions = [[64, 49],
-        #                           [49, 71],
-        #                           [71, 64]]
+        # source, target. camera_up
+        positions = [[[-5, 1.8, 2], [0.9, 0.9, 0.6], [0, 0, 1]],
+                     [[0.9, 0.9, 0.6], [3.5, 0, 0.6], [0, 0, 1]],
+                     [[3.5, 0, 0.6], [4, 1.6, 1.3], [0, 0, 1]],
+                     [[5, 1.9, 1.4], [1, 0.3, 1.4], [0, 0, 1]],
+                     [[1, 0.3, 1.4], [-2.3, 1.9, 1.4], [0, 0, 1]],
+                     [[-2.3, 1.9, 1.4], [-2.2, 5.5, 1.4], [0, 0, 1]],
+                     [[-2.2, 5.5, 1.4], [-2.2, 4.9, 1.4], [0, 0, 1]],
+                     [[-2.2, 4.9, 1.4], [-0.7, 4.6, 1.3], [0, 0, 1]],
+                     [[-0.7, 4.6, 1.3], [-0.5, 7.6, 1.3], [0, 0, 1]],
+                     [[-0.5, 7.6, 1.3], [0, 7.7, 1.3], [0, 0, 1]],
+                     [[0, 7.7, 1.3], [0, 0, 1.3], [0, 0, 1]]
+                     ]
 
-        # for i, object in enumerate(object_nav_transitions):
-        #     print(i, object.name, object.category)
-
-        positions = [[-5, 1.8, 1.1],
-        [3.4, 1.8, 1.1]]
-
-        for i in range(len([12,12])):
-            # prev_point = objects[object_nav_transitions[i][0]].get_position()[:2]
-            # curr_point = objects[object_nav_transitions[i][1]].get_position()[:2]
-            prev_point = positions[0][:2]
-            curr_point = positions[1][:2]
-            # TODO: Can we get a motion planner for this stage?
-            # TODO: Can we use a game controller to get the initial video?
-            steps = self.sim.scene.get_shortest_path(self.floor, prev_point, curr_point, True)[0]
-            print(len(steps))
-            prev_point = curr_point
+        for position in positions:
+            prev_point = position[0]
+            next_point = position[1]
+            steps = self.get_shortest_path(prev_point, next_point)
 
             for step in steps:
                 if self.frame_count == MAX_NUM_FRAMES:
                     break
 
-                x, y, z, dir_x, dir_y = step[0], step[1], 1.2, 1, 0
-                tar_x = x + dir_x
-                tar_y = y + dir_y
-                tar_z = 1.2
-                self.sim.renderer.set_camera([x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
-                self.sim.renderer.set_fov(45)
+                x, y, z = step[0], step[1], step[2]
+                tar_x, tar_y, tar_z = next_point[0], next_point[1], next_point[2]
+
+                self.sim.renderer.set_camera(
+                    [x, y, z], [tar_x, tar_y, tar_z], position[2])
                 frames = self.sim.renderer.render(modes=("rgb", "3d"))
 
                 # Render 3d points as depth map
@@ -138,13 +152,11 @@ class GenerateDataset(object):
 
                 self.frame_count += 1
                 self.curr_frame_idx += 1
-                cv2.imshow("image", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
-                
-                for i in range(50):
-                    self.sim.step()
+                self.sim.step()
 
                 if self.curr_frame_idx == FRAME_BATCH_SIZE:
                     self.write_to_file()
+                prev_point = next_point
 
         self.camera_intrinsics_dataset[:] = self.sim.renderer.get_intrinsics()
 
