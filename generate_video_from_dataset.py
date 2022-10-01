@@ -6,7 +6,7 @@ from PIL import Image
 filename = "data.hdf5"
 frame_size = (1024, 720)
 fourcc = cv2.VideoWriter_fourcc(*"MP4V")
-output_video = cv2.VideoWriter("output_video.mp4", fourcc, 50.0, frame_size)
+output_video = cv2.VideoWriter("output_video.mp4", fourcc, 20.0, frame_size)
 
 with h5py.File(filename, "r") as dataset:
     for img in dataset["rgb"]:
