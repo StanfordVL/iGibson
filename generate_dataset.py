@@ -1,5 +1,6 @@
 import os
 import cv2
+from scipy.interpolate import CubicSpline
 
 import h5py
 import numpy as np
@@ -26,13 +27,14 @@ class GenerateDataset(object):
         self.sim = Simulator(
             image_height=IMAGE_HEIGHT,
             image_width=IMAGE_WIDTH,
-            mode = 'headless',
+            mode='headless',
         )
 
         scene = InteractiveIndoorScene(scene_id="Ihlen_1_int")
         self.sim.import_scene(scene)
         self.floor = self.sim.scene.get_random_floor()
         self.create_datasets()
+        self.create_caches()
 
     def create_datasets(self):
         self.rgb_dataset = self.h5py_file.create_dataset(
@@ -67,8 +69,6 @@ class GenerateDataset(object):
             dtype=np.float32,
         )
 
-        self.create_caches()
-
     def create_caches(self):
         self.rgb_dataset_cache = np.zeros(
             (FRAME_BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, 4), dtype=np.float32)
@@ -91,54 +91,57 @@ class GenerateDataset(object):
                                        self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
         self.curr_frame_idx = 0
 
-    def get_shortest_path(self, prev_point, next_point):
-        initial_path = self.sim.scene.get_shortest_path(
-            self.floor, prev_point[:2], next_point[:2], True)[0]
-        interpolated_points = []
-        for i in range(1, len(initial_path)):
-            temp_points = self.sim.scene.get_shortest_path(
-                self.floor, initial_path[i-1], initial_path[i], True)[0]
-            for new_point in temp_points:
-                interpolated_points.append(new_point)
+    def prepare_spline_functions(self, shortest_path):
+        self.spline_functions = []
+        path_length = len(shortest_path)
+        self.spline_functions.append(CubicSpline(
+            range(path_length), shortest_path[:, 0], bc_type='clamped'))
+        self.spline_functions.append(CubicSpline(
+            range(path_length), shortest_path[:, 1], bc_type='clamped'))
+        self.spline_functions.append(CubicSpline(
+            range(path_length), shortest_path[:, 2], bc_type='clamped'))
 
-        path_length = len(interpolated_points)
-        z_diff = (next_point[2] - prev_point[2]) / float(path_length)
-        z_path = np.array([prev_point[2] + (z_diff * i)
+    def get_shortest_path(self, prev_step, next_step, step):
+        path_length = 50
+        interpolated_points = []
+
+        for i in range(path_length):
+            curr_step = step + (1.0/path_length*i)
+            interpolated_points.append([self.spline_functions[0](
+                curr_step), self.spline_functions[1](curr_step), self.spline_functions[2](curr_step)])
+
+        z_diff = (next_step[2] - prev_step[2]) / float(path_length)
+        z_path = np.array([prev_step[2] + (z_diff * i)
                           for i in range(path_length)]).reshape((1, path_length))
+
         output_path = np.concatenate(
             (np.array(interpolated_points), z_path.T), axis=1)
 
         return output_path
 
     def generate(self):
-        # source, target. camera_up
-        positions = [[[-5, 1.8, 2], [0.9, 0.9, 0.6], [0, 0, 1]],
-                     [[0.9, 0.9, 0.6], [3.5, 0, 0.6], [0, 0, 1]],
-                     [[3.5, 0, 0.6], [4, 1.6, 1.3], [0, 0, 1]],
-                     [[5, 1.9, 1.4], [1, 0.3, 1.4], [0, 0, 1]],
-                     [[1, 0.3, 1.4], [-2.3, 1.9, 1.4], [0, 0, 1]],
-                     [[-2.3, 1.9, 1.4], [-2.2, 5.5, 1.4], [0, 0, 1]],
-                     [[-2.2, 5.5, 1.4], [-2.2, 4.9, 1.4], [0, 0, 1]],
-                     [[-2.2, 4.9, 1.4], [-0.7, 4.6, 1.3], [0, 0, 1]],
-                     [[-0.7, 4.6, 1.3], [-0.5, 7.6, 1.3], [0, 0, 1]],
-                     [[-0.5, 7.6, 1.3], [0, 7.7, 1.3], [0, 0, 1]],
-                     [[0, 7.7, 1.3], [0, 0, 1.3], [0, 0, 1]]
-                     ]
+        # source, target, camera_up
+        # TODO: Generate New Waypoints
+        positions = np.array(
+            [[-5, 1.8, 1.6], [-1.1, 0.9, 1.6], [0.9, 0.9, 0.6], [3.5, 0, 0.6], [4, 1.6, 1.3], [5, 1.9, 1.4],
+            [1, 0.3, 1.4], [-2.3, 1.9, 1.4], [-2.4, 5.5, 1.4], [-2.2, 4.9, 1.4], [-0.7, 4.6, 1.3],
+            [-0.5, 7.6, 1.3], [0, 7.7, 1.3], [0.1, 0, 1.3]])
 
-        for position in positions:
-            prev_point = position[0]
-            next_point = position[1]
-            steps = self.get_shortest_path(prev_point, next_point)
+        self.prepare_spline_functions(positions)
+        for i in range(len(positions)-1):
+            prev_point = positions[i]
+            next_point = positions[i+1]
+            steps = self.get_shortest_path(prev_point, next_point, i)
 
             for step in steps:
                 if self.frame_count == MAX_NUM_FRAMES:
                     break
 
-                x, y, z = step[0], step[1], step[2]
-                tar_x, tar_y, tar_z = next_point[0], next_point[1], next_point[2]
+                x, y, z = step[0], step[1], 1
+                tar_x, tar_y, tar_z = next_point[0], next_point[1], 1
 
                 self.sim.renderer.set_camera(
-                    [x, y, z], [tar_x, tar_y, tar_z], position[2])
+                    [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
                 frames = self.sim.renderer.render(modes=("rgb", "3d"))
 
                 # Render 3d points as depth map
@@ -150,8 +153,8 @@ class GenerateDataset(object):
                 self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
                 self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
                 self.sim.step()
-                # cv2.imshow("test", frames[0])
-                # cv2.waitKey(1)
+                cv2.imshow("test", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
+                cv2.waitKey(1)
 
                 self.frame_count += 1
                 self.curr_frame_idx += 1
