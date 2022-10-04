@@ -1,6 +1,7 @@
 import os
 import cv2
 from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
 
 import h5py
 import numpy as np
@@ -98,70 +99,88 @@ class GenerateDataset(object):
             range(path_length), shortest_path[:, 0], bc_type='clamped'))
         self.spline_functions.append(CubicSpline(
             range(path_length), shortest_path[:, 1], bc_type='clamped'))
-        self.spline_functions.append(CubicSpline(
-            range(path_length), shortest_path[:, 2], bc_type='clamped'))
+        
+        nums = np.array(range(path_length))
+        x_val = shortest_path[:, 0]
+        y_val = shortest_path[:, 1]
+        fig, ax = plt.subplots(figsize=(6.5, 4))
+        ax.plot(nums, x_val, 'o', label='data x')
+        ax.plot(nums, y_val, 'o', label='data y')
+        ax.plot(nums, self.spline_functions[0](nums), label="spline x")
+        ax.plot(nums, self.spline_functions[1](nums), label="spline y")
+        ax.legend(loc='lower left', ncol=2)
+        plt.show()
 
-    def get_shortest_path(self, prev_step, next_step, step):
-        path_length = 50
+        # y_range = np.array(range(path_length))
+        # y_val = shortest_path[:, 0]
+        # fig, ax = plt.subplots(figsize=(6.5, 4))
+        # ax.plot(y_range, y_val, 'o', label='data')
+        # ax.plot(y_range, self.spline_functions[0](y_range), label="spline")
+        # ax.legend(loc='lower left', ncol=2)
+        # plt.show()
+
+    def get_interpolated_steps(self, step):
+        path_length = 10
         interpolated_points = []
-
-        for i in range(path_length):
+        for i in range(path_length - 1):
             curr_step = step + (1.0/path_length*i)
             interpolated_points.append([self.spline_functions[0](
-                curr_step), self.spline_functions[1](curr_step), self.spline_functions[2](curr_step)])
-
-        z_diff = (next_step[2] - prev_step[2]) / float(path_length)
-        z_path = np.array([prev_step[2] + (z_diff * i)
-                          for i in range(path_length)]).reshape((1, path_length))
-
-        output_path = np.concatenate(
-            (np.array(interpolated_points), z_path.T), axis=1)
-
-        return output_path
+                curr_step), self.spline_functions[1](curr_step)])
+        return np.array(interpolated_points)
 
     def generate(self):
         # source, target, camera_up
         # TODO: Generate New Waypoints
-        positions = np.array(
-            [[-5, 1.8, 1.6], [-1.1, 0.9, 1.6], [0.9, 0.9, 0.6], [3.5, 0, 0.6], [4, 1.6, 1.3], [5, 1.9, 1.4],
-            [1, 0.3, 1.4], [-2.3, 1.9, 1.4], [-2.4, 5.5, 1.4], [-2.2, 4.9, 1.4], [-0.7, 4.6, 1.3],
-            [-0.5, 7.6, 1.3], [0, 7.7, 1.3], [0.1, 0, 1.3]])
+        check_points = np.array(
+            [
+                [-5, 1.8, 1.6], [-1.2, 1.6, 1.6], [4.0, 1.4, 0.5], [-3.1, 3.4, 0.5]
+            ]
+        )
+        shortest_path = []
+        for i in range(1, len(check_points)):
+            steps = self.sim.scene.get_shortest_path(self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
+            for i in range(len(steps)-1):
+                step = steps[i]
+                shortest_path.append(step)
+        shortest_path = np.array(shortest_path)
+        self.prepare_spline_functions(shortest_path)
 
-        self.prepare_spline_functions(positions)
-        for i in range(len(positions)-1):
-            prev_point = positions[i]
-            next_point = positions[i+1]
-            steps = self.get_shortest_path(prev_point, next_point, i)
+        steps = []
+        for i in range(len(shortest_path)):
+            for step in self.get_interpolated_steps(i):
+                steps.append(step)
 
-            for step in steps:
-                if self.frame_count == MAX_NUM_FRAMES:
-                    break
 
-                x, y, z = step[0], step[1], 1
-                tar_x, tar_y, tar_z = next_point[0], next_point[1], 1
+        for i in range(len(steps)-1):
+            step = steps[i]
+            next_step = steps[i+1]
+            if self.frame_count == MAX_NUM_FRAMES:
+                break
 
-                self.sim.renderer.set_camera(
-                    [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
-                frames = self.sim.renderer.render(modes=("rgb", "3d"))
+            x, y, z = step[0], step[1], 0.5
+            tar_x, tar_y, tar_z = next_step[0], next_step[1], 0.5
 
-                # Render 3d points as depth map
-                depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
-                depth /= depth.max()
-                frames[1][:, :, :3] = depth[..., None]
+            self.sim.renderer.set_camera(
+                [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
+            frames = self.sim.renderer.render(modes=("rgb", "3d"))
 
-                self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
-                self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
-                self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
-                self.sim.step()
-                cv2.imshow("test", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
-                cv2.waitKey(1)
+            # Render 3d points as depth map
+            depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
+            depth /= depth.max()
+            frames[1][:, :, :3] = depth[..., None]
 
-                self.frame_count += 1
-                self.curr_frame_idx += 1
+            self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
+            self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
+            self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
+            self.sim.step()
+            cv2.imshow("test", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
+            cv2.waitKey(1)
 
-                if self.curr_frame_idx == FRAME_BATCH_SIZE:
-                    self.write_to_file()
-                prev_point = next_point
+            self.frame_count += 1
+            self.curr_frame_idx += 1
+
+            if self.curr_frame_idx == FRAME_BATCH_SIZE:
+                self.write_to_file()
 
         self.camera_intrinsics_dataset[:] = self.sim.renderer.get_intrinsics()
 
