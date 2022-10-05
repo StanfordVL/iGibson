@@ -33,64 +33,71 @@ class GenerateDataset(object):
 
         scene = InteractiveIndoorScene(scene_id="Ihlen_1_int")
         self.sim.import_scene(scene)
+        self.sim.scene.open_all_doors()
         self.floor = self.sim.scene.get_random_floor()
-        self.create_datasets()
-        self.create_caches()
+        self.check_points = []
+        # self.create_datasets()
+        # self.create_caches()
 
-    def create_datasets(self):
-        self.rgb_dataset = self.h5py_file.create_dataset(
-            "/rgb",
-            (MAX_NUM_FRAMES, IMAGE_HEIGHT, IMAGE_WIDTH, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE),
-                    IMAGE_HEIGHT, IMAGE_WIDTH, 4),
-        )
+        for room_instance in self.sim.scene.room_ins_name_to_ins_id:
+            lower, upper = self.sim.scene.get_aabb_by_room_instance(room_instance) #Axis Aligned Bounding Box
+            x_cord, y_cord, z_cord = (upper - lower)/2 + lower
+            self.check_points.append((x_cord, y_cord))
 
-        self.depth_dataset = self.h5py_file.create_dataset(
-            "/depth",
-            (MAX_NUM_FRAMES, IMAGE_HEIGHT, IMAGE_WIDTH, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE),
-                    IMAGE_HEIGHT, IMAGE_WIDTH, 4),
-        )
+    # def create_datasets(self):
+    #     self.rgb_dataset = self.h5py_file.create_dataset(
+    #         "/rgb",
+    #         (MAX_NUM_FRAMES, IMAGE_HEIGHT, IMAGE_WIDTH, 4),
+    #         dtype=np.float32,
+    #         compression="lzf",
+    #         chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE),
+    #                 IMAGE_HEIGHT, IMAGE_WIDTH, 4),
+    #     )
 
-        self.camera_extrinsics_dataset = self.h5py_file.create_dataset(
-            "/camera_extrinsics",
-            (MAX_NUM_FRAMES, 4, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE), 4, 4),
-        )
+    #     self.depth_dataset = self.h5py_file.create_dataset(
+    #         "/depth",
+    #         (MAX_NUM_FRAMES, IMAGE_HEIGHT, IMAGE_WIDTH, 4),
+    #         dtype=np.float32,
+    #         compression="lzf",
+    #         chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE),
+    #                 IMAGE_HEIGHT, IMAGE_WIDTH, 4),
+    #     )
 
-        self.camera_intrinsics_dataset = self.h5py_file.create_dataset(
-            "/camera_intrinsics",
-            (3, 3),
-            dtype=np.float32,
-        )
+    #     self.camera_extrinsics_dataset = self.h5py_file.create_dataset(
+    #         "/camera_extrinsics",
+    #         (MAX_NUM_FRAMES, 4, 4),
+    #         dtype=np.float32,
+    #         compression="lzf",
+    #         chunks=(min(MAX_NUM_FRAMES, FRAME_BATCH_SIZE), 4, 4),
+    #     )
 
-    def create_caches(self):
-        self.rgb_dataset_cache = np.zeros(
-            (FRAME_BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, 4), dtype=np.float32)
-        self.depth_dataset_cache = np.zeros(
-            (FRAME_BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, 4), dtype=np.float32)
-        self.camera_extrinsics_dataset_cache = np.zeros(
-            (FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
+    #     self.camera_intrinsics_dataset = self.h5py_file.create_dataset(
+    #         "/camera_intrinsics",
+    #         (3, 3),
+    #         dtype=np.float32,
+    #     )
 
-    def write_to_file(self):
-        new_lines = self.frame_count - self.prev_frame_count
-        self.prev_frame_count = self.frame_count
+    # def create_caches(self):
+    #     self.rgb_dataset_cache = np.zeros(
+    #         (FRAME_BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, 4), dtype=np.float32)
+    #     self.depth_dataset_cache = np.zeros(
+    #         (FRAME_BATCH_SIZE, IMAGE_HEIGHT, IMAGE_WIDTH, 4), dtype=np.float32)
+    #     self.camera_extrinsics_dataset_cache = np.zeros(
+    #         (FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
 
-        if new_lines <= 0:
-            return
+    # def write_to_file(self):
+    #     new_lines = self.frame_count - self.prev_frame_count
+    #     self.prev_frame_count = self.frame_count
 
-        start_pos = self.frame_count - new_lines
-        self.rgb_dataset[start_pos: self.frame_count] = self.rgb_dataset_cache[:new_lines]
-        self.depth_dataset[start_pos: self.frame_count] = self.depth_dataset_cache[:new_lines]
-        self.camera_extrinsics_dataset[start_pos:
-                                       self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
-        self.curr_frame_idx = 0
+    #     if new_lines <= 0:
+    #         return
+
+    #     start_pos = self.frame_count - new_lines
+    #     self.rgb_dataset[start_pos: self.frame_count] = self.rgb_dataset_cache[:new_lines]
+    #     self.depth_dataset[start_pos: self.frame_count] = self.depth_dataset_cache[:new_lines]
+    #     self.camera_extrinsics_dataset[start_pos:
+    #                                    self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
+    #     self.curr_frame_idx = 0
 
     def prepare_spline_functions(self, shortest_path):
         self.spline_functions = []
@@ -99,25 +106,6 @@ class GenerateDataset(object):
             range(path_length), shortest_path[:, 0], bc_type='clamped'))
         self.spline_functions.append(CubicSpline(
             range(path_length), shortest_path[:, 1], bc_type='clamped'))
-        
-        nums = np.array(range(path_length))
-        x_val = shortest_path[:, 0]
-        y_val = shortest_path[:, 1]
-        fig, ax = plt.subplots(figsize=(6.5, 4))
-        ax.plot(nums, x_val, 'o', label='data x')
-        ax.plot(nums, y_val, 'o', label='data y')
-        ax.plot(nums, self.spline_functions[0](nums), label="spline x")
-        ax.plot(nums, self.spline_functions[1](nums), label="spline y")
-        ax.legend(loc='lower left', ncol=2)
-        plt.show()
-
-        # y_range = np.array(range(path_length))
-        # y_val = shortest_path[:, 0]
-        # fig, ax = plt.subplots(figsize=(6.5, 4))
-        # ax.plot(y_range, y_val, 'o', label='data')
-        # ax.plot(y_range, self.spline_functions[0](y_range), label="spline")
-        # ax.legend(loc='lower left', ncol=2)
-        # plt.show()
 
     def get_interpolated_steps(self, step):
         path_length = 10
@@ -131,11 +119,7 @@ class GenerateDataset(object):
     def generate(self):
         # source, target, camera_up
         # TODO: Generate New Waypoints
-        check_points = np.array(
-            [
-                [-5, 1.8, 1.6], [-1.2, 1.6, 1.6], [4.0, 1.4, 0.5], [-3.1, 3.4, 0.5]
-            ]
-        )
+        check_points = self.check_points
         shortest_path = []
         for i in range(1, len(check_points)):
             steps = self.sim.scene.get_shortest_path(self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
@@ -157,8 +141,8 @@ class GenerateDataset(object):
             if self.frame_count == MAX_NUM_FRAMES:
                 break
 
-            x, y, z = step[0], step[1], 0.5
-            tar_x, tar_y, tar_z = next_step[0], next_step[1], 0.5
+            x, y, z = step[0], step[1], 0.8
+            tar_x, tar_y, tar_z = next_step[0], next_step[1], 0.8
 
             self.sim.renderer.set_camera(
                 [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
@@ -169,9 +153,9 @@ class GenerateDataset(object):
             depth /= depth.max()
             frames[1][:, :, :3] = depth[..., None]
 
-            self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
-            self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
-            self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
+            # self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
+            # self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
+            # self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
             self.sim.step()
             cv2.imshow("test", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
             cv2.waitKey(1)
@@ -180,18 +164,20 @@ class GenerateDataset(object):
             self.curr_frame_idx += 1
 
             if self.curr_frame_idx == FRAME_BATCH_SIZE:
-                self.write_to_file()
+                # self.write_to_file()
+                pass
 
-        self.camera_intrinsics_dataset[:] = self.sim.renderer.get_intrinsics()
+        # self.camera_intrinsics_dataset[:] = self.sim.renderer.get_intrinsics()
 
     def disconnect_simulator(self):
-        self.write_to_file()
+        # self.write_to_file()
         self.sim.disconnect()
 
 
 path = os.path.join(os.getcwd(), "data.hdf5")
-h5py_file = h5py.File(path, "w")
+# h5py_file = h5py.File(path, "w")
 
-dataset_generator = GenerateDataset(h5py_file)
+# dataset_generator = GenerateDataset(h5py_file)
+dataset_generator = GenerateDataset([])
 dataset_generator.generate()
-dataset_generator.disconnect_simulator()
+# dataset_generator.disconnect_simulator()
