@@ -56,7 +56,7 @@ class ObjectGrouper(StatefulObject):
             )
 
         def load(self, data):
-            if isinstance(data, ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump):
+            if isinstance(data, (ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump, list)):
                 # We're loading a many-to-many data dump.
                 assert len(data) == len(self.object_grouper.objects)
 
