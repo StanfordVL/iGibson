@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 #define MAX_ARRAY_SIZE 1024
 
@@ -26,8 +26,10 @@ layout (std140) uniform UVData {
     vec4 uv_transform_param[MAX_ARRAY_SIZE];
 };
 
-
-in int graphlib_DrawID;
+// Commenting out this line (and changing the version to 460)
+// allows the OpenGL to compile this regardless of the 
+// Nvidia driver version
+// in int gl_DrawID;
 
 uniform mat4 V;
 uniform mat4 last_V;
@@ -62,12 +64,12 @@ out vec4 FragPosLightSpace;
 out vec2 Optical_flow;
 
 void main() {
-    mat4 pose_trans = pose_trans_array[graphlib_DrawID];
-    mat4 pose_rot = transpose(pose_rot_array[graphlib_DrawID]);
-    mat4 last_trans = pose_last_trans_array[graphlib_DrawID];
-    mat4 last_rot = transpose(pose_last_rot_array[graphlib_DrawID]);
+    mat4 pose_trans = pose_trans_array[gl_DrawID];
+    mat4 pose_rot = transpose(pose_rot_array[gl_DrawID]);
+    mat4 last_trans = pose_last_trans_array[gl_DrawID];
+    mat4 last_rot = transpose(pose_last_rot_array[gl_DrawID]);
     // Hidden is stored in the x element of the vector - y, z and w are currently unused and set to 1.0
-    float hidden = hidden_array[graphlib_DrawID].x;
+    float hidden = hidden_array[gl_DrawID].x;
     vec4 world_position4;
     vec4 pos_cam4_projected;
     vec4 pos_cam4;
@@ -105,10 +107,10 @@ void main() {
     Pos_cam_projected = pos_cam4_projected.xyz / pos_cam4_projected.w;
 
 
-    theCoords.x = (cos(uv_transform_param[graphlib_DrawID][2]) * texCoords.x * uv_transform_param[graphlib_DrawID][0])
-                   - (sin(uv_transform_param[graphlib_DrawID][2]) * texCoords.y * uv_transform_param[graphlib_DrawID][1]);
-    theCoords.y = (sin(uv_transform_param[graphlib_DrawID][2]) * texCoords.x * uv_transform_param[graphlib_DrawID][0])
-                   + (cos(uv_transform_param[graphlib_DrawID][2]) * texCoords.y * uv_transform_param[graphlib_DrawID][1]);
+    theCoords.x = (cos(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
+                   - (sin(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
+    theCoords.y = (sin(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
+                   + (cos(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
     Semantic_seg_color = semantic_seg_color;
     Instance_seg_color = instance_seg_color;
     Diffuse_color = diffuse_color;
@@ -117,5 +119,5 @@ void main() {
     vec3 N = normalize(vec3(pose_trans * pose_rot * vec4(normal,    0.0)));
     TBN = mat3(T, B, N);
     FragPosLightSpace = lightP * lightV * pose_trans * pose_rot * vec4(position, 1);
-    Draw_id = graphlib_DrawID;
+    Draw_id = gl_DrawID;
 }
