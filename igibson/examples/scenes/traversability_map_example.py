@@ -5,6 +5,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+import igibson
 
 from igibson.utils.assets_utils import get_scene_path
 
@@ -16,25 +17,14 @@ def main(selection="user", headless=False, short_exec=False):
     highlighted area reflects the traversable (free-space) area
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    scene_id = "Rs"
-    trav_map_size = 200
-    trav_map_erosion = 2
+    scene_id = "Ihlen_1_int"
+    path = os.path.join("/data/ig_data/ig_dataset/scenes", scene_id, "layout")
 
-    with open(os.path.join(get_scene_path(scene_id), "floors.txt"), "r") as f:
-        floors = sorted(list(map(float, f.readlines())))
-        print("Floor heights: {}".format(floors))
-
-    for f in range(len(floors)):
-        trav_map = Image.open(os.path.join(get_scene_path(scene_id), "floor_trav_{}.png".format(f)))
-        obstacle_map = Image.open(os.path.join(get_scene_path(scene_id), "floor_{}.png".format(f)))
-        trav_map = np.array(trav_map.resize((trav_map_size, trav_map_size)))
-        obstacle_map = np.array(obstacle_map.resize((trav_map_size, trav_map_size)))
-        trav_map[obstacle_map == 0] = 0
-        trav_map = cv2.erode(trav_map, np.ones((trav_map_erosion, trav_map_erosion)))
-
+    for f in range(1):
+        trav_map = cv2.imread(os.path.join(path, "floor_trav_no_door_{}.png".format(f)))
         if not headless:
             plt.figure(f, figsize=(12, 12))
-            plt.imshow(trav_map)
+            plt.imshow(cv2.cvtColor(trav_map, cv2.COLOR_RGB2BGR))
             plt.title("Traversable area of {} scene".format(scene_id))
 
     if not headless:
