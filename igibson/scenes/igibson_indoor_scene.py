@@ -51,7 +51,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         urdf_path=None,
         pybullet_filename=None,
         trav_map_resolution=0.1,
-        trav_map_erosion=5,
+        trav_map_erosion=2,
         trav_map_type="with_obj",
         build_graph=True,
         num_waypoints=10,
