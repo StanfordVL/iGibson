@@ -26,6 +26,8 @@ MAX_ATTEMPTS_PER_PERTURBATION = 1000
 
 MAX_DEPTH = 5  # meters
 
+CROP_MARGIN = 10  # pixels
+
 DEBUG_FILTERS = True
 DEBUG_FILTER_IMAGES = False
 
@@ -44,7 +46,9 @@ FILTERS = {
     "no_collision": filters.point_in_object_filter(),
     "no_openable_objects_fov": filters.no_relevant_object_in_fov_filter(object_states.Open, min_bbox_vertices_in_fov=4),
     "no_openable_objects_img": filters.no_relevant_object_in_img_filter(object_states.Open, threshold=0.05),
-    "some_objects_closer_than_10cm": filters.too_close_filter(min_dist=0.1),
+    "some_objects_closer_than_10cm": filters.too_close_filter(
+        min_dist=0.1, max_allowed_fraction_outside_threshold=0.05
+    ),
     # At least 70% of the image between 30cm and 2m away
     # "too_many_too_close_far_objects": filters.too_close_filter(min_dist=0.5, max_dist=3., max_allowed_fraction_outside_threshold=0.3),
     # No more than 50% of the image should consist of wall/floor/ceiling
@@ -87,7 +91,7 @@ def save_images(env, objs_of_interest, img_id):
 
     rgb_arr = np.uint8(rgb[:, :, :3] * 255)
     rgb_img = Image.fromarray(rgb_arr)
-    depth = np.clip(threed[:, :, 2:3], 0, MAX_DEPTH) / MAX_DEPTH
+    depth = np.clip(-threed[:, :, 2:3], 0, MAX_DEPTH) / MAX_DEPTH
     depth_arr = np.uint8(depth[..., 0] * 255)
     depth_img = Image.fromarray(depth_arr)
 
@@ -115,20 +119,29 @@ def save_images(env, objs_of_interest, img_id):
 
     crop_out_dir = os.path.join(OUTPUT_DIR, "cropped")
     for crop_id, obj in enumerate(found_objs):
+        # Get the pixels belonging to this object.
         this_obj_body_ids = obj.get_body_ids()
         this_obj_pixels = np.isin(body_ids, this_obj_body_ids)
+
+        # Get the crop bounding box positions.
         rows = np.any(this_obj_pixels, axis=1)
         cols = np.any(this_obj_pixels, axis=0)
         rmin, rmax = np.where(rows)[0][[0, -1]]
         cmin, cmax = np.where(cols)[0][[0, -1]]
 
-        # crop the images
+        # Add the margins
+        rmin = np.clip(rmin - CROP_MARGIN, 0, RENDER_HEIGHT - 1)
+        rmax = np.clip(rmax + CROP_MARGIN, 0, RENDER_HEIGHT - 1)
+        cmin = np.clip(cmin - CROP_MARGIN, 0, RENDER_WIDTH - 1)
+        cmax = np.clip(cmax - CROP_MARGIN, 0, RENDER_WIDTH - 1)
+
+        # Crop the images at the bounding box borders.
         cropped_rgb = Image.fromarray(rgb_arr[rmin : rmax + 1, cmin : cmax + 1])
         cropped_depth = Image.fromarray(depth_arr[rmin : rmax + 1, cmin : cmax + 1])
         cropped_seg = Image.fromarray(seg_arr[rmin : rmax + 1, cmin : cmax + 1])
 
+        # Prepare labelled directories.
         label = "open" if obj.states[object_states.Open].get_value() else "closed"
-
         labeled_rgb_dir = os.path.join(crop_out_dir, "rgb", label)
         os.makedirs(labeled_rgb_dir, exist_ok=True)
         labeled_depth_dir = os.path.join(crop_out_dir, "depth", label)
