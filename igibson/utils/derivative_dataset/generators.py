@@ -55,7 +55,7 @@ def object_targeted_generator(env, objs_of_interest):
     camera_mat = np.array([camera_x, camera_y, camera_z]).T
     camera_orn = R.from_matrix(camera_mat)
 
-    camera_dist = np.random.uniform(0.5, 2)
+    camera_dist = np.random.uniform(0.5, 5)
     camera_pos = obj.get_position() + target_to_camera * camera_dist
 
     pitch_perturbation = np.clip(
@@ -70,7 +70,7 @@ def object_targeted_generator(env, objs_of_interest):
     )
     perturbation = R.from_euler("xy", [pitch_perturbation, yaw_perturbation])
 
-    perturbed_camera_orn = camera_orn  # * perturbation
+    perturbed_camera_orn = camera_orn * perturbation
 
     # r = R.from_euler("x", FORWARD_PITCH) * perturbation * target_in_camera_frame
     # r = camera_in_world_frame * omni_to_opengl.inv() * R.from_euler("Z", np.pi)
