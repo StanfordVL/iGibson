@@ -8,6 +8,7 @@ from sys import platform
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 import igibson
 from igibson import object_states
@@ -28,7 +29,7 @@ MAX_DEPTH = 5  # meters
 
 CROP_MARGIN = 10  # pixels
 
-DEBUG_FILTERS = True
+DEBUG_FILTERS = False
 DEBUG_FILTER_IMAGES = False
 
 OUTPUT_DIR = r"C:\Users\cgokmen\research\derivative_dataset_tests"
@@ -63,7 +64,8 @@ FILTER_IMG_IDX = {f: 0 for f in FILTERS}
 def run_filters(env, objs_of_interest):
     for filter_name, filter_fn in FILTERS.items():
         if not filter_fn(env, objs_of_interest):
-            print("Failed ", filter_name)
+            if DEBUG_FILTERS:
+                print("Failed ", filter_name)
             FILTER_IMG_IDX[filter_name] += 1
 
             if DEBUG_FILTERS and random.uniform(0, 1) < 0.01:
@@ -197,37 +199,42 @@ def main(headless=False, short_exec=False):
 
     total_image_count = 0
     perturbers = itertools.cycle(PERTURBERS)
-    while total_image_count < REQUESTED_IMAGES:
-        perturber = next(perturbers)
-        env.simulator.scene.reset_scene_objects()
-        for _ in range(100):
-            env.step(None)
+    with tqdm(total=REQUESTED_IMAGES) as pbar:
+        while total_image_count < REQUESTED_IMAGES:
+            perturber = next(perturbers)
+            env.simulator.scene.reset_scene_objects()
+            for _ in range(100):
+                env.step(None)
 
-        objs_of_interest = perturber(env)
-        env.simulator.sync(force_sync=True)
+            objs_of_interest = perturber(env)
+            env.simulator.sync(force_sync=True)
 
-        perturbation_image_count = 0
-        attempts = 0
-        generators = itertools.cycle(GENERATORS)
-        while perturbation_image_count < IMAGES_PER_PERTURBATION and attempts < MAX_ATTEMPTS_PER_PERTURBATION:
-            print("Attempt ", attempts)
-            attempts += 1
-            generator = next(generators)
+            perturbation_image_count = 0
+            attempts = 0
+            generators = itertools.cycle(GENERATORS)
+            while perturbation_image_count < IMAGES_PER_PERTURBATION and attempts < MAX_ATTEMPTS_PER_PERTURBATION:
+                if DEBUG_FILTERS:
+                    print("Attempt ", attempts)
+                attempts += 1
+                generator = next(generators)
 
-            camera_pos, camera_target, camera_up = generator(env, objs_of_interest)
-            env.simulator.renderer.set_camera(camera_pos, camera_target, camera_up)
+                camera_pos, camera_target, camera_up = generator(env, objs_of_interest)
+                env.simulator.renderer.set_camera(camera_pos, camera_target, camera_up)
 
-            # v = VisualMarker(radius=0.1)
-            # env.simulator.import_object(v)
-            # v.set_position(camera_pos)
+                # v = VisualMarker(radius=0.1)
+                # env.simulator.import_object(v)
+                # v.set_position(camera_pos)
 
-            if not run_filters(env, objs_of_interest):
-                continue
+                if not run_filters(env, objs_of_interest):
+                    continue
 
-            save_images(env, objs_of_interest, total_image_count)
+                save_images(env, objs_of_interest, total_image_count)
 
-            perturbation_image_count += 1
-            total_image_count += 1
+                perturbation_image_count += 1
+                total_image_count += 1
+                pbar.update()
+
+    print(FILTER_IMG_IDX)
 
     env.simulator.disconnect()
 
