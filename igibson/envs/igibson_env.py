@@ -262,8 +262,8 @@ class iGibsonEnv(BaseEnv):
         """
         super(iGibsonEnv, self).load()
         self.load_task_setup()
-        self.load_observation_space()
-        self.load_action_space()
+        # self.load_observation_space()
+        # self.load_action_space()
         self.load_miscellaneous_variables()
 
     def get_state(self):
@@ -301,9 +301,9 @@ class iGibsonEnv(BaseEnv):
         :return: a list of collisions from the last physics timestep
         """
         self.simulator_step()
-        collision_links = [
-            collision for bid in self.robots[0].get_body_ids() for collision in p.getContactPoints(bodyA=bid)
-        ]
+        collision_links = []
+        #     collision for bid in self.robots[0].get_body_ids() for collision in p.getContactPoints(bodyA=bid)
+        # ]
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -357,7 +357,7 @@ class iGibsonEnv(BaseEnv):
         self.collision_links = collision_links
         self.collision_step += int(len(collision_links) > 0)
 
-        state = self.get_state()
+        state = {}  # self.get_state()
         info = {}
         reward, info = self.task.get_reward(self, collision_links, action, info)
         done, info = self.task.get_termination(self, collision_links, action, info)
@@ -494,10 +494,10 @@ class iGibsonEnv(BaseEnv):
         """
         self.randomize_domain()
         # Move robot away from the scene.
-        self.robots[0].set_position([100.0, 100.0, 100.0])
+        # self.robots[0].set_position([100.0, 100.0, 100.0])
         self.task.reset(self)
         self.simulator.sync(force_sync=True)
-        state = self.get_state()
+        state = {}  # self.get_state()
         self.reset_variables()
 
         return state

@@ -194,6 +194,8 @@ class BaseEnv(gym.Env):
                 scene._set_first_n_objects(first_n)
 
         self.simulator.import_scene(scene)
+        self.scene = scene
+        return
 
         # Get robot config
         robot_config = self.config["robot"]

@@ -915,8 +915,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Load the traversability map
         maps_path = os.path.join(self.scene_dir, "layout")
-        if self.build_graph:
-            self.load_trav_map(maps_path)
+        self.load_trav_map(maps_path)
 
         self.restore_object_states(self.object_states)
         if self.pybullet_filename is not None:
