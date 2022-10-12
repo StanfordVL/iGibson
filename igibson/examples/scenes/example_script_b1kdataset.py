@@ -27,7 +27,7 @@ MAX_ATTEMPTS_PER_PERTURBATION = 1000
 MAX_DEPTH = 5  # meters
 
 DEBUG_FILTERS = True
-DEBUG_FILTER_IMAGES = True
+DEBUG_FILTER_IMAGES = False
 
 OUTPUT_DIR = r"C:\Users\cgokmen\research\derivative_dataset_tests"
 
@@ -83,23 +83,31 @@ def run_filters(env, objs_of_interest):
 
 
 def save_images(env, objs_of_interest, img_id):
-    rgb, segmask, threed = env.simulator.renderer.render(("rgb", "seg", "3d"))
+    rgb, segmask, threed = env.simulator.renderer.render(("rgb", "ins_seg", "3d"))
 
     rgb_arr = np.uint8(rgb[:, :, :3] * 255)
     rgb_img = Image.fromarray(rgb_arr)
-    depth = np.clip(threed[:, :2:3], 0, MAX_DEPTH) / MAX_DEPTH
+    depth = np.clip(threed[:, :, 2:3], 0, MAX_DEPTH) / MAX_DEPTH
     depth_arr = np.uint8(depth[..., 0] * 255)
     depth_img = Image.fromarray(depth_arr)
 
     seg = np.round(segmask[:, :, 0] * MAX_INSTANCE_COUNT).astype(int)
     body_ids = env.simulator.renderer.get_pb_ids_for_instance_ids(seg)
-    seg_arr = np.uint8(body_ids)
+    _, lowered_body_ids = np.unique(body_ids, return_inverse=True)
+    seg_arr = np.uint8(lowered_body_ids.reshape(body_ids.shape))
     seg_img = Image.fromarray(seg_arr)
 
     out_dir = os.path.join(OUTPUT_DIR, "uncropped")
-    rgb_img.save(os.path.join(out_dir, "rgb", f"{img_id}.png"))
-    depth_img.save(os.path.join(out_dir, "depth", f"{img_id}.png"))
-    seg_img.save(os.path.join(out_dir, "seg", f"{img_id}.png"))
+    rgb_dir = os.path.join(out_dir, "rgb")
+    os.makedirs(rgb_dir, exist_ok=True)
+    depth_dir = os.path.join(out_dir, "depth")
+    os.makedirs(depth_dir, exist_ok=True)
+    seg_dir = os.path.join(out_dir, "seg")
+    os.makedirs(seg_dir, exist_ok=True)
+
+    rgb_img.save(os.path.join(rgb_dir, f"{img_id}.png"))
+    depth_img.save(os.path.join(depth_dir, f"{img_id}.png"))
+    seg_img.save(os.path.join(seg_dir, f"{img_id}.png"))
 
     obj_body_ids = [x for obj in objs_of_interest for x in obj.get_body_ids()]
     found_obj_body_ids = set(body_ids.flatten()) & set(obj_body_ids)
@@ -121,10 +129,16 @@ def save_images(env, objs_of_interest, img_id):
 
         label = "open" if obj.states[object_states.Open].get_value() else "closed"
 
-        labeled_out_dir = os.path.join(crop_out_dir, label)
-        cropped_rgb.save(os.path.join(labeled_out_dir, "rgb", f"{img_id}_{crop_id}.png"))
-        cropped_depth.save(os.path.join(labeled_out_dir, "depth", f"{img_id}_{crop_id}.png"))
-        cropped_seg.save(os.path.join(labeled_out_dir, "seg", f"{img_id}_{crop_id}.png"))
+        labeled_rgb_dir = os.path.join(crop_out_dir, "rgb", label)
+        os.makedirs(labeled_rgb_dir, exist_ok=True)
+        labeled_depth_dir = os.path.join(crop_out_dir, "depth", label)
+        os.makedirs(labeled_depth_dir, exist_ok=True)
+        labeled_seg_dir = os.path.join(crop_out_dir, "seg", label)
+        os.makedirs(labeled_seg_dir, exist_ok=True)
+
+        cropped_rgb.save(os.path.join(labeled_rgb_dir, f"{img_id}_{crop_id}.png"))
+        cropped_depth.save(os.path.join(labeled_depth_dir, f"{img_id}_{crop_id}.png"))
+        cropped_seg.save(os.path.join(labeled_seg_dir, f"{img_id}_{crop_id}.png"))
 
 
 def main(headless=False, short_exec=False):
@@ -155,7 +169,7 @@ def main(headless=False, short_exec=False):
     )
     env = iGibsonEnv(
         scene_id=scene_id,
-        mode="gui_interactive",
+        mode="headless",
         config_file={
             "image_width": RENDER_WIDTH,
             "image_height": RENDER_HEIGHT,
