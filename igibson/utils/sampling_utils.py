@@ -343,7 +343,7 @@ def sample_cuboid_on_object(
             results[i] = (cuboid_centroid, plane_normal, rotation.as_quat(), hit_link, refusal_reasons)
             break
 
-    if True:#igibson.debug_sampling:
+    if igibson.debug_sampling:
         print("Sampling rejection reasons:")
         counter = Counter()
 
@@ -528,7 +528,7 @@ def check_sample_cuboid_on_object(
             results[i] = (cuboid_centroid, plane_normal, rotation.as_quat(), hit_link, refusal_reasons)
             break
 
-    if True: #igibson.debug_sampling:
+    if igibson.debug_sampling:
         print("Sampling rejection reasons:")
         counter = Counter()
 
