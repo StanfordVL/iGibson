@@ -15,14 +15,18 @@ from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.utils import assets_utils
 from igibson.utils.constants import MAX_INSTANCE_COUNT
 from igibson.utils.derivative_dataset import filters, generators, perturbers
+
+TASK_ID = int(os.getenv("SLURM_LOCALID"))
+
 
 RENDER_WIDTH = 1024
 RENDER_HEIGHT = 1024
 
-REQUESTED_IMAGES = 10000
-IMAGES_PER_PERTURBATION = 10
+REQUESTED_IMAGES_PER_OPENABLE = 100
+IMAGES_PER_PERTURBATION = 50
 MAX_ATTEMPTS_PER_PERTURBATION = 1000
 
 MAX_DEPTH = 5  # meters
@@ -32,7 +36,7 @@ CROP_MARGIN = 10  # pixels
 DEBUG_FILTERS = False
 DEBUG_FILTER_IMAGES = False
 
-OUTPUT_DIR = r"C:\Users\cgokmen\research\derivative_dataset_tests"
+OUTPUT_DIR = r"/out"
 
 GENERATORS = [
     # generators.uniform_generator,
@@ -45,7 +49,7 @@ PERTURBERS = [
 
 FILTERS = {
     "no_collision": filters.point_in_object_filter(),
-    "no_openable_objects_fov": filters.no_relevant_object_in_fov_filter(object_states.Open, min_bbox_vertices_in_fov=4),
+    "no_openable_objects_fov": filters.no_relevant_object_in_fov_filter(object_states.Open, min_bbox_vertices_in_fov=6),
     "no_openable_objects_img": filters.no_relevant_object_in_img_filter(object_states.Open, threshold=0.05),
     "some_objects_closer_than_10cm": filters.too_close_filter(
         min_dist=0.1, max_allowed_fraction_outside_threshold=0.05
@@ -162,7 +166,10 @@ def main(headless=False, short_exec=False):
     Shows how to load directly scenes without the Environment interface
     Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path
     """
-    scene_id = "Rs_int"
+    total_image_count = 0
+    available_scenes = assets_utils.get_available_ig_scenes()
+    scene_id = available_scenes[TASK_ID % len(available_scenes)]
+
     hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
     hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
     light_modulation_map_filename = os.path.join(
@@ -197,10 +204,11 @@ def main(headless=False, short_exec=False):
     for _ in range(100):
         env.step(None)
 
-    total_image_count = 0
     perturbers = itertools.cycle(PERTURBERS)
-    with tqdm(total=REQUESTED_IMAGES) as pbar:
-        while total_image_count < REQUESTED_IMAGES:
+    openables = len(env.scene.get_objects_with_state(object_states.Open))
+    requested_images = openables * REQUESTED_IMAGES_PER_OPENABLE
+    with tqdm(total=requested_images) as pbar:
+        while total_image_count < requested_images:
             perturber = next(perturbers)
             env.simulator.scene.reset_scene_objects()
             for _ in range(100):

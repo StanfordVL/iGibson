@@ -41,11 +41,14 @@ def folder_is_hidden(p):
 
     :return: true if a folder is hidden in the OS
     """
+    if os.path.basename(p).startswith("."):
+        return True
+
     if os.name == "nt":
         attribute = win32api.GetFileAttributes(p)
         return attribute & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
-    else:
-        return p.startswith(".")  # linux-osx
+
+    return False
 
 
 def get_ig_avg_category_specs():
@@ -88,7 +91,11 @@ def get_available_ig_scenes():
     ig_dataset_path = igibson.ig_dataset_path
     ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
     available_ig_scenes = sorted(
-        [f for f in os.listdir(ig_scenes_path) if (not folder_is_hidden(f) and f != "background")]
+        [
+            f
+            for f in os.listdir(ig_scenes_path)
+            if (not folder_is_hidden(os.path.join(ig_scenes_path, f)) and f != "background")
+        ]
     )
     return available_ig_scenes
 
