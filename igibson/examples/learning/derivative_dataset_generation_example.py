@@ -19,7 +19,10 @@ from igibson.utils import assets_utils
 from igibson.utils.constants import MAX_INSTANCE_COUNT
 from igibson.utils.derivative_dataset import filters, generators, perturbers
 
+JOB_ID = int(os.getenv("SLURM_JOBID"))
+ARRAY_ID = int(os.getenv("SLURM_ARRAY_TASK_ID"))
 TASK_ID = int(os.getenv("SLURM_LOCALID"))
+PREFIX = f"{JOB_ID}-{ARRAY_ID}-{TASK_ID}"
 
 
 RENDER_WIDTH = 1024
@@ -115,9 +118,9 @@ def save_images(env, objs_of_interest, img_id):
     seg_dir = os.path.join(out_dir, "seg")
     os.makedirs(seg_dir, exist_ok=True)
 
-    rgb_img.save(os.path.join(rgb_dir, f"{img_id}.png"))
-    depth_img.save(os.path.join(depth_dir, f"{img_id}.png"))
-    seg_img.save(os.path.join(seg_dir, f"{img_id}.png"))
+    rgb_img.save(os.path.join(rgb_dir, f"{PREFIX}-{img_id}.png"))
+    depth_img.save(os.path.join(depth_dir, f"{PREFIX}-{img_id}.png"))
+    seg_img.save(os.path.join(seg_dir, f"{PREFIX}-{img_id}.png"))
 
     obj_body_ids = [x for obj in objs_of_interest for x in obj.get_body_ids()]
     found_obj_body_ids = set(body_ids.flatten()) & set(obj_body_ids)
@@ -155,9 +158,9 @@ def save_images(env, objs_of_interest, img_id):
         labeled_seg_dir = os.path.join(crop_out_dir, "seg", label)
         os.makedirs(labeled_seg_dir, exist_ok=True)
 
-        cropped_rgb.save(os.path.join(labeled_rgb_dir, f"{img_id}_{crop_id}.png"))
-        cropped_depth.save(os.path.join(labeled_depth_dir, f"{img_id}_{crop_id}.png"))
-        cropped_seg.save(os.path.join(labeled_seg_dir, f"{img_id}_{crop_id}.png"))
+        cropped_rgb.save(os.path.join(labeled_rgb_dir, f"{PREFIX}-{img_id}_{crop_id}.png"))
+        cropped_depth.save(os.path.join(labeled_depth_dir, f"{PREFIX}-{img_id}_{crop_id}.png"))
+        cropped_seg.save(os.path.join(labeled_seg_dir, f"{PREFIX}-{img_id}_{crop_id}.png"))
 
 
 def main(headless=False, short_exec=False):
@@ -168,7 +171,7 @@ def main(headless=False, short_exec=False):
     """
     total_image_count = 0
     available_scenes = assets_utils.get_available_ig_scenes()
-    scene_id = available_scenes[TASK_ID % len(available_scenes)]
+    scene_id = available_scenes[ARRAY_ID % len(available_scenes)]
 
     hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
     hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
