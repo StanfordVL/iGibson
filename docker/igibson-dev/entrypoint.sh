@@ -11,6 +11,4 @@ pip install --no-cache-dir -e . || {
     exit 1;
 }
 
-rm -rf /root/.cache
-
 python -m ${IG_ENTRYPOINT_MODULE}
