@@ -3,9 +3,9 @@
 # Usage: sbatch run.sh --export=IG_IGIBSON_PATH=path,IG_OUTPUT_PATH=path,IG_ENTRYPOINT_MODULE=path
 #SBATCH --partition=svl --qos=normal
 #SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --ntasks-per-gpu=1
-#SBATCH --mem-per-cpu=4G
+#SBATCH --mem-per-cpu=8G
 #SBATCH --gpus=2080ti:1
 #SBATCH --job-name="vision-dataset-generation"
 #SBATCH --output=logs/<JOB_NAME>_slurm_%A_%4J_%2t.out
