@@ -7,7 +7,7 @@ OUTPUT_PATH=/cvgl/group/igibson-docker/${IMAGE}.sqsh
 echo "OUTPUT_PATH="${OUTPUT_PATH};
 
 {
-if [ -f OUTPUT_PATH ]; then
+if [ -f ${OUTPUT_PATH} ]; then
     echo "Output file ${OUTPUT_PATH} already exists";
     exit 1;
 fi
@@ -18,7 +18,7 @@ docker build -t $IMAGE . || {
     exit 1;
 }
 
-enroot import --output  dockerd://${IMAGE} || {
+enroot import --output ${OUTPUT_PATH} dockerd://${IMAGE} || {
     echo 'Could not import image.' ;
     exit 1;
 }
