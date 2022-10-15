@@ -4,7 +4,7 @@
 #SBATCH --partition=svl --qos=normal
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=4
-#SBATCH --tasks-per-gpu=4
+#SBATCH --ntasks-per-gpu=1
 #SBATCH --mem-per-task=16G
 #SBATCH --gpus=2080ti:1
 #SBATCH --job-name="vision-dataset-generation"

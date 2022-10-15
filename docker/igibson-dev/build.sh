@@ -13,4 +13,4 @@ enroot import --output /cvgl/group/igibson-docker/igibson-dev.sqsh dockerd://${I
     exit 1;
 }
 
-docker rmi
+docker rmi $IMAGE
