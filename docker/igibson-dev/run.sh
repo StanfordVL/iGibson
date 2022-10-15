@@ -1,6 +1,6 @@
 #!/bin/bash
 # This job should be run on the SC headnode.
-# Usage: sbatch run.sh --export=IG_IGIBSON_PATH=path,IG_OUTPUT_PATH=path,IG_ENTRYPOINT_MODULE=path
+# Usage: sbatch --export=IG_IGIBSON_PATH=path,IG_OUTPUT_PATH=path,IG_ENTRYPOINT_MODULE=path run.sh
 #SBATCH --partition=svl --qos=normal
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=2
