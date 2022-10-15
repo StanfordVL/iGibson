@@ -8,8 +8,8 @@
 #SBATCH --mem-per-cpu=8G
 #SBATCH --gpus=2080ti:1
 #SBATCH --job-name="vision-dataset-generation"
-#SBATCH --output=logs/%x_%A_%4J_%2t.out
-#SBATCH --error=logs/%x_%A_%4J_%2t.err
+#SBATCH --output=logs/%x_%A_%2t.out
+#SBATCH --error=logs/%x_%A_%2t.err
 
 ######################
 # Begin work section #
