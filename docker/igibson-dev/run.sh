@@ -21,16 +21,10 @@ echo "SLURM_NNODES"=$SLURM_NNODES
 echo "SLURMTMPDIR="$SLURMTMPDIR
 echo "working directory = "$SLURM_SUBMIT_DIR
 
-# Switch to the SSD.
-cd /scr-ssd || {
-    echo 'Could not cd into scratch SSD.' ;
-    exit 1;
-}
-
 # Then, create a container.
 enroot create -n igibson /cvgl/group/igibson-docker/igibson-dev.sqsh && {
   # Run the container, mounting iGibson at the right spot
-  enroot start -r -w -m ${IG_IGIBSON_PATH}:/igibson -m ${IG_OUTPUT_PATH}:/out -e SLURM_LOCALID=${SLURM_LOCALID} igibson python -m ${IG_ENTRYPOINT_MODULE};
+  echo enroot start -r -w -m ${IG_IGIBSON_PATH}:/igibson -m ${IG_OUTPUT_PATH}:/out -e SLURM_LOCALID=${SLURM_LOCALID} igibson python -m ${IG_ENTRYPOINT_MODULE};
   # Remove the container.
   enroot remove -f igibson;
 }
