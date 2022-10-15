@@ -8,8 +8,8 @@
 #SBATCH --mem-per-cpu=8G
 #SBATCH --gpus=2080ti:1
 #SBATCH --job-name="vision-dataset-generation"
-#SBATCH --output=logs/<JOB_NAME>_slurm_%A_%4J_%2t.out
-#SBATCH --error=logs/<JOB_NAME>_slurm_%A_%4J_%2t.err
+#SBATCH --output=logs/%x_%A_%4J_%2t.out
+#SBATCH --error=logs/%x_%A_%4J_%2t.err
 
 ######################
 # Begin work section #
@@ -30,7 +30,7 @@ cd /scr-ssd || {
 # Then, create a container.
 enroot create -n igibson /cvgl/group/igibson-docker/igibson-dev.sqsh && {
   # Run the container, mounting iGibson at the right spot
-  enroot start -r -rw -m ${IG_IGIBSON_PATH}:/igibson -m ${IG_OUTPUT_PATH}:/out -e SLURM_LOCALID=${SLURM_LOCALID} igibson python -m ${IG_ENTRYPOINT_MODULE};
+  enroot start -r -w -m ${IG_IGIBSON_PATH}:/igibson -m ${IG_OUTPUT_PATH}:/out -e SLURM_LOCALID=${SLURM_LOCALID} igibson python -m ${IG_ENTRYPOINT_MODULE};
   # Remove the container.
   enroot remove -f igibson;
 }
