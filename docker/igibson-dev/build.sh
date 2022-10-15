@@ -4,6 +4,8 @@
 IMAGE=igibson-dev
 OUTPUT_PATH=/cvgl/group/igibson-docker/${IMAGE}.sqsh
 
+echo "OUTPUT_PATH="${OUTPUT_PATH};
+
 {
 if [ -f OUTPUT_PATH ]; then
     echo "Output file ${OUTPUT_PATH} already exists";
