@@ -33,5 +33,3 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 
 # NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html --no-cache-dir
-
-ENTRYPOINT /igibson/entrypoint.sh
