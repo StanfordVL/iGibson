@@ -105,31 +105,6 @@ class GenerateDataset(object):
         check_points = self.check_points
         shortest_path = []
 
-        # Here we find the shortest path twice as an alternative to using the spline function
-        for i in range(1, len(check_points)):
-            steps = self.sim.scene.get_shortest_path(
-                self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
-            for j in range(1, len(steps)):
-                shortest_path.append(steps[j])
-        shortest_path = np.array(shortest_path)
-
-        steps = []
-        for i in range(len(shortest_path)-2):
-            for step in self.get_interpolated_steps(shortest_path[i], shortest_path[i+1]):
-                steps.append(step)
-        steps = np.array(steps)
-
-        for i in range(1, len(steps)-20):
-            curr_step = steps[i]
-            next_step = np.average(
-                steps[i+1:i+10], axis=0, weights=np.arange(18, 0, -2))
-            self.render_image(curr_step, next_step)
-
-    def generate(self):
-        # source, target, camera_up
-        check_points = self.check_points
-        shortest_path = []
-
         # for i in range(1, len(check_points)):
         for i in range(1, 5):
             steps = self.sim.scene.get_shortest_path(
@@ -140,12 +115,7 @@ class GenerateDataset(object):
         shortest_path = np.array(shortest_path)
         self.prepare_spline_functions(shortest_path)
 
-        steps = []
-        for i in range(len(shortest_path)):
-            for step in self.get_interpolated_steps(i):
-                step = np.append(step, np.arctan2(step[1], step[0]))
-                steps.append(step)
-        steps = np.array(steps)
+        steps = shortest_path
 
         plt.plot(steps[:, 0], steps[:, 1], color ='tab:blue',  marker='o')
         plt.xlabel("x")
