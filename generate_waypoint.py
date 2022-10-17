@@ -95,31 +95,6 @@ class GenerateDataset(object):
         check_points = self.check_points
         shortest_path = []
 
-        # Here we find the shortest path twice as an alternative to using the spline function
-        for i in range(1, len(check_points)):
-            steps = self.sim.scene.get_shortest_path(
-                self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
-            for j in range(1, len(steps)):
-                shortest_path.append(steps[j])
-        shortest_path = np.array(shortest_path)
-
-        steps = []
-        for i in range(len(shortest_path)-2):
-            for step in self.get_interpolated_steps(shortest_path[i], shortest_path[i+1]):
-                steps.append(step)
-        steps = np.array(steps)
-
-        for i in range(1, len(steps)-20):
-            curr_step = steps[i]
-            next_step = np.average(
-                steps[i+1:i+10], axis=0, weights=np.arange(18, 0, -2))
-            self.render_image(curr_step, next_step)
-
-    def generate(self):
-        # source, target, camera_up
-        check_points = self.check_points
-        shortest_path = []
-
         for i in range(len(check_points)):
             steps = self.sim.scene.get_shortest_path(
                 self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
