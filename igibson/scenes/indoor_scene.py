@@ -51,6 +51,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         self.trav_map_original_size = None
         self.trav_map_size = None
         self.trav_map_erosion = trav_map_erosion
+        # The trav_map_types is not sufficient
         self.trav_map_type = trav_map_type
         self.build_graph = build_graph
         self.num_waypoints = num_waypoints
@@ -73,6 +74,8 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         for floor in range(len(self.floor_heights)):
             if self.trav_map_type == "with_obj":
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_{}.png".format(floor))))
+            elif self.trav_map_type == "no_door":
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_door_{}.png".format(floor))))
             else:
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
 
