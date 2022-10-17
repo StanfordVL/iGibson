@@ -120,8 +120,7 @@ class GenerateDataset(object):
         check_points = self.check_points
         shortest_path = []
 
-        # for i in range(1, len(check_points)):
-        for i in range(1, 5):
+        for i in range(len(check_points)):
             steps = self.sim.scene.get_shortest_path(
                 self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
             for j in range(len(steps)-1):
