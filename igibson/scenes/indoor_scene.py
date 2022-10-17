@@ -73,6 +73,8 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         for floor in range(len(self.floor_heights)):
             if self.trav_map_type == "with_obj":
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_{}.png".format(floor))))
+            elif self.trav_map_type == "no_door":
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_door_{}.png".format(floor))))
             else:
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
 
