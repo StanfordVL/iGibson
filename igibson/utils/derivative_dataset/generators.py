@@ -1,10 +1,12 @@
 import random
 from dataclasses import dataclass
+from typing import Optional, Type
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 from igibson import object_states
+from igibson.object_states.object_state_base import BaseObjectState
 
 FORWARD_PITCH = np.pi / 2
 YAW_RANGE = np.pi
@@ -31,14 +33,16 @@ class UniformGenerator:
 
 @dataclass
 class ObjectTargetedGenerator:
+    reperturb_state: Optional[Type[BaseObjectState]] = None
+
     def __call__(self, env, objs_of_interest):
         # Pick an object
         obj = random.choice(objs_of_interest)
 
-        # TODO: Remove this
-        # Re-randomize object joint position
-        obj.states[object_states.Open].set_value(random.choice([True, False]))
-        env.simulator.sync(force_sync=True)
+        # Re-randomize object state
+        if self.reperturb_state:
+            obj.states[object_states.Open].set_value(random.choice([True, False]))
+            env.simulator.sync(force_sync=True)
 
         # Pick an angle
         camera_yaw = np.random.uniform(-YAW_RANGE, YAW_RANGE)

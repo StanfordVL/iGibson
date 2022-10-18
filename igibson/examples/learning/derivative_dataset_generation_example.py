@@ -26,8 +26,10 @@ def main():
     with open(config_filename, "r") as f:
         config = yaml.load(f, yaml.Loader)
 
+    output_path = sys.argv[2]
+
     # Start pipeline.
-    DerivativeDatasetPipeline(scene_id=scene_id, prefix=prefix, **config).generate()
+    DerivativeDatasetPipeline(scene_id=scene_id, prefix=prefix, output_path=output_path, **config).generate()
 
 
 if __name__ == "__main__":

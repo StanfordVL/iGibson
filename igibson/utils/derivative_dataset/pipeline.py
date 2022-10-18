@@ -1,7 +1,7 @@
 import itertools
 import os
 import random
-from typing import Callable, Dict
+from typing import Callable, Dict, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,8 +13,6 @@ from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.utils.constants import MAX_INSTANCE_COUNT
-
-PREFIX = f"{JOB_ID}-{ARRAY_ID}-{TASK_ID}"
 
 
 class DerivativeDatasetPipeline:
@@ -40,8 +38,8 @@ class DerivativeDatasetPipeline:
         max_attempts_per_perturbation: int,
         max_depth: int,  # meters
         crop_margin: int,  # pixels
-        perturbers: Dict[str, Callable],
-        generators: Dict[str, Callable],
+        perturbers: Dict[str, Dict[str, Union[float, Callable]]],
+        generators: Dict[str, Dict[str, Union[float, Callable]]],
         filters: Dict[str, Callable],
     ):
         self.scene_id = scene_id
@@ -223,21 +221,42 @@ class DerivativeDatasetPipeline:
         Shows how to load directly scenes without the Environment interface
         Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path
         """
-        perturbers = itertools.cycle(self.perturbers.items())
+        perturbers, perturber_probs = zip(
+            *[
+                (perturber_info["perturber"], perturber_info["probability"])
+                for perturber_info in self.perturbers.values()
+            ]
+        )
+        perturbers = list(perturbers)
+        perturber_probs = list(perturber_probs)
+        assert np.isclose(np.sum(perturber_probs), 1), "Perturber probabilities should add up to 1."
 
         with tqdm(total=self.requested_images) as pbar:
             while self.total_image_count < self.requested_images:
-                perturber_name, perturber = next(perturbers)
                 self.env.simulator.scene.reset_scene_objects()
                 for _ in range(100):
                     self.env.step(None)
 
-                objs_of_interest = perturber(self.env)
+                (perturber,) = random.choices(perturbers, weights=perturber_probs, k=1)
+                if perturber is not None:
+                    objs_of_interest = perturber(self.env)
+                else:
+                    objs_of_interest = self.env.scene.get_objects()
                 self.env.simulator.sync(force_sync=True)
 
                 perturbation_image_count = 0
                 attempts = 0
-                generators = itertools.cycle(self.generators.items())
+
+                generators, generator_probs = zip(
+                    *[
+                        (generator_info["generator"], generator_info["probability"])
+                        for generator_info in self.generators.values()
+                    ]
+                )
+                generators = list(generators)
+                generator_probs = list(generator_probs)
+                assert np.isclose(np.sum(generator_probs), 1), "Generator probabilities should add up to 1."
+
                 while (
                     perturbation_image_count < self.images_per_perturbation
                     and attempts < self.max_attempts_per_perturbation
@@ -245,7 +264,7 @@ class DerivativeDatasetPipeline:
                     if self.debug_filters:
                         print("Attempt ", attempts)
                     attempts += 1
-                    generator_name, generator = next(generators)
+                    (generator,) = random.choices(generators, weights=generator_probs, k=1)
 
                     camera_pos, camera_target, camera_up = generator(self.env, objs_of_interest)
                     self.env.simulator.renderer.set_camera(camera_pos, camera_target, camera_up)
