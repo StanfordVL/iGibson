@@ -4,7 +4,7 @@ import os
 import packaging.version
 import yaml
 
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 
 __logo__ = r"""
  _   _____  _  _
