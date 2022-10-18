@@ -1,6 +1,5 @@
-import collections
 import itertools
-import random
+from dataclasses import dataclass
 
 import numpy as np
 import pybullet as p
@@ -13,28 +12,35 @@ from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
 STRUCTURE_CLASSES = ["walls", "ceilings", "floors"]
 
 
-def too_close_filter(min_dist=0, max_dist=float("inf"), max_allowed_fraction_outside_threshold=0):
-    def filter_fn(env, objs_of_interest):
+@dataclass
+class TooCloseFilter:
+    min_dist: float = 0.0
+    max_dist: float = float("inf")
+    max_allowed_fraction_outside_threshold: float = 0.0
+
+    def __call__(self, env, objs_of_interest):
         renderer: MeshRenderer = env.simulator.renderer
         depth_img = np.linalg.norm(renderer.render(modes=("3d"))[0], axis=-1)
-        outside_range_pixels = np.count_nonzero(np.logical_or(depth_img < min_dist, depth_img > max_dist))
-        return outside_range_pixels / len(depth_img.flatten()) <= max_allowed_fraction_outside_threshold
-
-    return filter_fn
+        outside_range_pixels = np.count_nonzero(np.logical_or(depth_img < self.min_dist, depth_img > self.max_dist))
+        return outside_range_pixels / len(depth_img.flatten()) <= self.max_allowed_fraction_outside_threshold
 
 
-def too_much_structure_filter(max_allowed_fraction_of_structure):
-    def filter_fn(env, objs_of_interest):
+@dataclass
+class TooMuchStructureFilter:
+    max_allowed_fraction_of_structure: float
+
+    def __call__(self, env, objs_of_interest):
         seg = env.simulator.renderer.render(modes=("seg"))[0][:, :, 0]
         seg_int = np.round(seg * MAX_CLASS_COUNT).astype(int).flatten()
         pixels_of_wall = np.count_nonzero(np.isin(seg_int, [CLASS_NAME_TO_CLASS_ID[x] for x in STRUCTURE_CLASSES]))
-        return pixels_of_wall / len(seg_int) < max_allowed_fraction_of_structure
-
-    return filter_fn
+        return pixels_of_wall / len(seg_int) < self.max_allowed_fraction_of_structure
 
 
-def too_much_of_same_object_in_fov_filter(threshold):
-    def filter_fn(env, objs_of_interest):
+@dataclass
+class TooMuchOfSameObjectFilter:
+    threshold: float
+
+    def __call__(self, env, objs_of_interest):
         seg, ins_seg = env.simulator.renderer.render(modes=("seg", "ins_seg"))
 
         # Get body ID per pixel
@@ -47,13 +53,14 @@ def too_much_of_same_object_in_fov_filter(threshold):
 
         relevant_body_ids = body_ids[np.logical_not(pixels_of_wall)]
 
-        return max(np.bincount(relevant_body_ids)) / len(body_ids.flatten()) < threshold
-
-    return filter_fn
+        return max(np.bincount(relevant_body_ids)) / len(body_ids.flatten()) < self.threshold
 
 
-def no_relevant_object_in_fov_filter(target_state, min_bbox_vertices_in_fov=4):
-    def filter_fn(env, objs_of_interest):
+@dataclass
+class NoRelevantObjectInFOVFilter:
+    min_bbox_vertices_in_fov: int = 4
+
+    def __call__(self, env, objs_of_interest):
         # Pick an object
         for obj in objs_of_interest:
             # Get the corners of the object's bbox
@@ -82,23 +89,24 @@ def no_relevant_object_in_fov_filter(target_state, min_bbox_vertices_in_fov=4):
                 & (projected_points[0] < renderer.width)
                 & (projected_points[1] < renderer.height)
             )
-            if np.count_nonzero(points_valid) >= min_bbox_vertices_in_fov:
+            if np.count_nonzero(points_valid) >= self.min_bbox_vertices_in_fov:
                 return True
 
         return False
 
-    return filter_fn
 
+@dataclass
+class NoRelevantObjectInImageFilter:
+    threshold: float = 0.2
 
-def no_relevant_object_in_img_filter(target_state, threshold=0.2):
-    def filter_fn(env, objs_of_interest):
+    def __call__(self, env, objs_of_interest):
         seg = env.simulator.renderer.render(modes="ins_seg")[0][:, :, 0]
         seg = np.round(seg * MAX_INSTANCE_COUNT).astype(int)
         body_ids = env.simulator.renderer.get_pb_ids_for_instance_ids(seg)
 
         obj_body_ids = [x for obj in objs_of_interest for x in obj.get_body_ids()]
         relevant = np.count_nonzero(np.isin(body_ids, obj_body_ids))
-        return relevant / len(seg.flatten()) > threshold
+        return relevant / len(seg.flatten()) > self.threshold
 
         # Count how many pixels per object.
         # ctr = collections.Counter(body_ids.flatten())
@@ -114,11 +122,10 @@ def no_relevant_object_in_img_filter(target_state, threshold=0.2):
         #             target_pixel_count += pixel_count
         # return target_pixel_count / len(seg.flatten()) > threshold
 
-    return filter_fn
 
-
-def point_in_object_filter():
-    def filter_fn(env, objs_of_interest):
+@dataclass
+class PointInObjectFilter:
+    def __call__(self, env, objs_of_interest):
         # Camera position
         cam_pos = env.simulator.renderer.camera
         target_pos = env.simulator.renderer.target
@@ -130,5 +137,3 @@ def point_in_object_filter():
             return False
 
         return True
-
-    return filter_fn
