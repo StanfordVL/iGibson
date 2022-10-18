@@ -44,12 +44,10 @@ filters:
 
   # Some object of interest should be in our FOV
   no_openable_objects_fov: !!python/object:igibson.utils.derivative_dataset.filters.NoRelevantObjectInFOVFilter
-    target_state: !!python/name:igibson.object_states.Open
     min_bbox_vertices_in_fov: 6
 
   # There should be some object of interest in the pixels.
   no_openable_objects_img: !!python/object:igibson.utils.derivative_dataset.filters.NoRelevantObjectInImageFilter
-    target_state: !!python/name:igibson.object_states.Open
     threshold: 0.05
 
   # No object should be closer than 10cm

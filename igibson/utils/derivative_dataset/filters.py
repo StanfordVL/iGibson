@@ -8,6 +8,7 @@ from scipy.spatial.transform import Rotation
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT, SemanticClass
 from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
+from igibson.utils.transform_utils import bbox_in_img_frame
 
 STRUCTURE_CLASSES = ["walls", "ceilings", "floors"]
 
@@ -63,33 +64,8 @@ class NoRelevantObjectInFOVFilter:
     def __call__(self, env, objs_of_interest):
         # Pick an object
         for obj in objs_of_interest:
-            # Get the corners of the object's bbox
-            (
-                bbox_center_in_world,
-                bbox_orn_in_world,
-                bbox_extent_in_desired_frame,
-                _,
-            ) = obj.get_base_aligned_bounding_box(visual=True)
-            bbox_rot = Rotation.from_quat(bbox_orn_in_world)
-            bbox_unit_vertices = np.array(list(itertools.product((1, -1), repeat=3)))
-            bbox_vertices = bbox_rot.apply(bbox_extent_in_desired_frame / 2 * bbox_unit_vertices)
-            bbox_vertices_heterogeneous = np.concatenate([bbox_vertices.T, np.ones((1, len(bbox_vertices)))], axis=0)
-
-            # Get the image coordinates of each vertex
-            renderer: MeshRenderer = env.simulator.renderer
-            bbox_vertices_in_camera_frame_heterogeneous = renderer.V @ bbox_vertices_heterogeneous
-            bbox_vertices_in_camera_frame = (
-                bbox_vertices_in_camera_frame_heterogeneous[:3] / bbox_vertices_in_camera_frame_heterogeneous[3:4]
-            )
-            projected_points_heterogeneous = renderer.get_intrinsics() @ bbox_vertices_in_camera_frame
-            projected_points = projected_points_heterogeneous[:2] / projected_points_heterogeneous[2:3]
-
-            points_valid = (
-                np.all(projected_points >= 0, axis=0)
-                & (projected_points[0] < renderer.width)
-                & (projected_points[1] < renderer.height)
-            )
-            if np.count_nonzero(points_valid) >= self.min_bbox_vertices_in_fov:
+            bbox_vertices = bbox_in_img_frame(obj, env.simulator.renderer)
+            if len(bbox_vertices) >= self.min_bbox_vertices_in_fov:
                 return True
 
         return False

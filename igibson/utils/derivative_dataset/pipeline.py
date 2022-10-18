@@ -122,7 +122,7 @@ class DerivativeDatasetPipeline:
                     h = list(self.filter_img_idx.values())
                     label = list(self.filter_img_idx.keys())
                     plt.bar(x, h)
-                    plt.xticks(x, label)
+                    plt.xticks(x, label, rotation=45)
                     plt.show()
 
                     if self.debug_filter_images:

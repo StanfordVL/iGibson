@@ -3,10 +3,11 @@ Utility functions of matrix and vector transformations.
 
 NOTE: convention for quaternions is (x, y, z, w)
 """
-
+import itertools
 import math
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 PI = np.pi
 EPS = np.finfo(float).eps * 4.0
@@ -988,3 +989,34 @@ def matrix_inverse(matrix):
         np.array: 2d-array representing the matrix inverse
     """
     return np.linalg.inv(matrix)
+
+
+def bbox_in_img_frame(obj, renderer):
+    # Get the corners of the object's bbox
+    (
+        bbox_center_in_world,
+        bbox_orn_in_world,
+        bbox_extent_in_desired_frame,
+        _,
+    ) = obj.get_base_aligned_bounding_box(visual=True, fallback_to_aabb=True)
+    bbox_rot = Rotation.from_quat(bbox_orn_in_world)
+    bbox_unit_vertices = np.array(list(itertools.product((1, -1), repeat=3)))
+    bbox_vertices = bbox_center_in_world + bbox_rot.apply(bbox_extent_in_desired_frame / 2 * bbox_unit_vertices)
+    bbox_vertices_heterogeneous = np.concatenate([bbox_vertices.T, np.ones((1, len(bbox_vertices)))], axis=0)
+
+    # Get the image coordinates of each vertex
+    bbox_vertices_in_camera_frame_heterogeneous = renderer.V @ bbox_vertices_heterogeneous
+    bbox_vertices_in_camera_frame = (
+        bbox_vertices_in_camera_frame_heterogeneous[:3] / bbox_vertices_in_camera_frame_heterogeneous[3:4]
+    )
+    projected_points_heterogeneous = renderer.get_intrinsics() @ bbox_vertices_in_camera_frame
+    projected_points = projected_points_heterogeneous[:2] / projected_points_heterogeneous[2:3]
+
+    projected_points[0] = renderer.width - projected_points[0]
+
+    points_valid = (
+        np.all(projected_points >= 0, axis=0)
+        & (projected_points[0] < renderer.width)
+        & (projected_points[1] < renderer.height)
+    )
+    return projected_points.T[points_valid]
