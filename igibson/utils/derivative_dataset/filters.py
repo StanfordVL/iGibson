@@ -23,7 +23,7 @@ def too_close_filter(min_dist=0, max_dist=float("inf"), max_allowed_fraction_out
     return filter_fn
 
 
-def too_much_structure(max_allowed_fraction_of_structure):
+def too_much_structure_filter(max_allowed_fraction_of_structure):
     def filter_fn(env, objs_of_interest):
         seg = env.simulator.renderer.render(modes=("seg"))[0][:, :, 0]
         seg_int = np.round(seg * MAX_CLASS_COUNT).astype(int).flatten()

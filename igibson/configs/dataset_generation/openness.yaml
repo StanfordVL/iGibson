@@ -1,0 +1,65 @@
+output_path: "/out"
+
+render_width: 1024
+render_height: 1024
+
+debug_filters: False
+debug_filter_images: False
+
+export_rgb: True
+export_depth: False
+export_seg: False
+export_metadata: True
+
+export_cropped_rgb: True
+export_cropped_depth: False
+export_cropped_seg: False
+export_cropped_metadata: True
+
+requested_images: 100
+images_per_perturbation: 50
+max_attempts_per_perturbation: 1000
+
+max_depth: 5  # meters
+crop_margin: 10  # pixels
+
+generators:
+    # - uniform: !!python/object:igibson.utils.derivative_dataset.generators.uniform_generator
+    - object_targeted: !!python/object:igibson.utils.derivative_dataset.generators.object_targeted_generator
+
+perturbers:
+    - openables: !!python/object:igibson.utils.derivative_dataset.perturbers.object_boolean_state_randomizer
+        target_state: !!python/name:igibson.object_states.Open
+
+filters:
+    # We should not have a collision with an object at the camera pose.
+    - no_collision: !!python/object:igibson.utils.derivative_dataset.filters.point_in_object_filter
+
+    # Some object of interest should be in our FOV
+    - no_openable_objects_fov: !!python/object:igibson.utils.derivative_dataset.filters.no_relevant_object_in_fov_filter
+        target_state: !!python/name:igibson.object_states.Open
+        min_bbox_vertices_in_fov: 6
+
+    # There should be some object of interest in the pixels.
+    - no_openable_objects_img: !!python/object:igibson.utils.derivative_dataset.filters.no_relevant_object_in_img_filter
+        target_state: !!python/name:igibson.object_states.Open
+        threshold: 0.05
+
+    # No object should be closer than 10cm
+    - some_objects_closer_than_10cm: !!python/object:igibson.utils.derivative_dataset.filters.too_close_filter
+        min_dist: 0.1
+        max_allowed_fraction_outside_threshold: 0.05
+
+    # At least 70% of the image between 50cm and 3m away
+    - too_many_too_close_far_objects: !!python/object:igibson.utils.derivative_dataset.filters.too_close_filter
+        min_dist: 0.5
+        max_dist: 3.
+        max_allowed_fraction_outside_threshold: 0.3
+
+    # No more than 50% of the image should consist of wall/floor/ceiling
+    - too_much_structure: !!python/object:igibson.utils.derivative_dataset.filters.too_much_structure_filter
+        max_allowed_fraction_of_structure: 0.5
+
+    # More than 50% of the image should not be the same object.
+    - too_much_of_the_same_object: !!python/object:igibson.utils.derivative_dataset.filters.too_much_of_same_object_in_fov_filter
+        threshold: 0.5
