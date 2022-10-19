@@ -1,11 +1,14 @@
-from bdb import set_trace
+from pdb import set_trace
 import os
 import cv2
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
 from scipy.interpolate import UnivariateSpline
 import dubins
-
+import sys
+import numpy as np
+np.set_printoptions(threshold=sys.maxsize)
+from debug_turns import plot_paths
 from PIL import Image
 
 import numpy as np
@@ -17,10 +20,10 @@ IMAGE_WIDTH = 1024
 MAX_NUM_FRAMES = 10000
 FRAME_BATCH_SIZE = 5
 
-frame_size = (1024, 720)
-fourcc = cv2.VideoWriter_fourcc(*"MP4V")
-output_video = cv2.VideoWriter(
-    "output_video_Rs_int.mp4", fourcc, 20.0, frame_size)
+# frame_size = (1024, 720)
+# fourcc = cv2.VideoWriter_fourcc(*"MP4V")
+# output_video = cv2.VideoWriter(
+#     "output_video_Rs_int.mp4", fourcc, 20.0, frame_size)
 
 
 class GenerateDataset(object):
@@ -37,11 +40,6 @@ class GenerateDataset(object):
         self.floor = self.sim.scene.get_random_floor()
         self.check_points = []
 
-        self.camera_angle = 0.0
-        self.camera_angular_velocity = 0.0
-        self.camera_angle_kp = 1e-1
-        self.camera_angle_kd = 1
-
         for room_instance in self.sim.scene.room_ins_name_to_ins_id:
             lower, upper = self.sim.scene.get_aabb_by_room_instance(
                 room_instance)  # Axis Aligned Bounding Box
@@ -55,9 +53,9 @@ class GenerateDataset(object):
         self.spline_functions = []
         path_length = len(shortest_path)
         self.spline_functions.append(UnivariateSpline(
-            range(path_length), shortest_path[:, 0], s=0.7, k=3))
+            range(path_length), shortest_path[:, 0], k=3))
         self.spline_functions.append(UnivariateSpline(
-            range(path_length), shortest_path[:, 1], s=0.7, k=3))
+            range(path_length), shortest_path[:, 1], k=3))
 
     def get_interpolated_steps(self, step):
         curr_x, curr_y = self.spline_functions[0](
@@ -81,14 +79,6 @@ class GenerateDataset(object):
         x, y, z = step[0], step[1], 1
         tar_x, tar_y, tar_z = next_step[0], next_step[1], 1
 
-        # target_angle = np.arctan2(tar_y - y, tar_x - x)
-        # camera_angular_acceleration = self.camera_angle_kp * (target_angle - self.camera_angle) + self.camera_angle_kd * (-self.camera_angular_velocity)
-        # self.camera_angular_velocity += camera_angular_acceleration * 1
-        # self.camera_angle += self.camera_angular_velocity * 1
-
-        # tar_x_new = x + np.cos(self.camera_angle)
-        # tar_y_new = y + np.sin(self.camera_angle)
-
         self.sim.renderer.set_camera(
             [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
         frames = self.sim.renderer.render(modes=("rgb", "3d"))
@@ -101,65 +91,78 @@ class GenerateDataset(object):
         self.sim.step()
         img = np.array(Image.fromarray((255 * frames[0]).astype(np.uint8)))
         cv2.imshow("test", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-        output_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        # output_video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         cv2.waitKey(1)
     
-    def turn_camera_for_next_trajectory(self, current_step, next_step, turn_radius):
-        next_steps = np.array(dubins.shortest_path(current_step, next_step, 1.001*.5).sample_many(0.1)[0])
-        # plt.plot(steps[:, 0], steps[:, 1], color ='tab:blue',  marker='o')
-        # plt.xlabel("x")
-        # plt.ylabel("y")
-        # plt.show()
-        for i in range(1, len(next_steps)):
-            self.render_image(current_step[:2], next_steps[i,:2])
+    def transition_to_new_trajectory(self, curr_step, next_step):
+        curr_step = np.append(curr_step, 0)
+        next_step = np.append(next_step, 0)
+        next_steps = np.array(dubins.shortest_path(curr_step, next_step, .2).sample_many(0.005)[0])[:,:2]
+        # for i in range(1, len(next_steps)):
+            # self.render_image(curr_step, next_steps[i])
+        # return [curr_step[:2], next_steps[i-1]]
+        return next_steps
 
     def generate(self):
         # source, target, camera_up
         check_points = self.check_points
+        last_previous = None
+        previous_shortest_path = None
 
-        # for i in range(1, len(check_points)):
-        for i in range(1, 5):
+        for i in range(1, len(check_points)):
             current_position = check_points[i-1][:2]
             next_position = check_points[i][:2]
 
-            shortest_path_steps = self.sim.scene.get_shortest_path(
-                self.floor, current_position, next_position, True)[0]
+            shortest_path_steps = np.array(self.sim.scene.get_shortest_path(
+                self.floor, current_position, next_position, True)[0])
+
             self.prepare_spline_functions(shortest_path_steps)
+            curr_step = current_position
+            next_step = self.get_interpolated_steps(1)
+
+            if self.previous_camera_angle:
+                dubins_turn = np.array(self.transition_to_new_trajectory(current_position, shortest_path_steps[2]))
+                print("=>", repr(previous_shortest_path))
+                print("=>", repr(dubins_turn))
+                print("=>", repr(shortest_path_steps))
+                check_new_path = plot_paths(previous_shortest_path, dubins_turn, shortest_path_steps)
+                # for i in range(len(check_new_path)-1):
+                #     curr_step = check_new_path[i]
+                #     next_step = check_new_path[i+1]
+                #     self.render_image(curr_step, next_step)
+                
+                for i in range(len(dubins_turn)-1):
+                    curr_step = dubins_turn[i]
+                    next_step = dubins_turn[i+1]
+                    self.render_image(curr_step, next_step)
+                return
+                shortest_path_steps = np.concatenate((dubins_turn, shortest_path_steps[1:]))
+                self.prepare_spline_functions(shortest_path_steps)
+
+                # Plot Interpolations
+                # import pdb; pdb.set_trace()
 
             steps = []
             for j in range(len(shortest_path_steps)):
                 for step in self.get_interpolated_steps(j):
                     steps.append(step)
             steps = np.array(steps)
-            self.current_camera_angle = np.arctan2(steps[1,1] - steps[0,1], steps[1,0] - steps[0,0])
 
-            if self.previous_camera_angle:
-                turn_radius = 0.5
-                # import pdb; pdb.set_trace()
-                curr_step = np.append(steps[0], self.previous_camera_angle)
-                next_step = np.append(steps[1], self.current_camera_angle)
-                self.turn_camera_for_next_trajectory(curr_step, next_step, turn_radius)
-
-            plt.plot(steps[:, 0], steps[:, 1], color ='tab:blue',  marker='o')
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.show()
-
-            i = 0
-            while i < len(steps)-11:
-                # TODO: check when there is a new trajectory
+            for i in range(len(steps)-1):
                 curr_step = steps[i]
-                next_step = np.average(steps[i+1:i+10], axis=0)
-                self.render_image(curr_step, next_step)
-                self.previous_camera_angle = np.arctan2(next_step[1] - curr_step[1], next_step[0] - curr_step[0])
-                i += 1
+                next_step = steps[i+1]
+                # self.render_image(curr_step, next_step)
+                last_previous = curr_step
+
+            self.previous_camera_angle = True
+            previous_shortest_path = shortest_path_steps
 
     def disconnect_simulator(self):
         self.sim.disconnect()
 
 
-path = os.path.join(os.getcwd(), "data.hdf5")
+# path = os.path.join(os.getcwd(), "data.hdf5")
 dataset_generator = GenerateDataset()
 dataset_generator.generate()
 dataset_generator.disconnect_simulator()
-output_video.release()
+# output_video.release()
