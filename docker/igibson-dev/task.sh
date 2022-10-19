@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CONTAINER_NAME=igibson-${SLURM_ARRAY_TASK_ID}-${SLURM_LOCALID}
+CONTAINER_NAME=igibson-${SLURM_JOBID}-${SLURM_ARRAY_TASK_ID}-${SLURM_LOCALID}
 
 enroot create -n ${CONTAINER_NAME} /cvgl/group/igibson-docker/igibson-dev.sqsh && {
   # Run the container, mounting iGibson at the right spot
