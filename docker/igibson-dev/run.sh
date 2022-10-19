@@ -5,7 +5,7 @@
 #SBATCH --array=0-14
 #SBATCH --time=48:00:00
 #SBATCH --gpus=1
-#SBATCH --ntasks-per-gpu=4
+#SBATCH --ntasks=4
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
 #SBATCH --job-name="vision-dataset-generation"

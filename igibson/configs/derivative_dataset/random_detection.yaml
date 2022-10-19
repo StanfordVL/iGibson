@@ -3,25 +3,20 @@
 render_width: 1024
 render_height: 1024
 
-debug_filters: False
+debug_filters: True
 debug_filter_images: False
 
 export_rgb: True
 export_depth: False
 export_seg: False
 export_metadata: True
+use_wordnet_category: False
 
-export_cropped_rgb: False
-export_cropped_depth: False
-export_cropped_seg: False
-export_cropped_metadata: False
-
-requested_images: 100000
+requested_images: 10000
 images_per_perturbation: 50
 max_attempts_per_perturbation: 1000
 
 max_depth: 5  # meters
-crop_margin: 10  # pixels
 
 perturbers:
   no_perturbation:
@@ -54,14 +49,14 @@ filters:
     max_allowed_fraction_outside_threshold: 0.05
 
   # At least 70% of the image between 20cm and 3m away
-  too_many_too_close_far_objects: !!python/object:igibson.utils.derivative_dataset.filters.TooCloseFilter
-    min_dist: 0.2
-    max_dist: 3.
-    max_allowed_fraction_outside_threshold: 0.3
+  # too_many_too_close_far_objects: !!python/object:igibson.utils.derivative_dataset.filters.TooCloseFilter
+  #   min_dist: 0.2
+  #   max_dist: 3.
+  #   max_allowed_fraction_outside_threshold: 0.3
 
-  # No more than 40% of the image should consist of wall/floor/ceiling
+  # No more than 50% of the image should consist of wall/floor/ceiling
   too_much_structure: !!python/object:igibson.utils.derivative_dataset.filters.TooMuchStructureFilter
-    max_allowed_fraction_of_structure: 0.4
+    max_allowed_fraction_of_structure: 0.5
 
   # More than 33% of the image should not be the same object.
   too_much_of_the_same_object: !!python/object:igibson.utils.derivative_dataset.filters.TooMuchOfSameObjectFilter

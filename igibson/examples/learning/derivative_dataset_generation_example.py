@@ -14,7 +14,10 @@ def main():
     job_id = int(os.getenv("SLURM_JOBID", 0))
     array_id = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
     task_id = int(os.getenv("SLURM_LOCALID", 0))
-    prefix = f"{job_id}-{array_id}-{task_id}"
+    if job_id:
+        prefix = f"{job_id}-{array_id}-{task_id}-"
+    else:
+        prefix = ""
 
     # Automatically infer scene ID from slurm info.
     available_scenes = assets_utils.get_available_ig_scenes()

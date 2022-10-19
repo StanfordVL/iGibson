@@ -41,7 +41,7 @@ class ObjectTargetedGenerator:
 
         # Re-randomize object state
         if self.reperturb_state:
-            obj.states[object_states.Open].set_value(random.choice([True, False]))
+            obj.states[self.reperturb_state].set_value(random.choice([True, False]))
             env.simulator.sync(force_sync=True)
 
         # Pick an angle

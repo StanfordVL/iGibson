@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import py360convert
 from PIL import Image
+from scipy.spatial.transform import Rotation as R
 
 import igibson
 import igibson.render.mesh_renderer as mesh_renderer
@@ -1203,6 +1204,23 @@ class MeshRenderer(object):
         pose_trans = xyz2mat(pose[:3])
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
+
+    def get_camera_pose(self):
+        pos = np.array(self.camera)
+        fwd = np.array(self.target) - pos
+        fwd /= np.linalg.norm(fwd)
+        side = np.cross(self.up, self.target)
+        side /= np.linalg.norm(side)
+        up = np.array(self.up) / np.linalg.norm(self.up)
+        rot = np.array(
+            [
+                fwd,
+                side,
+                up,
+            ]
+        ).T
+
+        return pos, R.from_matrix(rot).as_quat()
 
     def render_active_cameras(self, modes=("rgb"), cache=True):
         """
