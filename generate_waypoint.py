@@ -3,7 +3,6 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from PIL import Image
 import cv2
 from debug_turns import plot_paths
-import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
 import numpy as np
 
