@@ -86,3 +86,6 @@ igibson/render/mesh_renderer/libcryptopp.8.6.dylib
 # Coverage
 .coverage
 coverage.xml
+
+*.mp4
+*.hdf5

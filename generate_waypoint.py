@@ -1,23 +1,22 @@
-import cv2
-import matplotlib.pyplot as plt
-from scipy.spatial import distance
-from scipy.interpolate import UnivariateSpline
-
-from PIL import Image
-
-import numpy as np
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from PIL import Image
+import cv2
+from debug_turns import plot_paths
+from scipy.interpolate import splprep, splev
+import numpy as np
+
 
 IMAGE_HEIGHT = 720
 IMAGE_WIDTH = 1024
 MAX_NUM_FRAMES = 10000
 FRAME_BATCH_SIZE = 5
 
+scene_name = "Ihlen_1_int"
 frame_size = (1024, 720)
 fourcc = cv2.VideoWriter_fourcc(*"MP4V")
 output_video = cv2.VideoWriter(
-    "output_video_Rs_int.mp4", fourcc, 20.0, frame_size)
+    "output_video_{}.mp4".format(scene_name), fourcc, 20.0, frame_size)
 
 
 class GenerateDataset(object):
@@ -29,15 +28,10 @@ class GenerateDataset(object):
         )
 
         scene = InteractiveIndoorScene(
-            scene_id="Ihlen_1_int", not_load_object_categories=["door"], trav_map_type="no_door", trav_map_erosion=5, trav_map_resolution=0.1)
+            scene_id=scene_name, not_load_object_categories=["door"], trav_map_type="no_door", trav_map_erosion=5, trav_map_resolution=0.1)
         self.sim.import_scene(scene)
         self.floor = self.sim.scene.get_random_floor()
         self.check_points = []
-
-        self.camera_angle = 0.0
-        self.camera_angular_velocity = 0.0
-        self.camera_angle_kp = 1e-1
-        self.camera_angle_kd = 1
 
         for room_instance in self.sim.scene.room_ins_name_to_ins_id:
             lower, upper = self.sim.scene.get_aabb_by_room_instance(
@@ -45,31 +39,19 @@ class GenerateDataset(object):
             x_cord, y_cord, _ = (upper - lower)/2 + lower
             self.check_points.append((x_cord, y_cord))
 
-    def prepare_spline_functions(self, shortest_path):
-        self.spline_functions = []
-        path_length = len(shortest_path)
-        self.spline_functions.append(UnivariateSpline(
-            range(path_length), shortest_path[:, 0], s=0.7, k=3))
-        self.spline_functions.append(UnivariateSpline(
-            range(path_length), shortest_path[:, 1], s=0.7, k=3))
+        self.first_iteration = True
+        self.current_camera_angle = None
+        self.render = False
+        self.total_trajectory = None
 
-    def get_interpolated_steps(self, step):
-        curr_x, curr_y = self.spline_functions[0](
-            step), self.spline_functions[1](step)
-
-        next_x, next_y = self.spline_functions[0](
-            step + 1), self.spline_functions[1](step + 1)
-
-        dist_to_next_step = distance.euclidean(
-            (curr_x, curr_y), (next_x, next_y))
-
-        path_length = int(100 * dist_to_next_step)
-        interpolated_points = []
-        for i in range(path_length):
-            curr_step = step + (1.0/path_length*i)
-            interpolated_points.append([self.spline_functions[0](
-                curr_step), self.spline_functions[1](curr_step)])
-        return np.array(interpolated_points)
+    def get_splined_steps(self):
+        spline_parameter, _ = splprep(
+            [self.total_trajectory[:, 0], self.total_trajectory[:, 1]], s=0.2)
+        time_parameter = np.linspace(0, 1, num=len(self.total_trajectory)*80)
+        smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
+        smoothed_points = np.dstack(
+            (smoothed_points[0], smoothed_points[1]))[0]
+        return smoothed_points
 
     def render_image(self, step, next_step):
         x, y, z = step[0], step[1], 1
@@ -77,12 +59,7 @@ class GenerateDataset(object):
 
         self.sim.renderer.set_camera(
             [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
-        frames = self.sim.renderer.render(modes=("rgb", "3d"))
-
-        # Render 3d points as depth map
-        depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
-        depth /= depth.max()
-        frames[1][:, :, :3] = depth[..., None]
+        frames = self.sim.renderer.render(modes=("rgb"))
 
         self.sim.step()
         img = np.array(Image.fromarray((255 * frames[0]).astype(np.uint8)))
@@ -93,32 +70,26 @@ class GenerateDataset(object):
     def generate(self):
         # source, target, camera_up
         check_points = self.check_points
-        shortest_path = []
 
-        for i in range(len(check_points)):
-            steps = self.sim.scene.get_shortest_path(
-                self.floor, check_points[i-1][:2], check_points[i][:2], True)[0]
-            for j in range(len(steps)-1):
-                step = steps[j]
-                shortest_path.append(step)
-        shortest_path = np.array(shortest_path)
-        self.prepare_spline_functions(shortest_path)
+        for i in range(1, len(check_points)):
+            current_position = check_points[i-1][:2]
+            next_position = check_points[i][:2]
 
-        steps = []
-        for i in range(len(shortest_path)):
-            for step in self.get_interpolated_steps(i):
-                step = np.append(step, np.arctan2(step[1], step[0]))
-                steps.append(step)
-        steps = np.array(steps)
+            shortest_path_steps = np.array(self.sim.scene.get_shortest_path(
+                self.floor, current_position, next_position, True)[0])
 
-        for i in range(len(steps)-11):
-            # TODO: check when there is a new trajectory
-            curr_step = steps[i]
-            next_step = np.average(steps[i+1:i+10], axis=0)
-            sharp_turn_heuristic = np.linalg.norm(curr_step - next_step)
-            if sharp_turn_heuristic <= 0.008:
-                print("Sharp Turn Encountered")
-            self.render_image(curr_step, next_step)
+            if not self.first_iteration:
+                self.total_trajectory = np.append(
+                    self.total_trajectory, shortest_path_steps[1:], axis=0)
+            else:
+                self.total_trajectory = shortest_path_steps
+
+            self.first_iteration = False
+
+        splined_steps = self.get_splined_steps()
+        plot_paths(self.total_trajectory, splined_steps)
+        for i in range(len(splined_steps)-1):
+            self.render_image(splined_steps[i], splined_steps[i+1])
 
     def disconnect_simulator(self):
         self.sim.disconnect()
