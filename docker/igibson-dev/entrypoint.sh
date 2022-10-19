@@ -6,6 +6,8 @@ cd /igibson || {
     exit 1;
 }
 
+export SETUPTOOLS_ENABLE_FEATURES="legacy-editable";
+
 pip install --no-cache-dir -e . || {
     echo 'Could not install igibson.' ;
     exit 1;
