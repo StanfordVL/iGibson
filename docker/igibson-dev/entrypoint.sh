@@ -11,4 +11,4 @@ pip install --no-cache-dir -e . || {
     exit 1;
 }
 
-python -m ${IG_ENTRYPOINT_MODULE}
+eval ${IG_ENTRYPOINT_COMMAND}

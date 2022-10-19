@@ -1,6 +1,6 @@
 #!/bin/bash
 # This job should be run on the SC headnode.
-# Usage: sbatch --export=IG_IGIBSON_PATH=path,IG_OUTPUT_PATH=path,IG_ENTRYPOINT_MODULE=path run.sh
+# Usage: sbatch --export=IG_IGIBSON_PATH=path,IG_OUTPUT_PATH=path,IG_ENTRYPOINT_COMMAND=path run.sh
 #SBATCH --partition=svl,viscam --qos=normal
 #SBATCH --array=0-14
 #SBATCH --time=48:00:00
@@ -22,8 +22,8 @@ echo "SLURMTMPDIR="$SLURMTMPDIR
 echo "working directory = "$SLURM_SUBMIT_DIR
 
 echo "IG_IGIBSON_PATH="$IG_IGIBSON_PATH
-echo "IG_OUTPUT_PATH="IG_OUTPUT_PATH
-echo "IG_ENTRYPOINT_MODULE="IG_ENTRYPOINT_MODULE
+echo "IG_OUTPUT_PATH="$IG_OUTPUT_PATH
+echo "IG_ENTRYPOINT_COMMAND="$IG_ENTRYPOINT_COMMAND
 
 # Execute the tasks in parallel.
 srun task.sh

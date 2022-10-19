@@ -10,7 +10,7 @@ enroot create -n ${CONTAINER_NAME} /cvgl/group/igibson-docker/igibson-dev.sqsh &
     -e SLURM_JOBID=${SLURM_JOBID} \
     -e SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID} \
     -e SLURM_LOCALID=${SLURM_LOCALID} \
-    -e IG_ENTRYPOINT_MODULE=${IG_ENTRYPOINT_MODULE} \
+    -e IG_ENTRYPOINT_COMMAND=${IG_ENTRYPOINT_COMMAND} \
     ${CONTAINER_NAME};
   # Remove the container.
   enroot remove -f ${CONTAINER_NAME};
