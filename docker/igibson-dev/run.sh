@@ -21,5 +21,9 @@ echo "SLURM_NNODES"=$SLURM_NNODES
 echo "SLURMTMPDIR="$SLURMTMPDIR
 echo "working directory = "$SLURM_SUBMIT_DIR
 
+echo "IG_IGIBSON_PATH="$IG_IGIBSON_PATH
+echo "IG_OUTPUT_PATH="IG_OUTPUT_PATH
+echo "IG_ENTRYPOINT_MODULE="IG_ENTRYPOINT_MODULE
+
 # Execute the tasks in parallel.
 srun task.sh
