@@ -22,5 +22,3 @@ enroot import --output ${OUTPUT_PATH} dockerd://${IMAGE} || {
     echo 'Could not import image.' ;
     exit 1;
 }
-
-docker rmi $IMAGE
