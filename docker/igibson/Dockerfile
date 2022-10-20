@@ -1,5 +1,7 @@
 FROM nvidia/cudagl:11.3.1-base-ubuntu20.04
 
+ARG GITHUB_USER
+ARG GITHUB_PAT
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -32,10 +34,8 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 # NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html --no-cache-dir
 
-ENV GITHUB_USER mjlbach
-ENV GITHUB_TOKEN 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
 ENV GITHUB_REPOSITORY StanfordVL/iGibson-dev
-RUN git clone --branch b1k-vision-dataset --depth 1 https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY} /opt/iGibson --recursive
+RUN git clone --branch b1k-vision-dataset --depth 1 https://${GITHUB_USER}:${GITHUB_PAT}@github.com/${GITHUB_REPOSITORY} /opt/iGibson --recursive
 
 WORKDIR /opt/iGibson
 RUN pip install --no-cache-dir -e .
