@@ -4,6 +4,7 @@
 #SBATCH --partition=svl,viscam --qos=normal
 #SBATCH --array=0-14
 #SBATCH --time=48:00:00
+#SBATCH --nodes=1
 #SBATCH --gpus=1
 #SBATCH --ntasks=4
 #SBATCH --cpus-per-task=4
