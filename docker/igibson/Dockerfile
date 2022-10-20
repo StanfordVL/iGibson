@@ -32,15 +32,10 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 # NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html --no-cache-dir
 
-RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive
+ENV GITHUB_USER mjlbach
+ENV GITHUB_TOKEN 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
+ENV GITHUB_REPOSITORY StanfordVL/iGibson-dev
+RUN git clone --branch b1k-vision-dataset --depth 1 https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY} /opt/iGibson --recursive
 
 WORKDIR /opt/iGibson
 RUN pip install --no-cache-dir -e .
-
-RUN pip install --no-cache-dir pytest ray[default,rllib] stable-baselines3 && rm -rf /root/.cache
-
-
-RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
-RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
-
-WORKDIR /opt/iGibson/igibson/examples
