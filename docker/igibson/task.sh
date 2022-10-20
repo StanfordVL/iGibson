@@ -5,7 +5,7 @@ CONTAINER_NAME=igibson-${SLURM_JOBID}-${SLURM_ARRAY_TASK_ID}-${SLURM_LOCALID}
 enroot create -n ${CONTAINER_NAME} /cvgl/group/igibson-docker/igibson-data.sqsh && {
   # Run the container, mounting iGibson at the right spot
   enroot start -r -w \
-    -m ${IG_IGIBSON_PATH}:/igibson \
+    -m ${IG_DATA_PATH}:/opt/igibson/igibson/data \
     -m ${IG_OUTPUT_PATH}:/out \
     -e SLURM_JOBID=${SLURM_JOBID} \
     -e SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID} \
