@@ -1,8 +1,9 @@
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.simulator import Simulator
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
+
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 IMAGE_HEIGHT = 720
 IMAGE_WIDTH = 1024
@@ -20,9 +21,9 @@ trav_map = sim.scene.floor_map[0]
 print(np.array(sim.scene.floor_map).shape)
 while track <= 5000:
     sim.step()
-    if track%100 == 0:
+    if track % 100 == 0:
         camera_position = sim.scene.world_to_map((sim.viewer.px, sim.viewer.py))
-        #breakpoint()
+        # breakpoint()
         points_in_open_space_to_plot.append(camera_position)
         # print(sim.viewer.renderer.camera)
         img = cv2.cvtColor(trav_map, cv2.COLOR_GRAY2RGB)
@@ -33,6 +34,5 @@ while track <= 5000:
     track += 1
 plt.imshow(trav_map)
 points_in_open_space_to_plot = np.array(points_in_open_space_to_plot)
-plt.scatter(points_in_open_space_to_plot[:,0], points_in_open_space_to_plot[:, 1], color="#62b41f")
+plt.scatter(points_in_open_space_to_plot[:, 0], points_in_open_space_to_plot[:, 1], color="#62b41f")
 plt.show()
-

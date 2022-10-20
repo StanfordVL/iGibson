@@ -5,8 +5,8 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import igibson
 
+import igibson
 from igibson.utils.assets_utils import get_scene_path
 
 

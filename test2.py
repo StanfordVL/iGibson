@@ -1,11 +1,14 @@
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
-from igibson.simulator import Simulator
-import numpy as np
 import csv
-import cv2
 import os
+
+import cv2
+import numpy as np
 from PIL import Image
+
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
+
 IMAGE_HEIGHT = 720
 IMAGE_WIDTH = 1024
 
@@ -13,11 +16,7 @@ frame_size = (1024, 720)
 fourcc = cv2.VideoWriter_fourcc(*"MP4V")
 output_video = cv2.VideoWriter("output_video.mp4", fourcc, 20.0, frame_size)
 
-sim = Simulator(
-    image_height=IMAGE_HEIGHT,
-    image_width=IMAGE_WIDTH,
-    mode='headless'
-)
+sim = Simulator(image_height=IMAGE_HEIGHT, image_width=IMAGE_WIDTH, mode="headless")
 scene_id = "Ihlen_1_int"
 scene = InteractiveIndoorScene(scene_id="Ihlen_1_int", not_load_object_categories=["door"])
 sim.import_scene(scene)
@@ -25,7 +24,7 @@ render = sim.renderer
 
 path = "/data/ig_data/ig_dataset/scenes/Ihlen_1_int/misc/tour_cam_trajectory.txt"
 with open(path) as tour_trajectory:
-    csv_reader = csv.reader(tour_trajectory, delimiter=',')
+    csv_reader = csv.reader(tour_trajectory, delimiter=",")
     for view in csv_reader:
         view = np.asarray(view, dtype=float)
         step = view[:2]
@@ -34,8 +33,7 @@ with open(path) as tour_trajectory:
         x, y, z = step[0], step[1], 0.8
         tar_x, tar_y, tar_z = next_step[0], next_step[1], 0.8
 
-        sim.renderer.set_camera(
-            [x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
+        sim.renderer.set_camera([x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
         sim.renderer.set_fov(90)
         frames = sim.renderer.render(modes=("rgb", "3d"))
 
