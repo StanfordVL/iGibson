@@ -1,11 +1,10 @@
 import os
-import threading
+from multiprocessing import Pool
 
 import h5py
 import imageio as iio
 import numpy as np
 from scipy.interpolate import splev, splprep
-from tqdm import tqdm
 
 import igibson
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -13,7 +12,7 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories, height=720, width=1024):
+    def __init__(self, scene_name, num_trajectories=1, height=720, width=1024):
         self.sim = Simulator(
             image_height=height,
             image_width=width,
@@ -57,36 +56,18 @@ class GenerateWayPoints(object):
         self.curr_frame_idx = 0
         self.frame_count = 0
         self.prev_frame_count = 0
-        self.rgb_dataset = self.h5py_file.create_dataset(
-            "/rgb",
-            (num_images_in_trajectory, self.height, self.width, 4),
+        self.camera_pose_dataset = self.h5py_file.create_dataset(
+            "/camera_pose",
+            (num_images_in_trajectory, self.height, self.width, 6),
             dtype=np.float32,
             compression="lzf",
-            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 4),
-        )
-
-        self.depth_dataset = self.h5py_file.create_dataset(
-            "/depth",
-            (num_images_in_trajectory, self.height, self.width, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 4),
-        )
-
-        self.camera_extrinsics_dataset = self.h5py_file.create_dataset(
-            "/camera_extrinsics",
-            (num_images_in_trajectory, 4, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(num_images_in_trajectory, self.batch_size), 4, 4),
+            chunks=(min(num_images_in_trajectory, self.batch_size), 6),
         )
 
         self.create_caches()
 
     def create_caches(self):
-        self.rgb_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float32)
-        self.depth_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float32)
-        self.camera_extrinsics_dataset_cache = np.zeros((self.batch_size, 4, 4), dtype=np.float32)
+        self.camera_pose_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float32)
 
     def write_to_file(self):
         new_lines = self.frame_count - self.prev_frame_count
@@ -96,14 +77,12 @@ class GenerateWayPoints(object):
             return
 
         start_pos = self.frame_count - new_lines
-        self.rgb_dataset[start_pos : self.frame_count] = self.rgb_dataset_cache[:new_lines]
-        self.depth_dataset[start_pos : self.frame_count] = self.depth_dataset_cache[:new_lines]
-        self.camera_extrinsics_dataset[start_pos : self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
+        self.camera_pose_dataset[start_pos : self.frame_count] = self.camera_pose_cache[:new_lines]
         self.curr_frame_idx = 0
 
     def get_splined_steps(self, trajectory):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(trajectory) * 80)
+        time_parameter = np.linspace(0, 1, num=len(trajectory) * 1)
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
@@ -121,9 +100,7 @@ class GenerateWayPoints(object):
         depth /= depth.max()
         frames[1][:, :, :3] = depth[..., None]
 
-        self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
-        self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
-        self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
+        self.rgb_dataset_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
 
         self.sim.step()
 
@@ -155,7 +132,7 @@ class GenerateWayPoints(object):
         self.h5py_file = h5py.File(image_frames_path, "w")
         self.create_dataset(number_of_splined_steps - 1)
 
-        for i in tqdm(range(1, number_of_splined_steps)):
+        for i in range(1, number_of_splined_steps):
             frames = self.get_rgbd_frames(splined_steps[i - 1], splined_steps[i])
             rgb_frame = np.round(255 * frames[0]).astype(np.uint8)
             depth_frame = np.round(255 * frames[1]).astype(np.uint8)
@@ -194,22 +171,24 @@ class GenerateWayPoints(object):
         return scene_frames
 
 
-class GenerateDataset(object):
-    def __init__(self, num_trajectories):
-        self.num_trajectories = num_trajectories
-
-    def generate_waypoints(self):
-        ig_dataset_path = igibson.ig_dataset_path
-        ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
-
-        scene_list = os.listdir(ig_scenes_path)
-        scene_list.remove("background")
-
-        for scene in scene_list:
-            waypoint_generator = GenerateWayPoints(scene, self.num_trajectories)
-            waypoint_generator.generate()
+def generate_waypoints(scene):
+    waypoint_generator = GenerateWayPoints(scene)
+    waypoint_generator.generate()
 
 
-trajectories_per_scene = 100
-dataset_generator = GenerateDataset(trajectories_per_scene)
-dataset_generator.generate_waypoints()
+def main():
+    ig_dataset_path = igibson.ig_dataset_path
+    ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
+
+    scene_list = os.listdir(ig_scenes_path)
+    scene_list.remove("background")
+
+    # num_workers = len(scene_list)
+    num_workers = 2
+
+    with Pool(num_workers) as p:
+        p.map(generate_waypoints, scene_list)
+
+
+if __name__ == "__main__":
+    main()
