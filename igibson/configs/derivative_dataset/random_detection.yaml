@@ -12,7 +12,7 @@ export_seg: False
 export_metadata: True
 use_wordnet_category: False
 
-requested_images: 10000
+requested_images: 2000
 images_per_perturbation: 50
 max_attempts_per_perturbation: 1000
 

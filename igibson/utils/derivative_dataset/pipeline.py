@@ -3,7 +3,7 @@ import itertools
 import json
 import os
 import random
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Sequence, Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -15,6 +15,8 @@ from tqdm import tqdm
 import igibson
 from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.utils import semantics_utils
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
@@ -36,6 +38,7 @@ class DerivativeDatasetPipeline:
         export_depth: bool,
         export_seg: bool,
         export_metadata: bool,
+        states_to_include_in_metadata: Sequence[str],
         use_wordnet_category: bool,
         requested_images: int,
         images_per_perturbation: int,
@@ -59,6 +62,7 @@ class DerivativeDatasetPipeline:
         self.export_depth = export_depth
         self.export_seg = export_seg
         self.export_metadata = export_metadata
+        self.states_to_include_in_metadata = states_to_include_in_metadata
         self.use_wordnet_category = use_wordnet_category
 
         self.requested_images = requested_images
@@ -87,7 +91,7 @@ class DerivativeDatasetPipeline:
         background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
         rendering_settings = MeshRendererSettings(
-            optimized=True,
+            optimized=False,
             fullscreen=False,
             env_texture_filename=hdr_texture,
             env_texture_filename2=hdr_texture2,
@@ -240,6 +244,11 @@ class DerivativeDatasetPipeline:
                         class_id = SemanticClass.SCENE_OBJS
                         class_name = SemanticClass.SCENE_OBJS.name
 
+                states = {}
+                if isinstance(obj, StatefulObject):
+                    for state_type in self.states_to_include_in_metadata:
+                        states[state_type.__name__] = obj.states[state_type].get_value()
+
                 # Make sure that the semantic ID is listed
                 if class_id not in [x["id"] for x in metadata["categories"]]:
                     metadata["categories"].append(
@@ -259,6 +268,7 @@ class DerivativeDatasetPipeline:
                         "iscrowd": 0,
                         "area": int(np.count_nonzero(this_obj_pixels)),
                         "segmentation": [],  # [tuple(x) for x in np.argwhere(this_obj_pixels)]
+                        "states": states,
                     }
                 )
 

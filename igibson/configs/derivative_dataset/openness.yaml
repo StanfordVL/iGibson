@@ -10,9 +10,11 @@ export_rgb: True
 export_depth: False
 export_seg: False
 export_metadata: True
+states_to_include_in_metadata:
+  - !!python/name:igibson.object_states.Open
 use_wordnet_category: False
 
-requested_images: 2000
+requested_images: 1000
 images_per_perturbation: 50
 max_attempts_per_perturbation: 1000
 
