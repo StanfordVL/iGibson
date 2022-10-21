@@ -1,8 +1,10 @@
 import os
+import threading
 
-import cv2
+import imageio as iio
 import numpy as np
 from scipy.interpolate import splev, splprep
+from tqdm import tqdm
 
 import igibson
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -10,10 +12,10 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories):
+    def __init__(self, scene_name, num_trajectories, image_height=720, image_width=1024):
         self.sim = Simulator(
-            image_height=720,
-            image_width=1024,
+            image_height=image_height,
+            image_width=image_width,
             mode="headless",
         )
         scene = InteractiveIndoorScene(
@@ -23,7 +25,11 @@ class GenerateWayPoints(object):
             trav_map_erosion=5,
             trav_map_resolution=0.1,
         )
+        self.scene_name = scene_name
+        self.height = image_height
+        self.width = image_width
         self.sim.import_scene(scene)
+        # TODO: Are there scenes with multiple floors?
         self.floor = self.sim.scene.get_random_floor()
 
         check_points = []
@@ -60,16 +66,42 @@ class GenerateWayPoints(object):
         frames[1][:, :, :3] = depth[..., None]
 
         self.sim.step()
-        cv2.imshow("test", cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
-        cv2.waitKey(1)
         return frames
+
+    def save_trajectory_data_locally(self, uuid, splined_steps):
+        num_steps = splined_steps.shape[0]
+        frame_size = (self.height, self.width)
+        frame_rate = 20.0
+        data_path = "data/{}/{}".format(self.scene_name, uuid)
+
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
+
+        # RGB Video
+        rgb_video_filename = os.path.join(data_path, "rgb.mp4")
+        rgb_video_writer = iio.get_writer(rgb_video_filename, format="FFMPEG", mode="I", fps=frame_rate)
+
+        # Depth Video
+        depth_video_filename = os.path.join(data_path, "depth.mp4")
+        depth_video_writer = iio.get_writer(depth_video_filename, format="FFMPEG", mode="I", fps=frame_rate)
+
+        for i in tqdm(range(1, num_steps)):
+            frames = self.get_rgbd_frames(splined_steps[i - 1], splined_steps[i])
+            rgb_frame = np.round(255 * frames[0]).astype(np.uint8)
+            depth_frame = np.round(255 * frames[1]).astype(np.uint8)
+
+            rgb_video_writer.append_data(rgb_frame)
+            depth_video_writer.append_data(depth_frame)
+
+        rgb_video_writer.close()
+        depth_video_writer.close()
 
     def generate(self):
         scene_frames = []
-        for trajectory in self.scene_trajectories:
+        for uuid, trajectory in enumerate(self.scene_trajectories):
             first_iteration = True
             trajectory_waypoints = None
-            for i in range(1, len(trajectory)):
+            for i in range(1, trajectory.shape[0]):
                 current_position = trajectory[i - 1][:2]
                 next_position = trajectory[i][:2]
                 shortest_path_steps = np.array(
@@ -83,11 +115,8 @@ class GenerateWayPoints(object):
                 first_iteration = False
             splined_steps = self.get_splined_steps(trajectory_waypoints)
 
-            trajectory_frames = []
-            for j in range(1, len(splined_steps)):
-                curr_step = splined_steps[j - 1]
-                next_step = splined_steps[j]
-                trajectory_frames.append(self.get_rgbd_frames(curr_step, next_step))
+            self.save_trajectory_data_locally(uuid, splined_steps)
+
             # TODO: Don't do this. Stack overflow. Load to dataset instead
             # scene_frames.append(trajectory_frames)
 
@@ -105,10 +134,17 @@ class GenerateDataset(object):
 
         scene_list = os.listdir(ig_scenes_path)
         scene_list.remove("background")
+        threads = []
+
         for scene in scene_list:
             waypoint_generator = GenerateWayPoints(scene, self.num_trajectories)
-            images_from_trajectories = waypoint_generator.generate()
+            thread = threading.Thread(target=waypoint_generator.generate)
+            thread.start()
+            threads.append(thread)
             # TODO: Store frames to dataset in a parallel way
+
+        for thread in threads:
+            thread.join()
 
 
 trajectories_per_scene = 1
