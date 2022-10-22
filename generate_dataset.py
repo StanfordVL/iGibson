@@ -12,7 +12,7 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories=1, height=720, width=1024):
+    def __init__(self, scene_name, num_trajectories=1000, height=720, width=1024):
         self.sim = Simulator(
             image_height=height,
             image_width=width,
@@ -29,7 +29,6 @@ class GenerateWayPoints(object):
         self.height = height
         self.width = width
         self.sim.import_scene(scene)
-        # TODO: Are there scenes with multiple floors?
         self.floor = self.sim.scene.get_random_floor()
         self.h5py_file = None
         self.batch_size = 120
@@ -52,13 +51,12 @@ class GenerateWayPoints(object):
 
     def create_dataset(self, num_images_in_trajectory):
         # Reset pointers
-
         self.curr_frame_idx = 0
         self.frame_count = 0
         self.prev_frame_count = 0
         self.camera_pose_dataset = self.h5py_file.create_dataset(
             "/camera_pose",
-            (num_images_in_trajectory, self.height, self.width, 6),
+            (num_images_in_trajectory, 6),
             dtype=np.float32,
             compression="lzf",
             chunks=(min(num_images_in_trajectory, self.batch_size), 6),
@@ -67,7 +65,7 @@ class GenerateWayPoints(object):
         self.create_caches()
 
     def create_caches(self):
-        self.camera_pose_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float32)
+        self.camera_pose_cache = np.zeros((self.batch_size, 6), dtype=np.float32)
 
     def write_to_file(self):
         new_lines = self.frame_count - self.prev_frame_count
@@ -82,7 +80,7 @@ class GenerateWayPoints(object):
 
     def get_splined_steps(self, trajectory):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(trajectory) * 1)
+        time_parameter = np.linspace(0, 1, num=len(trajectory) * 40)
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
@@ -93,14 +91,14 @@ class GenerateWayPoints(object):
         tar_x, tar_y, tar_z = next_step[0], next_step[1], camera_height
 
         self.sim.renderer.set_camera([x, y, z], [tar_x, tar_y, tar_z], [0, 0, 1])
-        frames = self.sim.renderer.render(modes=("rgb", "3d"))
+        frames = self.sim.renderer.render(modes=("rgb", "3d", "seg", "ins_seg"))
 
         # Render 3d points as depth map
         depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
         depth /= depth.max()
         frames[1][:, :, :3] = depth[..., None]
 
-        self.rgb_dataset_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
+        self.camera_pose_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
 
         self.sim.step()
 
@@ -127,6 +125,14 @@ class GenerateWayPoints(object):
         depth_video_filename = os.path.join(data_path, "depth.mp4")
         depth_video_writer = iio.get_writer(depth_video_filename, format="FFMPEG", mode="I", fps=frame_rate)
 
+        # Instance Segmentation Video
+        inst_seg_video_filename = os.path.join(data_path, "inst_seg.mp4")
+        inst_seg_video_writer = iio.get_writer(inst_seg_video_filename, format="FFMPEG", mode="I", fps=frame_rate)
+
+        # Semantic Segmentation Video
+        sem_seg_video_filename = os.path.join(data_path, "sem_seg.mp4")
+        sem_seg_video_writer = iio.get_writer(sem_seg_video_filename, format="FFMPEG", mode="I", fps=frame_rate)
+
         # Image Frames
         image_frames_path = os.path.join(data_path, "data.hdf5")
         self.h5py_file = h5py.File(image_frames_path, "w")
@@ -136,12 +142,18 @@ class GenerateWayPoints(object):
             frames = self.get_rgbd_frames(splined_steps[i - 1], splined_steps[i])
             rgb_frame = np.round(255 * frames[0]).astype(np.uint8)
             depth_frame = np.round(255 * frames[1]).astype(np.uint8)
+            seg_frame = (512 * frames[2][:, :, 0:1]).astype(np.uint8)
+            inst_frame = (1024 * frames[3][:, :, 0:1]).astype(np.uint8)
 
             rgb_video_writer.append_data(rgb_frame)
             depth_video_writer.append_data(depth_frame)
+            sem_seg_video_writer.append_data(seg_frame)
+            inst_seg_video_writer.append_data(inst_frame)
 
         rgb_video_writer.close()
         depth_video_writer.close()
+        inst_seg_video_writer.close()
+        sem_seg_video_writer.close()
 
         self.h5py_file.attrs["camera_intrinsics"] = self.sim.renderer.get_intrinsics()
 
@@ -166,6 +178,7 @@ class GenerateWayPoints(object):
 
             self.save_trajectory_data_locally(uuid, splined_steps)
             self.write_to_file()
+            self.h5py_file.close()
 
         self.sim.disconnect()
         return scene_frames
@@ -183,8 +196,7 @@ def main():
     scene_list = os.listdir(ig_scenes_path)
     scene_list.remove("background")
 
-    # num_workers = len(scene_list)
-    num_workers = 2
+    num_workers = len(scene_list)
 
     with Pool(num_workers) as p:
         p.map(generate_waypoints, scene_list)
