@@ -12,7 +12,7 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories=1000, height=720, width=1024):
+    def __init__(self, scene_name, num_trajectories=100, height=720, width=1024):
         self.sim = Simulator(
             image_height=height,
             image_width=width,
@@ -38,16 +38,36 @@ class GenerateWayPoints(object):
 
         check_points = []
         for room_instance in self.sim.scene.room_ins_name_to_ins_id:
-            # TODO: Sample Traversable Path Around this Point
             lower, upper = self.sim.scene.get_aabb_by_room_instance(room_instance)  # Axis Aligned Bounding Box
             x_cord, y_cord, _ = (upper - lower) / 2 + lower
             check_points.append((x_cord, y_cord))
-        check_points = np.array(check_points)
+        check_points = self.obstacle_free_checkpoint(np.array(check_points))
 
         self.scene_trajectories = []
         for i in range(num_trajectories):
             self.scene_trajectories.append(check_points.copy())
             np.random.shuffle(check_points)
+
+    def obstacle_free_checkpoint(self, checkpoints):
+        traversable_checkpoints = np.copy(checkpoints)
+        num_checkpoints = checkpoints.shape[0]
+        floor_map = self.sim.scene.floor_map[0]
+
+        for i in range(num_checkpoints):
+            position_in_map = self.sim.scene.world_to_map(checkpoints[i])
+            if self.sim.scene.floor_map[0][position_in_map[0], position_in_map[1]] == 0:
+                shorterst_path = np.array(
+                    self.sim.scene.get_shortest_path(
+                        self.floor, checkpoints[i], checkpoints[(i + 1) % num_checkpoints], True
+                    )[0]
+                )
+                for point in shorterst_path:
+                    new_position_in_map = self.sim.scene.world_to_map([point[0], point[1]])
+                    if floor_map[new_position_in_map[0], new_position_in_map[1]] == 0:
+                        continue
+                    traversable_checkpoints[i] = point
+                    break
+        return np.array(traversable_checkpoints)
 
     def create_dataset(self, num_images_in_trajectory):
         # Reset pointers
@@ -80,7 +100,7 @@ class GenerateWayPoints(object):
 
     def get_splined_steps(self, trajectory):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(trajectory) * 40)
+        time_parameter = np.linspace(0, 1, num=len(trajectory) * 20)
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
@@ -110,7 +130,6 @@ class GenerateWayPoints(object):
 
     def save_trajectory_data_locally(self, uuid, splined_steps):
         number_of_splined_steps = splined_steps.shape[0]
-        frame_size = (self.height, self.width)
         frame_rate = 20.0
         data_path = "data/{}/{}".format(self.scene_name, uuid)
 
