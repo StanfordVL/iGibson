@@ -115,7 +115,6 @@ class GenerateWayPoints(object):
 
         # Render 3d points as depth map
         depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
-        depth /= depth.max()
         frames[1][:, :, :3] = depth[..., None]
 
         self.camera_pose_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
