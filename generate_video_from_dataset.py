@@ -1,14 +1,32 @@
 import cv2
-import h5py
-import numpy as np
-from PIL import Image
 
-filename = "data/Pomaria_0_int/0/data.hdf5"
-frame_size = (1024, 720)
-fourcc = cv2.VideoWriter_fourcc(*"MP4V")
-output_video = cv2.VideoWriter("output_video.mp4", fourcc, 20.0, frame_size)
+cap = cv2.VideoCapture("data/Pomaria_0_int/0/depth.mp4")
 
-with h5py.File(filename, "r") as dataset:
-    for img in dataset["rgb"]:
-        output_video.write(np.uint8(cv2.cvtColor(img, cv2.COLOR_RGB2BGR)))
-    output_video.release()
+# Check if camera opened successfully
+if cap.isOpened() == False:
+    print("Error opening video stream or file")
+
+# Read until video is completed
+while cap.isOpened():
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+    if ret == True:
+
+        # Display the resulting frame
+        print(frame.min())
+        break
+        cv2.imshow("Frame", frame)
+
+        # Press Q on keyboard to  exit
+        if cv2.waitKey(25) & 0xFF == ord("q"):
+            break
+
+    # Break the loop
+    else:
+        break
+
+# When everything done, release the video capture object
+cap.release()
+
+# Closes all the frames
+cv2.destroyAllWindows()
