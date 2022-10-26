@@ -1,4 +1,5 @@
 import os
+import uuid
 from multiprocessing import Pool
 
 import h5py
@@ -163,7 +164,6 @@ class GenerateWayPoints(object):
     def save_trajectory_data_locally(self, uuid, splined_steps):
         number_of_splined_steps = splined_steps.shape[0]
         frame_rate = 20.0
-        # TODO: Update this to new location
         data_path = "data/{}/{}".format(self.scene_name, uuid)
 
         if not os.path.exists(data_path):
@@ -188,7 +188,8 @@ class GenerateWayPoints(object):
 
     def generate(self):
         scene_frames = []
-        for uuid, trajectory in enumerate(self.scene_trajectories):
+        for _, trajectory in enumerate(self.scene_trajectories):
+            id = uuid.uuid1()
             first_iteration = True
             trajectory_waypoints = None
             for i in range(1, trajectory.shape[0]):
@@ -205,7 +206,7 @@ class GenerateWayPoints(object):
                 first_iteration = False
             splined_steps = self.get_splined_steps(trajectory_waypoints)
 
-            self.save_trajectory_data_locally(uuid, splined_steps)
+            self.save_trajectory_data_locally(id, splined_steps)
             self.write_to_file()
             self.h5py_file.close()
 
