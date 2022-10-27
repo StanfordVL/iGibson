@@ -18,6 +18,7 @@ robot:
   # For the VR use case, we use the higher set of joint speed/position limits, and a different gripper action space.
   show_visual_head: False
   higher_limits: True
+  legacy_proprioception: True
   controller_config:
     gripper_right_hand:
       name: JointController
