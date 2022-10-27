@@ -102,7 +102,7 @@ class GenerateWayPoints(object):
         self.seg_dataset = self.h5py_file.create_dataset(
             "/seg",
             (num_images_in_trajectory, self.height, self.width, 1),
-            dtype=np.uint8,
+            dtype=np.uint16,
             compression="lzf",
             chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 1),
         )
@@ -110,7 +110,7 @@ class GenerateWayPoints(object):
         self.ins_seg_dataset = self.h5py_file.create_dataset(
             "/ins_seg",
             (num_images_in_trajectory, self.height, self.width, 1),
-            dtype=np.uint8,
+            dtype=np.uint16,
             compression="lzf",
             chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 1),
         )
@@ -129,8 +129,8 @@ class GenerateWayPoints(object):
         self.camera_pose_cache = np.zeros((self.batch_size, 6), dtype=np.float16)
         self.rgb_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.uint8)
         self.distance_dataset_cache = np.zeros((self.batch_size, self.height, self.width), dtype=np.float16)
-        self.seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint8)
-        self.in_seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint8)
+        self.seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint16)
+        self.in_seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint16)
         self.camera_extrinsics_dataset_cache = np.zeros((self.batch_size, 4, 4), dtype=np.float16)
 
     def write_to_file(self):
@@ -168,8 +168,8 @@ class GenerateWayPoints(object):
         self.camera_pose_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
         self.rgb_dataset_cache[self.curr_frame_idx] = np.round(255 * frames[0]).astype(np.uint8)
         self.distance_dataset_cache[self.curr_frame_idx] = distance
-        self.seg_dataset_cache[self.curr_frame_idx] = (512 * frames[2][:, :, 0:1]).astype(np.uint8)
-        self.in_seg_dataset_cache[self.curr_frame_idx] = (1024 * frames[3][:, :, 0:1]).astype(np.uint8)
+        self.seg_dataset_cache[self.curr_frame_idx] = (512 * frames[2][:, :, 0:1]).astype(np.uint16)
+        self.in_seg_dataset_cache[self.curr_frame_idx] = (1024 * frames[3][:, :, 0:1]).astype(np.uint16)
         self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
 
         self.sim.step()
@@ -225,6 +225,7 @@ class GenerateWayPoints(object):
                 first_iteration = False
             splined_steps = self.get_splined_steps(trajectory_waypoints)
 
+            print(splined_steps.shape[0])
             self.save_trajectory_data_locally(id, splined_steps)
             self.write_to_file()
             self.h5py_file.close()
