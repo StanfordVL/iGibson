@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ROS Integration &mdash; iGibson 2.2.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>ROS Integration &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.0
+                2.2.1
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -225,46 +225,46 @@ roslaunch igibson-ros turtlebot_navigation.launch <span class="c1"># Run the nav
 <table border="1" class="docutils">
 <thead>
 <tr>
-<th align="center">Topic name</th>
-<th align="center">Type</th>
-<th align="center">Usage</th>
+<th style="text-align: center;">Topic name</th>
+<th style="text-align: center;">Type</th>
+<th style="text-align: center;">Usage</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td align="center"><code>/gibson_ros/camera/depth/camera_info</code></td>
-<td align="center"><code>sensor_msgs/CameraInfo</code></td>
-<td align="center">Camera parameters used in iGibson, same for depth and rgb</td>
+<td style="text-align: center;"><code>/gibson_ros/camera/depth/camera_info</code></td>
+<td style="text-align: center;"><code>sensor_msgs/CameraInfo</code></td>
+<td style="text-align: center;">Camera parameters used in iGibson, same for depth and rgb</td>
 </tr>
 <tr>
-<td align="center"><code>/gibson_ros/camera/rgb/image</code></td>
-<td align="center"><code>sensor_msgs/Image</code></td>
-<td align="center">RGB image captured in iGibson</td>
+<td style="text-align: center;"><code>/gibson_ros/camera/rgb/image</code></td>
+<td style="text-align: center;"><code>sensor_msgs/Image</code></td>
+<td style="text-align: center;">RGB image captured in iGibson</td>
 </tr>
 <tr>
-<td align="center"><code>/gibson_ros/camera/rgb/depth</code></td>
-<td align="center"><code>sensor_msgs/Image</code></td>
-<td align="center">Depth image captured in iGibson, in meters, with dtype being float32</td>
+<td style="text-align: center;"><code>/gibson_ros/camera/rgb/depth</code></td>
+<td style="text-align: center;"><code>sensor_msgs/Image</code></td>
+<td style="text-align: center;">Depth image captured in iGibson, in meters, with dtype being float32</td>
 </tr>
 <tr>
-<td align="center"><code>/gibson_ros/camera/rgb/depth_raw</code></td>
-<td align="center"><code>sensor_msgs/Image</code></td>
-<td align="center">Depth image captured in iGibson, mimic raw depth data captured with OpenNI cameras, with dtype being uint16, see more <a href="http://www.ros.org/reps/rep-0118.html">here</a></td>
+<td style="text-align: center;"><code>/gibson_ros/camera/rgb/depth_raw</code></td>
+<td style="text-align: center;"><code>sensor_msgs/Image</code></td>
+<td style="text-align: center;">Depth image captured in iGibson, mimic raw depth data captured with OpenNI cameras, with dtype being uint16, see more <a href="http://www.ros.org/reps/rep-0118.html">here</a></td>
 </tr>
 <tr>
-<td align="center"><code>/gibson_ros/lidar/points</code></td>
-<td align="center"><code>sensor_msgs/PointCloud2</code></td>
-<td align="center">1-beam LiDAR scan captured in iGibson, in meters, with dtype being float32</td>
+<td style="text-align: center;"><code>/gibson_ros/lidar/points</code></td>
+<td style="text-align: center;"><code>sensor_msgs/PointCloud2</code></td>
+<td style="text-align: center;">1-beam LiDAR scan captured in iGibson, in meters, with dtype being float32</td>
 </tr>
 <tr>
-<td align="center"><code>/odom</code></td>
-<td align="center"><code>nav_msgs/Odometry</code></td>
-<td align="center">The pose of <code>base_footprint</code> in <code>odom</code> frame, generated with groudtruth pose in iGibson</td>
+<td style="text-align: center;"><code>/odom</code></td>
+<td style="text-align: center;"><code>nav_msgs/Odometry</code></td>
+<td style="text-align: center;">The pose of <code>base_footprint</code> in <code>odom</code> frame, generated with groudtruth pose in iGibson</td>
 </tr>
 <tr>
-<td align="center"><code>/ground_truth_odom</code></td>
-<td align="center"><code>nav_msgs/Odometry</code></td>
-<td align="center">The pose of <code>base_footprint</code> in <code>world</code> frame, generated with groudtruth pose in iGibson</td>
+<td style="text-align: center;"><code>/ground_truth_odom</code></td>
+<td style="text-align: center;"><code>nav_msgs/Odometry</code></td>
+<td style="text-align: center;">The pose of <code>base_footprint</code> in <code>world</code> frame, generated with groudtruth pose in iGibson</td>
 </tr>
 </tbody>
 </table>
@@ -272,21 +272,21 @@ roslaunch igibson-ros turtlebot_navigation.launch <span class="c1"># Run the nav
 <table border="1" class="docutils">
 <thead>
 <tr>
-<th align="center">Topic name</th>
-<th align="center">Type</th>
-<th align="center">Usage</th>
+<th style="text-align: center;">Topic name</th>
+<th style="text-align: center;">Type</th>
+<th style="text-align: center;">Usage</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td align="center"><code>/mobile_base/commands/velocity</code></td>
-<td align="center"><code>geometry_msgs/Twist</code></td>
-<td align="center">Velocity command for turtlebot, <code>msg.linear.x</code> is the forward velocity, <code>msg.angular.z</code> is the angular velocity</td>
+<td style="text-align: center;"><code>/mobile_base/commands/velocity</code></td>
+<td style="text-align: center;"><code>geometry_msgs/Twist</code></td>
+<td style="text-align: center;">Velocity command for turtlebot, <code>msg.linear.x</code> is the forward velocity, <code>msg.angular.z</code> is the angular velocity</td>
 </tr>
 <tr>
-<td align="center"><code>/reset_pose</code></td>
-<td align="center"><code>geometry_msgs/PoseStamped</code></td>
-<td align="center">Direct reset turtlebot's pose (i.e. teleportation)</td>
+<td style="text-align: center;"><code>/reset_pose</code></td>
+<td style="text-align: center;"><code>geometry_msgs/PoseStamped</code></td>
+<td style="text-align: center;">Direct reset turtlebot's pose (i.e. teleportation)</td>
 </tr>
 </tbody>
 </table>
