@@ -13,7 +13,7 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories=100, height=720, width=1024):
+    def __init__(self, scene_name, num_trajectories=100, height=800, width=1000):
         self.sim = Simulator(
             image_height=height,
             image_width=width,
@@ -86,17 +86,33 @@ class GenerateWayPoints(object):
         self.rgb_dataset = self.h5py_file.create_dataset(
             "/rgb",
             (num_images_in_trajectory, self.height, self.width, 4),
-            dtype=np.float16,
+            dtype=np.uint8,
             compression="lzf",
             chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 4),
         )
 
-        self.depth_dataset = self.h5py_file.create_dataset(
+        self.distance_dataset = self.h5py_file.create_dataset(
             "/distance",
-            (num_images_in_trajectory, self.height, self.width, 4),
+            (num_images_in_trajectory, self.height, self.width),
             dtype=np.float16,
             compression="lzf",
-            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 4),
+            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width),
+        )
+
+        self.seg_dataset = self.h5py_file.create_dataset(
+            "/seg",
+            (num_images_in_trajectory, self.height, self.width, 1),
+            dtype=np.uint8,
+            compression="lzf",
+            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 1),
+        )
+
+        self.ins_seg_dataset = self.h5py_file.create_dataset(
+            "/ins_seg",
+            (num_images_in_trajectory, self.height, self.width, 1),
+            dtype=np.uint8,
+            compression="lzf",
+            chunks=(min(num_images_in_trajectory, self.batch_size), self.height, self.width, 1),
         )
 
         self.camera_extrinsics_dataset = self.h5py_file.create_dataset(
@@ -111,8 +127,10 @@ class GenerateWayPoints(object):
 
     def create_caches(self):
         self.camera_pose_cache = np.zeros((self.batch_size, 6), dtype=np.float16)
-        self.rgb_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float16)
-        self.depth_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.float16)
+        self.rgb_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.uint8)
+        self.distance_dataset_cache = np.zeros((self.batch_size, self.height, self.width), dtype=np.float16)
+        self.seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint8)
+        self.in_seg_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 1), dtype=np.uint8)
         self.camera_extrinsics_dataset_cache = np.zeros((self.batch_size, 4, 4), dtype=np.float16)
 
     def write_to_file(self):
@@ -125,13 +143,13 @@ class GenerateWayPoints(object):
         start_pos = self.frame_count - new_lines
         self.camera_pose_dataset[start_pos : self.frame_count] = self.camera_pose_cache[:new_lines]
         self.rgb_dataset[start_pos : self.frame_count] = self.rgb_dataset_cache[:new_lines]
-        self.depth_dataset[start_pos : self.frame_count] = self.depth_dataset_cache[:new_lines]
+        self.distance_dataset[start_pos : self.frame_count] = self.distance_dataset_cache[:new_lines]
         self.camera_extrinsics_dataset[start_pos : self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
         self.curr_frame_idx = 0
 
     def get_splined_steps(self, trajectory):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(trajectory) * 10)
+        time_parameter = np.linspace(0, 1, num=len(trajectory) * 2)
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
@@ -145,12 +163,13 @@ class GenerateWayPoints(object):
         frames = self.sim.renderer.render(modes=("rgb", "3d", "seg", "ins_seg"))
 
         # Render 3d points as depth map
-        depth = np.linalg.norm(frames[1][:, :, :3], axis=2)
-        frames[1][:, :, :3] = depth[..., None]
+        distance = np.linalg.norm(frames[1][:, :, :3], axis=2)
 
         self.camera_pose_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
-        self.rgb_dataset_cache[self.curr_frame_idx] = frames[0]
-        self.depth_dataset_cache[self.curr_frame_idx] = frames[1]
+        self.rgb_dataset_cache[self.curr_frame_idx] = np.round(255 * frames[0]).astype(np.uint8)
+        self.distance_dataset_cache[self.curr_frame_idx] = distance
+        self.seg_dataset_cache[self.curr_frame_idx] = (512 * frames[2][:, :, 0:1]).astype(np.uint8)
+        self.in_seg_dataset_cache[self.curr_frame_idx] = (1024 * frames[3][:, :, 0:1]).astype(np.uint8)
         self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
 
         self.sim.step()
