@@ -24,23 +24,23 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
     def validate_validation_cache(self, cache, *args, **kwargs):
         pass
 
-    def get_value(self, *args, **kwargs):
-        # Convert arguments to memo key.
-        key = (tuple(args), tuple(kwargs.items()))
-
-        # If we have a valid memoized result, return it directly.
-        if key in self._memo:
-            if self.validate_validation_cache(self._validation_caches[key], *args, **kwargs):
-                return self._memo[key]
-
-        # Otherwise, recompute the result & memoize.
-        validation_cache = self.get_validation_cache(*args, **kwargs)
-        result = super(MemoizedObjectStateMixin, self).get_value(*args, **kwargs)
-        self._validation_caches[key] = validation_cache
-        self._memo[key] = result
-
-        # Return the result.
-        return result
+    # def get_value(self, *args, **kwargs):
+    #     # Convert arguments to memo key.
+    #     key = (tuple(args), tuple(kwargs.items()))
+    #
+    #     # If we have a valid memoized result, return it directly.
+    #     if key in self._memo:
+    #         if self.validate_validation_cache(self._validation_caches[key], *args, **kwargs):
+    #             return self._memo[key]
+    #
+    #     # Otherwise, recompute the result & memoize.
+    #     validation_cache = self.get_validation_cache(*args, **kwargs)
+    #     result = super(MemoizedObjectStateMixin, self).get_value(*args, **kwargs)
+    #     self._validation_caches[key] = validation_cache
+    #     self._memo[key] = result
+    #
+    #     # Return the result.
+    #     return result
 
 
 class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):

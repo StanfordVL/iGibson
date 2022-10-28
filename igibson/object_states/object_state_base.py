@@ -114,11 +114,13 @@ class CachingEnabledObjectState(AbsoluteObjectState):
         raise NotImplementedError()
 
     def _get_value(self):
-        # If we don't have a value cached, compute it now.
-        if self.value is None:
-            self.value = self._compute_value()
+        return self._compute_value()
 
-        return self.value
+        # If we don't have a value cached, compute it now.
+        # if self.value is None:
+        #     self.value = self._compute_value()
+        #
+        # return self.value
 
     def clear_cached_value(self):
         self.value = None
