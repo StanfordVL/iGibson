@@ -1,16 +1,18 @@
 import sys
 
 import cv2
+import dubins
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from scipy.interpolate import splev, splprep
 
-np.set_printoptions(threshold=sys.maxsize)
-
 from debug_turns import plot_paths
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+
+np.set_printoptions(threshold=sys.maxsize)
+
 
 IMAGE_HEIGHT = 720
 IMAGE_WIDTH = 1024
@@ -74,9 +76,18 @@ class GenerateDataset(object):
                     break
         return np.array(traversable_checkpoints)
 
+    def turn_camera_for_next_trajectory(self, current_step, next_step):
+        next_steps = np.array(
+            dubins.shortest_path(
+                [current_step[0], current_step[1], np.pi / 2], [next_step[0], next_step[1], -np.pi / 2], 0.2
+            ).sample_many(0.1)[0]
+        )
+        return next_steps[:, :2]
+
     def get_splined_steps(self):
-        spline_parameter, _ = splprep([self.total_trajectory[:, 0], self.total_trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(self.total_trajectory) * 20)
+        spline_parameter, u = splprep([self.total_trajectory[:, 0], self.total_trajectory[:, 1]], s=0.2)
+        # print(u[1:] - u[:-1])
+        time_parameter = np.linspace(0, 1, num=len(self.total_trajectory) * 10)
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
@@ -106,14 +117,19 @@ class GenerateDataset(object):
             )
 
             if not self.first_iteration:
-                self.total_trajectory = np.append(self.total_trajectory, shortest_path_steps[1:], axis=0)
+                self.total_trajectory = np.append(
+                    self.total_trajectory,
+                    self.turn_camera_for_next_trajectory(shortest_path_steps[0], shortest_path_steps[1]),
+                    axis=0,
+                )
+                self.total_trajectory = np.append(self.total_trajectory, shortest_path_steps[2:-1, :], axis=0)
             else:
-                self.total_trajectory = shortest_path_steps
+                self.total_trajectory = shortest_path_steps[:-1]
 
             self.first_iteration = False
 
         splined_steps = self.get_splined_steps()
-        # plot_paths(self.total_trajectory, splined_steps)
+        plot_paths(self.total_trajectory, splined_steps)
         for i in range(len(splined_steps) - 1):
             self.render_image(splined_steps[i], splined_steps[i + 1])
 
