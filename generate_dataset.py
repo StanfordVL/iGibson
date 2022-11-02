@@ -13,7 +13,7 @@ from igibson.simulator import Simulator
 
 
 class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories=100, height=800, width=1000):
+    def __init__(self, scene_name, num_trajectories=70, height=800, width=1008):
         self.sim = Simulator(
             image_height=height,
             image_width=width,
@@ -147,10 +147,45 @@ class GenerateWayPoints(object):
         self.camera_extrinsics_dataset[start_pos : self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
         self.curr_frame_idx = 0
 
-    def get_splined_steps(self, trajectory):
+    def get_splined_steps(self, trajectory, knot_points):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
-        time_parameter = np.linspace(0, 1, num=len(trajectory) * 2)
+        time_parameter = np.linspace(0, 1, num=len(trajectory))
+        closest_period_to_knot = np.zeros((knot_points.shape[0], 2))
         smoothed_points = np.array(splev(time_parameter, spline_parameter))[:2]
+        smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
+
+        curr_knot_index = 0
+        thresh = 0.6
+        prev_delta = 1 / trajectory.shape[0]
+
+        for i in range(time_parameter.shape[0]):
+            if curr_knot_index == knot_points.shape[0]:
+                break
+            curr_knot = knot_points[curr_knot_index][0]
+            if np.linalg.norm(curr_knot - smoothed_points[i]) < thresh:
+                closest_period_to_knot[curr_knot_index][0] = time_parameter[i]
+                curr_knot_index += 1
+
+        curr_knot_index = closest_period_to_knot.shape[0] - 1
+        for i in range(time_parameter.shape[0] - 1, 0, -1):
+            if curr_knot_index < 0:
+                break
+            curr_knot = knot_points[curr_knot_index][1]
+            if np.linalg.norm(curr_knot - smoothed_points[i]) < thresh:
+                closest_period_to_knot[curr_knot_index][1] = time_parameter[i]
+                curr_knot_index -= 1
+
+        prev_time = 0
+        new_time_parameter = np.array([])
+        for period in closest_period_to_knot:
+            new_time_parameter = np.append(new_time_parameter, np.arange(prev_time, period[0], prev_delta))
+            new_time_parameter = np.append(new_time_parameter, np.arange(period[0], period[1], prev_delta / 10))
+            prev_time = period[1]
+        new_time_parameter = np.append(new_time_parameter, np.arange(prev_time, 1, prev_delta))
+        # print(new_time_parameter)
+
+        # update smoothed points with new values
+        smoothed_points = np.array(splev(new_time_parameter, spline_parameter))[:2]
         smoothed_points = np.dstack((smoothed_points[0], smoothed_points[1]))[0]
         return smoothed_points
 
@@ -211,6 +246,7 @@ class GenerateWayPoints(object):
             id = uuid.uuid1()
             first_iteration = True
             trajectory_waypoints = None
+            knot_points = []
             for i in range(1, trajectory.shape[0]):
                 current_position = trajectory[i - 1][:2]
                 next_position = trajectory[i][:2]
@@ -219,13 +255,14 @@ class GenerateWayPoints(object):
                 )
 
                 if not first_iteration:
+                    knot_points.append([shortest_path_steps[0], shortest_path_steps[2]])
                     trajectory_waypoints = np.append(trajectory_waypoints, shortest_path_steps[1:], axis=0)
                 else:
                     trajectory_waypoints = shortest_path_steps
                 first_iteration = False
-            splined_steps = self.get_splined_steps(trajectory_waypoints)
+            knot_points = np.array(knot_points)
+            splined_steps = self.get_splined_steps(trajectory_waypoints, knot_points)
 
-            print(splined_steps.shape[0])
             self.save_trajectory_data_locally(id, splined_steps)
             self.write_to_file()
             self.h5py_file.close()
@@ -235,7 +272,7 @@ class GenerateWayPoints(object):
 
 
 def generate_waypoints(scene):
-    waypoint_generator = GenerateWayPoints(scene, num_trajectories=1)
+    waypoint_generator = GenerateWayPoints(scene)
     waypoint_generator.generate()
 
 
@@ -245,7 +282,7 @@ def main():
 
     scene_list = os.listdir(ig_scenes_path)
     scene_list.remove("background")
-    scene_list = [scene_list[0]]
+
     num_workers = len(scene_list)
 
     with Pool(num_workers) as p:
