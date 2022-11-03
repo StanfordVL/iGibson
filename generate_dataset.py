@@ -12,69 +12,15 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
 
-class GenerateWayPoints(object):
-    def __init__(self, scene_name, num_trajectories=70, height=800, width=1008):
-        self.sim = Simulator(
-            image_height=height,
-            image_width=width,
-            mode="headless",
-        )
-        scene = InteractiveIndoorScene(
-            scene_id=scene_name,
-            not_load_object_categories=["door"],
-            trav_map_type="no_door",
-            trav_map_erosion=5,
-            trav_map_resolution=0.1,
-        )
-        self.scene_name = scene_name
+class WayPointDataset(object):
+    def __init__(self, num_images_in_trajectory, image_frames_path, height, width):
+        self.curr_frame_idx = 0
+        self.frame_count = 0
+        self.prev_frame_count = 0
+        self.batch_size = 120
+        self.h5py_file = h5py.File(image_frames_path, "w")
         self.height = height
         self.width = width
-        self.sim.import_scene(scene)
-        self.floor = self.sim.scene.get_random_floor()
-        self.h5py_file = None
-        self.batch_size = 120
-        self.curr_frame_idx = 0
-        self.frame_count = 0
-        self.prev_frame_count = 0
-
-        check_points = []
-        for room_instance in self.sim.scene.room_ins_name_to_ins_id:
-            lower, upper = self.sim.scene.get_aabb_by_room_instance(room_instance)  # Axis Aligned Bounding Box
-            x_cord, y_cord, _ = (upper - lower) / 2 + lower
-            check_points.append((x_cord, y_cord))
-        check_points = self.obstacle_free_checkpoint(np.array(check_points))
-
-        self.scene_trajectories = []
-        for i in range(num_trajectories):
-            self.scene_trajectories.append(check_points.copy())
-            np.random.shuffle(check_points)
-
-    def obstacle_free_checkpoint(self, checkpoints):
-        traversable_checkpoints = np.copy(checkpoints)
-        num_checkpoints = checkpoints.shape[0]
-        floor_map = self.sim.scene.floor_map[0]
-
-        for i in range(num_checkpoints):
-            position_in_map = self.sim.scene.world_to_map(checkpoints[i])
-            if self.sim.scene.floor_map[0][position_in_map[0], position_in_map[1]] == 0:
-                shorterst_path = np.array(
-                    self.sim.scene.get_shortest_path(
-                        self.floor, checkpoints[i], checkpoints[(i + 1) % num_checkpoints], True
-                    )[0]
-                )
-                for point in shorterst_path:
-                    new_position_in_map = self.sim.scene.world_to_map([point[0], point[1]])
-                    if floor_map[new_position_in_map[0], new_position_in_map[1]] == 0:
-                        continue
-                    traversable_checkpoints[i] = point
-                    break
-        return np.array(traversable_checkpoints)
-
-    def create_dataset(self, num_images_in_trajectory):
-        # Reset pointers
-        self.curr_frame_idx = 0
-        self.frame_count = 0
-        self.prev_frame_count = 0
         self.camera_pose_dataset = self.h5py_file.create_dataset(
             "/camera_pose",
             (num_images_in_trajectory, 6),
@@ -123,9 +69,6 @@ class GenerateWayPoints(object):
             chunks=(min(num_images_in_trajectory, self.batch_size), 4, 4),
         )
 
-        self.create_caches()
-
-    def create_caches(self):
         self.camera_pose_cache = np.zeros((self.batch_size, 6), dtype=np.float16)
         self.rgb_dataset_cache = np.zeros((self.batch_size, self.height, self.width, 4), dtype=np.uint8)
         self.distance_dataset_cache = np.zeros((self.batch_size, self.height, self.width), dtype=np.float16)
@@ -146,6 +89,81 @@ class GenerateWayPoints(object):
         self.distance_dataset[start_pos : self.frame_count] = self.distance_dataset_cache[:new_lines]
         self.camera_extrinsics_dataset[start_pos : self.frame_count] = self.camera_extrinsics_dataset_cache[:new_lines]
         self.curr_frame_idx = 0
+
+    def set_camera_extrinsics(self, camera_intrinsics):
+        self.h5py_file.attrs["camera_intrinsics"] = camera_intrinsics
+
+    def update_cache(self, camera_pose, rgb_image, distance, seg_frame, in_seg_frame, camera_extrinsics):
+        self.camera_pose_cache[self.curr_frame_idx] = camera_pose
+        self.rgb_dataset_cache[self.curr_frame_idx] = rgb_image
+        self.distance_dataset_cache[self.curr_frame_idx] = distance
+        self.seg_dataset_cache[self.curr_frame_idx] = seg_frame
+        self.in_seg_dataset_cache[self.curr_frame_idx] = in_seg_frame
+        self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = camera_extrinsics
+
+        self.frame_count += 1
+        self.curr_frame_idx += 1
+        if self.curr_frame_idx == self.batch_size:
+            self.write_to_file()
+
+
+class GenerateWayPoints(object):
+    def __init__(self, scene_name, num_trajectories=70, height=800, width=1008):
+        self.sim = Simulator(
+            image_height=height,
+            image_width=width,
+            mode="headless",
+        )
+        scene = InteractiveIndoorScene(
+            scene_id=scene_name,
+            not_load_object_categories=["door"],
+            trav_map_type="no_door",
+            trav_map_erosion=5,
+            trav_map_resolution=0.1,
+        )
+        self.scene_name = scene_name
+        self.height = height
+        self.width = width
+        self.sim.import_scene(scene)
+        self.floor = self.sim.scene.get_random_floor()
+        self.h5py_file = None
+        self.curr_frame_idx = 0
+        self.frame_count = 0
+        self.prev_frame_count = 0
+        self.dataset = None
+
+        check_points = []
+        for room_instance in self.sim.scene.room_ins_name_to_ins_id:
+            lower, upper = self.sim.scene.get_aabb_by_room_instance(room_instance)  # Axis Aligned Bounding Box
+            x_cord, y_cord, _ = (upper - lower) / 2 + lower
+            check_points.append((x_cord, y_cord))
+        check_points = self.obstacle_free_checkpoint(np.array(check_points))
+
+        self.scene_trajectories = []
+        for i in range(num_trajectories):
+            self.scene_trajectories.append(check_points.copy())
+            np.random.shuffle(check_points)
+
+    def obstacle_free_checkpoint(self, checkpoints):
+        traversable_checkpoints = np.copy(checkpoints)
+        num_checkpoints = checkpoints.shape[0]
+        floor_map = self.sim.scene.floor_map[0]
+
+        for i in range(num_checkpoints):
+            position_in_map = self.sim.scene.world_to_map(checkpoints[i])
+            if self.sim.scene.floor_map[0][position_in_map[0], position_in_map[1]] == 0:
+                shorterst_path = np.array(
+                    self.sim.scene.get_shortest_path(
+                        self.floor, checkpoints[i], checkpoints[(i + 1) % num_checkpoints], True
+                    )[0]
+                )
+                for point in shorterst_path:
+                    new_position_in_map = self.sim.scene.world_to_map([point[0], point[1]])
+                    if floor_map[new_position_in_map[0], new_position_in_map[1]] == 0:
+                        continue
+                    traversable_checkpoints[i] = point
+                    break
+        return np.array(traversable_checkpoints)
 
     def get_splined_steps(self, trajectory, knot_points):
         spline_parameter, _ = splprep([trajectory[:, 0], trajectory[:, 1]], s=0.2)
@@ -199,20 +217,15 @@ class GenerateWayPoints(object):
 
         # Render 3d points as depth map
         distance = np.linalg.norm(frames[1][:, :, :3], axis=2)
+        camera_pose = [x, y, z, tar_x, tar_y, tar_z]
+        rgb_image = np.round(255 * frames[0]).astype(np.uint8)
+        seg_frame = (512 * frames[2][:, :, 0:1]).astype(np.uint16)
+        in_seg_frame = (1024 * frames[3][:, :, 0:1]).astype(np.uint16)
+        camera_extrinsics = self.sim.renderer.V
 
-        self.camera_pose_cache[self.curr_frame_idx] = [x, y, z, tar_x, tar_y, tar_z]
-        self.rgb_dataset_cache[self.curr_frame_idx] = np.round(255 * frames[0]).astype(np.uint8)
-        self.distance_dataset_cache[self.curr_frame_idx] = distance
-        self.seg_dataset_cache[self.curr_frame_idx] = (512 * frames[2][:, :, 0:1]).astype(np.uint16)
-        self.in_seg_dataset_cache[self.curr_frame_idx] = (1024 * frames[3][:, :, 0:1]).astype(np.uint16)
-        self.camera_extrinsics_dataset_cache[self.curr_frame_idx] = self.sim.renderer.V
+        self.dataset.update_cache(camera_pose, rgb_image, distance, seg_frame, in_seg_frame, camera_extrinsics)
 
         self.sim.step()
-
-        self.frame_count += 1
-        self.curr_frame_idx += 1
-        if self.curr_frame_idx == self.batch_size:
-            self.write_to_file()
         return frames
 
     def save_trajectory_data_locally(self, uuid, splined_steps):
@@ -229,16 +242,17 @@ class GenerateWayPoints(object):
 
         # Image Pose and Channels
         image_frames_path = os.path.join(data_path, "data.hdf5")
-        self.h5py_file = h5py.File(image_frames_path, "w")
-        self.create_dataset(number_of_splined_steps - 1)
+
+        if not self.dataset:
+            self.dataset = WayPointDataset(number_of_splined_steps - 1, image_frames_path, self.height, self.width)
 
         for i in range(1, number_of_splined_steps):
             frames = self.get_rgbd_frames(splined_steps[i - 1], splined_steps[i])
             rgb_frame = np.round(255 * frames[0]).astype(np.uint8)
             rgb_video_writer.append_data(rgb_frame)
 
+        self.dataset.set_camera_extrinsics(self.sim.renderer.get_intrinsics())
         rgb_video_writer.close()
-        self.h5py_file.attrs["camera_intrinsics"] = self.sim.renderer.get_intrinsics()
 
     def generate(self):
         scene_frames = []
@@ -264,15 +278,15 @@ class GenerateWayPoints(object):
             splined_steps = self.get_splined_steps(trajectory_waypoints, knot_points)
 
             self.save_trajectory_data_locally(id, splined_steps)
-            self.write_to_file()
-            self.h5py_file.close()
+            self.dataset.write_to_file()
+            self.dataset.h5py_file.close()
 
         self.sim.disconnect()
         return scene_frames
 
 
 def generate_waypoints(scene):
-    waypoint_generator = GenerateWayPoints(scene)
+    waypoint_generator = GenerateWayPoints(scene, num_trajectories=1)
     waypoint_generator.generate()
 
 
@@ -282,6 +296,7 @@ def main():
 
     scene_list = os.listdir(ig_scenes_path)
     scene_list.remove("background")
+    scene_list = [scene_list[0], scene_list[1]]
 
     num_workers = len(scene_list)
 
