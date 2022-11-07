@@ -207,6 +207,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         """Do the regular load, then update the collision filters."""
         body_ids = super(BehaviorRobot, self).load(simulator)
         self._parts["body"].set_body_collision_filters()
+        self.all_body_ids = body_ids
         return body_ids
 
     def _setup_virtual_joints(self):
@@ -331,6 +332,9 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     def get_body_ids(self):
         return [part.body_id for part in self._parts.values()]
+
+    def get_all_ids(self):
+        return self.all_body_ids
 
     @property
     def n_arms(self):

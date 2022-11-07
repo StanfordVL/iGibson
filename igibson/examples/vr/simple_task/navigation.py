@@ -1,14 +1,8 @@
-""" This is a VR demo in a simple scene consisting of a cube to interact with, and space to move around.
-Can be used to verify everything is working in VR, and iterate on current VR designs.
-"""
-from hashlib import new
 import logging
 import os
 import time
 import random
-from tracemalloc import start
-from xml.dom.minidom import Document
-
+import tempfile
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -19,6 +13,8 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
+from igibson.utils.ig_logging import IGLogWriter
+
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
@@ -46,17 +42,11 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-
     s = SimulatorVR(gravity = 0, physics_timestep=1/120.0, render_timestep=1/60.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
-
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
+    # scene setup
     scene = EmptyScene(floor_plane_rgba=[0.5, 0.5, 0.5, 0.5])
     s.import_scene(scene)
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
-
-    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
-
-    # wall setup
     walls_pos = [
         ([-15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
         ([15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
@@ -69,6 +59,31 @@ def main():
         )
         s.import_object(wall)
         wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
+
+    # robot setup
+    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
+    bvr_robot = BehaviorRobot(**config["robot"])
+    s.import_object(bvr_robot)
+    bvr_robot.set_position_orientation([0, -6, 1], [0, 0, 0, 1])
+    
+    # log writer
+    demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
+    disable_save = False
+    profile=False
+    instance_id = 0
+    log_writer = None
+    if not disable_save:
+        log_writer = IGLogWriter(
+            s,
+            log_filepath=demo_file,
+            task=None,
+            store_vr=True,
+            vr_robot=bvr_robot,
+            profiling_mode=profile,
+            filter_objects=True,
+        )
+        log_writer.set_up_data_storage()
+        log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
     # object setup
     random_pos = random.sample(range(50, 100), num_of_duck)
@@ -88,20 +103,13 @@ def main():
         s.import_object(objs[-1])
         objs[-1].set_position_orientation([initial_x + i % 10, initial_y + i // 10, heights[i]], [0.5, 0.5, 0.5, 0.5])
 
-    # robot setup
-    bvr_robot = BehaviorRobot(**config["robot"])
-    s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([0, -6, 1], [0, 0, 0, 1])
-
-    robot_pos = []
-
     start_time = 0
-
     # Main simulation loop
     while True:
-        # Make sure eye marker never goes to sleep so it is always ready to track gaze
-        # eye_marker.force_wakeup()
-        s.step()       
+        s.step()
+
+        if log_writer and not disable_save:
+            log_writer.process_frame()       
 
         bvr_robot.apply_action(s.gen_vr_robot_action())
 
@@ -115,8 +123,7 @@ def main():
 
         # update post processing
         s.update_post_processing_effect()
-
-        robot_pos.append(bvr_robot.get_position()[:2])
+        is_valid, origin, dir, _, _, _, _ = s.get_eye_tracking_data()
         for i in range(100):
             if i in random_pos:
                 if i not in done and np.linalg.norm(objs[i].get_position() - np.array([initial_x + i % 10, initial_y + i // 10, heights[i]])) > 0.1:
@@ -128,9 +135,11 @@ def main():
         if len(done) == num_of_duck:
             break
 
+    if log_writer and not disable_save:
+        log_writer.end_log_session()
+
     s.disconnect()
     print(f"Total time: {time.time() - start_time}")
-    np.save("visual_disease/navigation_robot_pos.npy", np.array(robot_pos))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

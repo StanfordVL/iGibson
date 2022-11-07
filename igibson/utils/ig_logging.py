@@ -84,6 +84,13 @@ class IGLogWriter(object):
         else:
             self.tracked_objects = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
 
+        # helper to compute total movement of task-irrelavant objects
+        self.irrelavant_objects = set([p.getBodyUniqueId(i) for i in range(p.getNumBodies())]) - set(self.tracked_objects)
+        if self.vr_robot:
+            self.irrelavant_objects -= set(self.vr_robot.get_all_ids())
+        self.prev_pos_of_irrelavant_objects = np.zeros((len(self.irrelavant_objects), 3))
+        self.prev_total_movement_of_irrelavant_objects = 0.0
+
         self.joint_map = {bid: p.getNumJoints(bid) for bid in self.tracked_objects}
         # Sentinel that indicates a certain value was not set in the HDF5
         self.default_fill_sentinel = -1.0
@@ -105,7 +112,7 @@ class IGLogWriter(object):
         """Generates lists of name paths for resolution in hdf5 saving.
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
         self.name_path_data.extend([["frame_data"]])
-
+        self.name_path_data.extend([["total_movement_of_irrelavant_objs"]])
         for bid in self.tracked_objects:
             obj = str(bid)
             base = ["physics_data", obj]
@@ -157,6 +164,7 @@ class IGLogWriter(object):
             }
 
         self.data_map["physics_data"] = dict()
+        self.data_map["total_movement_of_irrelavant_objs"] = np.zeros((self.frames_before_write, 1))
         for bid in self.tracked_objects:
             obj = str(bid)
             self.data_map["physics_data"][obj] = dict()
@@ -208,7 +216,7 @@ class IGLogWriter(object):
                     ),
                 },
                 "vr_eye_tracking_data": np.full(
-                    (self.frames_before_write, 9), self.default_fill_sentinel, dtype=self.np_dtype
+                    (self.frames_before_write, 11), self.default_fill_sentinel, dtype=self.np_dtype
                 ),
                 "vr_event_data": {
                     "left_controller": np.full(
@@ -401,13 +409,15 @@ class IGLogWriter(object):
         self.data_map["vr"]["vr_device_data"]["vr_position_data"][self.frame_counter, ...] = np.array(vr_pos_data)
 
         # On systems where eye tracking is not supported, we get dummy data and a guaranteed False validity reading
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.sim.get_eye_tracking_data()
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.sim.get_eye_tracking_data()
         if is_valid:
             eye_data_list = [is_valid]
             eye_data_list.extend(origin)
             eye_data_list.extend(dir)
             eye_data_list.append(left_pupil_diameter)
             eye_data_list.append(right_pupil_diameter)
+            eye_data_list.append(left_eye_openness)
+            eye_data_list.append(right_eye_openness)
             self.data_map["vr"]["vr_eye_tracking_data"][self.frame_counter, ...] = np.array(eye_data_list)
 
         controller_events = {"left_controller": [], "right_controller": []}
@@ -450,6 +460,16 @@ class IGLogWriter(object):
                 handle["joint_state"][self.frame_counter] = np.array(
                     [p.getJointState(bid, n)[0] for n in range(self.joint_map[bid])]
                 )
+
+        total_movement_of_irrelavant_object = 0
+        for i, bid in enumerate(self.irrelavant_objects):
+            pos, _ = p.getBasePositionAndOrientation(bid)
+            if self.persistent_frame_count != 0:
+                total_movement_of_irrelavant_object += np.linalg.norm(pos - self.prev_pos_of_irrelavant_objects[i])
+            self.prev_pos_of_irrelavant_objects[i] = pos
+            
+        self.prev_total_movement_of_irrelavant_objects += total_movement_of_irrelavant_object
+        self.data_map["total_movement_of_irrelavant_objs"][self.frame_counter] = self.prev_total_movement_of_irrelavant_objects
 
     def _print_pybullet_data(self):
         """Print pybullet debug data - hidden API since this is used for debugging purposes only."""

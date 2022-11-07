@@ -175,13 +175,6 @@ py::list VRRendererContext::getEyeTrackingData() {
 	dir.append(gibDir.x);
 	dir.append(gibDir.y);
 	dir.append(gibDir.z);
-	
-	py::list left_pupil_pos;
-	py::list right_pupil_pos;
-	left_pupil_pos.append(eyeTrackingData.leftPupilPos.x);
-	left_pupil_pos.append(eyeTrackingData.leftPupilPos.y);
-	right_pupil_pos.append(eyeTrackingData.rightPupilPos.x);
-	right_pupil_pos.append(eyeTrackingData.rightPupilPos.y);
 
 	// Set validity to false if eye tracking is not being used
 	if (this->useEyeTracking) {
@@ -194,19 +187,19 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(dir);
 	eyeData.append(eyeTrackingData.leftPupilDiameter);
 	eyeData.append(eyeTrackingData.rightPupilDiameter);
-	eyeData.append(left_pupil_pos);
-	eyeData.append(right_pupil_pos);
+	eyeData.append(eyeTrackingData.leftEyeOpenness);
+	eyeData.append(eyeTrackingData.rightEyeOpenness);
 	// Return dummy data with false validity if eye tracking is not enabled (on non-Windows system)
 	#else
 	py::list dummy_origin, dummy_dir, dummy_pos_l, dummy_pos_r;
-	float dummy_diameter_l, dummy_diameter_r;
+	float dummy_diameter_l, dummy_diameter_r, dummy_openness_l, dummy_openness_r;
 	eyeData.append(false);
 	eyeData.append(dummy_origin);
 	eyeData.append(dummy_dir);
 	eyeData.append(dummy_diameter_l);
 	eyeData.append(dummy_diameter_r);
-	eyeData.append(dummy_pos_l);
-	eyeData.append(dummy_pos_r);
+	eyeData.append(dummy_openness_l);
+	eyeData.append(dummy_openness_r);
 	#endif
 	return eyeData;
 }
@@ -779,12 +772,8 @@ void VRRendererContext::pollAnipal() {
 			// Record pupil measurements
 			eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
 			eyeTrackingData.rightPupilDiameter = this->eyeData.verbose_data.right.pupil_diameter_mm;
-			auto leftPupilPosRaw = this->eyeData.verbose_data.left.pupil_position_in_sensor_area;
-			glm::vec2 leftPupilPos(leftPupilPosRaw.x, leftPupilPosRaw.y);
-			eyeTrackingData.leftPupilPos = leftPupilPos;
-			auto rightPupilPosRaw = this->eyeData.verbose_data.right.pupil_position_in_sensor_area;
-			glm::vec2 rightPupilPos(rightPupilPosRaw.x, rightPupilPosRaw.y);
-			eyeTrackingData.rightPupilPos = rightPupilPos;
+			eyeTrackingData.leftEyeOpenness = this->eyeData.verbose_data.left.eye_openness;
+			eyeTrackingData.rightEyeOpenness = this->eyeData.verbose_data.right.eye_openness;
 		}
 	}
 }
@@ -832,11 +821,8 @@ void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, int* controller, 
 	if (press_id == vr::VREvent_ButtonUnpress || press_id == vr::VREvent_ButtonUntouch) {
 		*press = 0;
 	}
-	else if (press_id == vr::VREvent_ButtonPress) {
+	else if (press_id == vr::VREvent_ButtonPress || press_id == vr::VREvent_ButtonTouch) {
 		*press = 1;
-	}
-	else if (press_id == vr::VREvent_ButtonTouch) { // we want to distinguish button touch and press for post processing
-		*press = 2;
 	}
 	else {
 		*press = -1;

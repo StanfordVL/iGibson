@@ -24,7 +24,10 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
         for item in contact_points:
             if item.linkIndexA != self.link_id:
                 continue
-            contact_obj = self.simulator.scene.objects_by_id[item.bodyUniqueIdB]
+            try:
+                contact_obj = self.simulator.scene.objects_by_id[item.bodyUniqueIdB]
+            except KeyError:
+                continue
             if Sliced in contact_obj.states:
                 if (
                     not contact_obj.states[Sliced].get_value()

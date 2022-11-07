@@ -753,12 +753,12 @@ class SimulatorVR(Simulator):
         left pupil diameter, right pupil diameter (both in millimeters)
         Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
         """
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_pupil_pos, right_pupil_pos = self.eye_tracking_data
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.eye_tracking_data
         # Set other values to 0 to avoid very small/large floating point numbers
         if not is_valid:
-            return [False, [0, 0, 0], [0, 0, 0], 0, 0, [0, 0], [0, 0]]
+            return [False, [0, 0, 0], [0, 0, 0], 0, 0, 0, 0]
         else:
-            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_pupil_pos, right_pupil_pos]
+            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness]
 
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
         """
@@ -853,3 +853,17 @@ class SimulatorVR(Simulator):
         is_valid, _, _, _, _, pos, _ = self.get_eye_tracking_data()
         if is_valid:
             self.renderer.update_post_processing_effect(pos)
+
+    def proj_gaze(self, eye_vec, cam_view_matrix, cam_proj_matrix, img_dim=None):
+        ''' Map 3D gaze vector to 2D pixel locations'''
+        m_view = np.transpose(cam_view_matrix) 
+        m_wtc = m_view[np.ix_([0,1,2],[0,1,2])] #get world_to_cam matrix
+        p_cam = np.dot(eye_vec, m_wtc)
+        m_proj = np.transpose(cam_proj_matrix)
+        x,y,c,d = m_proj[0][0], m_proj[1][1], m_proj[2][2], m_proj[2][3]
+        n=d / (c-1)
+        p_screen_x, p_screen_y = n*(p_cam[0] / -p_cam[2]), n*(p_cam[1] / -p_cam[2])
+        width, height = 2*d/(x*(c-1)), 2*d/(y*(c-1))
+        p_norm_x, p_norm_y = (p_screen_x + width/2)/width, (p_screen_y + height/2)/height
+        # pixel_x, pixel_y = math.floor(p_norm_x * img_dim), math.floor((1-p_norm_y) * img_dim)
+        return p_norm_x, p_norm_y

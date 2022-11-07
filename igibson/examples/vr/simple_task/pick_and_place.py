@@ -1,23 +1,18 @@
-""" This is a VR demo in a simple scene consisting of a cube to interact with, and space to move around.
-Can be used to verify everything is working in VR, and iterate on current VR designs.
-"""
-from hashlib import new
 import logging
 import os
 import time
 import random
-from tracemalloc import start
-
+import tempfile
 import pybullet as p
 import pybullet_data
-import numpy as np
 
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.utils.ig_logging import IGLogWriter
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
@@ -45,16 +40,50 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-
     s = SimulatorVR(gravity = 9.8, render_timestep=1/60.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
-
-    scene = InteractiveIndoorScene(
-        "Pomaria_0_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=None
-    )
-    s.import_scene(scene)
-    print(pybullet_data.getDataPath())
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
+    # scene setup
+    scene = EmptyScene(floor_plane_rgba=[0.5, 0.5, 0.5, 0.5])
+    s.import_scene(scene)
+    # wall setup
+    walls_pos = [
+        ([-15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
+        ([15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
+        ([0, -15, 0], [0.707, 0, 0, 0.707]),
+        ([0, 15, 0], [0.707, 0, 0, 0.707])
+    ]
+    for i in range(4):
+        wall = ArticulatedObject(
+            f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+        )
+        s.import_object(wall)
+        wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
+
+    # robot setup
+    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
+    bvr_robot = BehaviorRobot(**config["robot"])
+    s.import_object(bvr_robot)
+    bvr_robot.set_position_orientation([0, -1, 0.5], [0, 0, 0, 1])
+    
+    # log writer
+    demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
+    disable_save = False
+    profile=False
+    instance_id = 0
+    log_writer = None
+    if not disable_save:
+        log_writer = IGLogWriter(
+            s,
+            log_filepath=demo_file,
+            task=None,
+            store_vr=True,
+            vr_robot=bvr_robot,
+            profiling_mode=profile,
+            filter_objects=True,
+        )
+        log_writer.set_up_data_storage()
+        log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
     table = ArticulatedObject("table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     s.import_object(table)
@@ -108,22 +137,15 @@ def main():
         cube.set_position(pos)
         cube.set_orientation(orn)
 
-
-    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
-
-    bvr_robot = BehaviorRobot(**config["robot"])
-    s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([0, -1, 0.5], [0, 0, 0, 1])
-
     # Represents gaze
-    # gaze_max_dist = 1.5
     start_time = time.time()
 
     # Main simulation loop
     while True:
-        # Make sure eye marker never goes to sleep so it is always ready to track gaze
-        # eye_marker.force_wakeup()
         s.step()
+
+        if log_writer and not disable_save:
+            log_writer.process_frame()     
 
         bvr_robot.apply_action(s.gen_vr_robot_action())
 
@@ -145,8 +167,11 @@ def main():
                 cube_objs[i].force_wakeup()
             start_time = time.time()
 
-         # update post processing
+        # update post processing
         s.update_post_processing_effect()
+
+    if log_writer and not disable_save:
+        log_writer.end_log_session()
 
     s.disconnect()
 

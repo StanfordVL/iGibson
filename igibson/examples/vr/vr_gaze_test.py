@@ -3,6 +3,7 @@ the user is looking.
 """
 import logging
 import os
+import math
 
 import numpy as np
 import pybullet as p
@@ -23,7 +24,6 @@ light_modulation_map_filename = os.path.join(
     igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
 )
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
-
 
 def main(selection="user", headless=False, short_exec=False):
     # VR rendering settings
@@ -104,7 +104,7 @@ def main(selection="user", headless=False, short_exec=False):
         bvr_robot.apply_action(s.gen_vr_robot_action())
 
         # Update gaze marker
-        is_valid, origin, dir, _, _ = s.get_eye_tracking_data()
+        is_valid, origin, dir, _, _, _, _ = s.get_eye_tracking_data()
         print("Data validity: {}".format(is_valid))
         if is_valid:
             new_pos = list(np.array(origin) + np.array(dir) * gaze_max_dist)

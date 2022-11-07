@@ -1,17 +1,11 @@
-""" This is a VR demo in a simple scene consisting of a cube to interact with, and space to move around.
-Can be used to verify everything is working in VR, and iterate on current VR designs.
-"""
-from hashlib import new
 import logging
 import os
-from queue import Empty
 import time
 import random
-from tracemalloc import start
-
 import pybullet as p
 import pybullet_data
 import numpy as np
+import tempfile
 
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
@@ -19,6 +13,7 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
+from igibson.utils.ig_logging import IGLogWriter
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
@@ -46,23 +41,40 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-
     s = SimulatorVR(gravity = 9.8, physics_timestep=1/180.0, render_timestep=1/90.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
-
-    scene = EmptyScene(floor_plane_rgba=[0.5, 0.5, 0.5, 1])
-    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    ball = ArticulatedObject(
-        os.path.join(
-            igibson.ig_dataset_path,
-            "objects",
-            "ball",
-            "ball_000",
-            "ball_000.urdf",
-        ),
-        scale=0.16,
-    )
+    # scene setup
+    scene = EmptyScene(floor_plane_rgba=[0.5, 0.5, 0.5, 1])
+    s.import_scene(scene)
+
+
+    # robot setup
+    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
+    bvr_robot = BehaviorRobot(**config["robot"])
+    s.import_object(bvr_robot)
+    bvr_robot.set_position_orientation([-2.5, 0, 0.5], [0, 0, 0, 1])
+
+    # log writer
+    demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
+    disable_save = False
+    profile=False
+    instance_id = 0
+    log_writer = None
+    if not disable_save:
+        log_writer = IGLogWriter(
+            s,
+            log_filepath=demo_file,
+            task=None,
+            store_vr=True,
+            vr_robot=bvr_robot,
+            profiling_mode=profile,
+            filter_objects=True,
+        )
+        log_writer.set_up_data_storage()
+        log_writer.hf.attrs["/metadata/instance_id"] = instance_id
+
+    ball = ArticulatedObject(os.path.join(igibson.ig_dataset_path, "objects/ball/ball_000/ball_000.urdf"), scale=0.16)
     s.import_object(ball)
 
     start_time = time.time()
@@ -75,13 +87,7 @@ def main():
     rand_z = random.random() * 0.5 + 2
     ball.set_position((-3, init_y_pos , rand_z))
     ball.set_velocities([([0, 6, 4], [0, 0, 0])])
-
-
-    config = parse_config(os.path.join(igibson.configs_path, "visual_disease.yaml"))
-
-    bvr_robot = BehaviorRobot(**config["robot"])
-    s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([-2.5, 0, 0.5], [0, 0, 0, 1])
+    
     # wall setup
     wall = ArticulatedObject(
         f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
@@ -89,20 +95,17 @@ def main():
     s.import_object(wall)
     wall.set_position_orientation([0, -18, 0], [0.707, 0, 0, 0.707])
 
-    all_ball_pos_record = []
-    cur_ball_pos_record = []
-    all_eye_pos_record = []
-    cur_eye_pos_record = []
-    gaze_max_dist = 1.5
 
     trial_offset = 10
     total_trial = 0
     success_trial = 0
+
     # Main simulation loop
     while True:
-        # Make sure eye marker never goes to sleep so it is always ready to track gaze
-        # eye_marker.force_wakeup()
         s.step()        
+
+        if log_writer and not disable_save:
+            log_writer.process_frame()
 
         ball_pos = ball.get_position()
 
@@ -121,20 +124,7 @@ def main():
             ball.set_velocities([([0, 6, 4], [0, 0, 0])])
             is_bounced = False
             ball.force_wakeup()
-            all_ball_pos_record.append(cur_ball_pos_record[:150])
-            all_eye_pos_record.append(cur_eye_pos_record[:150])
-            cur_ball_pos_record = []
-            cur_eye_pos_record = []
             continue
-
-        if (len(cur_ball_pos_record) < 150):
-            cur_ball_pos_record.append(ball_pos[2])
-
-            # get eye tracking data
-            is_valid, origin, dir, _, _, _, _ = s.get_eye_tracking_data()
-            if is_valid:
-                new_pos = list(np.array(origin) + np.array(dir) * gaze_max_dist)
-                cur_eye_pos_record.append(new_pos[2])
 
 
         if (ball_pos[2] < 0.07 and not is_bounced):
@@ -150,10 +140,11 @@ def main():
         # update post processing
         s.update_post_processing_effect()
 
+    if log_writer and not disable_save:
+        log_writer.end_log_session()
+
     s.disconnect()
     print(f"Total: {total_trial}, Success: {success_trial}, SR: {success_trial / total_trial}")
-    np.save("visual_disease/ball_pos.npy", np.array(all_ball_pos_record[2:]))
-    np.save("visual_disease/eye_pos.npy", np.array(all_eye_pos_record[2:]))
 
 
 if __name__ == "__main__":

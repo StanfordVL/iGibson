@@ -195,7 +195,7 @@ def collect_demo(
             env.simulator,
             log_filepath=demo_file,
             task=env.task,
-            store_vr=False,
+            store_vr=True,
             vr_robot=robot,
             profiling_mode=profile,
             filter_objects=True,

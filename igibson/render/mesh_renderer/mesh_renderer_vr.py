@@ -238,8 +238,9 @@ class MeshRendererVR(MeshRenderer):
         self.post_processing_overlay1_width = 3
         self.post_processing_overlay2_width = 3.5
         # self.post_processing_overlay2_width = 8
-        self.post_processing_overlay1 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
-        self.post_processing_overlay2 = self.gen_static_overlay("C:/Users/Takara/Repositories/iGibson/igibson/examples/vr/visual_disease_demo_mtls/gla3.png", self.post_processing_overlay2_width)
+        # self.post_processing_overlay1 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
+        self.post_processing_overlay1 = self.gen_static_overlay("D:/Untitled.png", self.post_processing_overlay1_width)
+        self.post_processing_overlay2 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/gla3.png", self.post_processing_overlay2_width)
         self.post_processing_overlay1.set_overlay_show_state(False)
         self.post_processing_overlay2.set_overlay_show_state(False)
 
@@ -360,7 +361,9 @@ class MeshRendererVR(MeshRenderer):
 
     def update_post_processing_effect(self, pos):
         if self.post_processing_mode == 2:
-            self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
+            # self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
+            # self.post_processing_overlay1.update_pos([0, 0, -1.7])
+            self.post_processing_overlay1.update_pos([0, 0, -3])
         elif self.post_processing_mode == 3:
             self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
 

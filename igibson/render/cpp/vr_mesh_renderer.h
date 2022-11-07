@@ -99,9 +99,8 @@ public:
 		// Both in mm
 		float leftPupilDiameter;
 		float rightPupilDiameter;
-		// in [0,1]
-		glm::vec2 leftPupilPos;
-		glm::vec2 rightPupilPos;
+		float leftEyeOpenness;
+		float rightEyeOpenness;
 	};
 
 	EyeTrackingData eyeTrackingData;
