@@ -756,9 +756,10 @@ class SimulatorVR(Simulator):
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.eye_tracking_data
         # Set other values to 0 to avoid very small/large floating point numbers
         if not is_valid:
-            return [False, [0, 0, 0], [0, 0, 0], 0, 0, 0, 0]
+            return [False, [0, 0, 0], [0, 0, 0], [0, 0], 0, 0, 0, 0]
         else:
-            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness]
+            screen_pos = self.proj_gaze(dir, self.renderer.V, self.renderer.P)
+            return [is_valid, origin, dir, screen_pos, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness]
 
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
         """
@@ -850,7 +851,7 @@ class SimulatorVR(Simulator):
                 self.renderer.update_post_processing_mode()
             elif touch_x > 0.7:
                 self.renderer.updatre_post_processing_extent()
-        is_valid, _, _, _, _, pos, _ = self.get_eye_tracking_data()
+        is_valid, _, _, pos, _, _, _, _= self.get_eye_tracking_data()
         if is_valid:
             self.renderer.update_post_processing_effect(pos)
 

@@ -238,8 +238,7 @@ class MeshRendererVR(MeshRenderer):
         self.post_processing_overlay1_width = 3
         self.post_processing_overlay2_width = 3.5
         # self.post_processing_overlay2_width = 8
-        # self.post_processing_overlay1 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
-        self.post_processing_overlay1 = self.gen_static_overlay("D:/Untitled.png", self.post_processing_overlay1_width)
+        self.post_processing_overlay1 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
         self.post_processing_overlay2 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/gla3.png", self.post_processing_overlay2_width)
         self.post_processing_overlay1.set_overlay_show_state(False)
         self.post_processing_overlay2.set_overlay_show_state(False)
@@ -269,7 +268,7 @@ class MeshRendererVR(MeshRenderer):
         self.vrsys.updateVRData()
 
     def render(
-        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
+        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=False, render_shadow_pass=True, render_text_pass=True
     ):
         """
         Renders VR scenes.
@@ -296,12 +295,13 @@ class MeshRendererVR(MeshRenderer):
 
             # We don't need to render the shadow pass a second time for the second eye
             # We also don't need to render the text pass a second time
-            super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
+            img = super().render(modes=("rgb"), return_buffer=return_buffer, render_shadow_pass=False, render_text_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_retina)
 
             # Update HUD so it renders in the HMD
             if self.vr_hud is not None:
                 self.vr_hud.refresh_text()
+            return img
         else:
             return super().render(modes=("rgb"), return_buffer=return_buffer)
 
@@ -361,11 +361,9 @@ class MeshRendererVR(MeshRenderer):
 
     def update_post_processing_effect(self, pos):
         if self.post_processing_mode == 2:
-            # self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
-            # self.post_processing_overlay1.update_pos([0, 0, -1.7])
-            self.post_processing_overlay1.update_pos([0, 0, -3])
+            self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
         elif self.post_processing_mode == 3:
-            self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (0.3 - pos[1]) * 2.5, -1])
+            self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
 
     def updatre_post_processing_extent(self):
         if self.post_processing_mode == 5:

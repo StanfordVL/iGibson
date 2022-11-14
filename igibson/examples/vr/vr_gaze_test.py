@@ -39,7 +39,9 @@ def main(selection="user", headless=False, short_exec=False):
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    vr_settings=VrSettings(use_vr=True)
+    vr_settings.set_frame_save_path("temp.mp4")
+    s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
 
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
@@ -104,7 +106,7 @@ def main(selection="user", headless=False, short_exec=False):
         bvr_robot.apply_action(s.gen_vr_robot_action())
 
         # Update gaze marker
-        is_valid, origin, dir, _, _, _, _ = s.get_eye_tracking_data()
+        is_valid, origin, dir, _, _, _, _, _ = s.get_eye_tracking_data()
         print("Data validity: {}".format(is_valid))
         if is_valid:
             new_pos = list(np.array(origin) + np.array(dir) * gaze_max_dist)

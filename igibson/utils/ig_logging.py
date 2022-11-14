@@ -216,7 +216,7 @@ class IGLogWriter(object):
                     ),
                 },
                 "vr_eye_tracking_data": np.full(
-                    (self.frames_before_write, 11), self.default_fill_sentinel, dtype=self.np_dtype
+                    (self.frames_before_write, 13), self.default_fill_sentinel, dtype=self.np_dtype
                 ),
                 "vr_event_data": {
                     "left_controller": np.full(
@@ -409,11 +409,12 @@ class IGLogWriter(object):
         self.data_map["vr"]["vr_device_data"]["vr_position_data"][self.frame_counter, ...] = np.array(vr_pos_data)
 
         # On systems where eye tracking is not supported, we get dummy data and a guaranteed False validity reading
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.sim.get_eye_tracking_data()
+        is_valid, origin, dir, screen_pos, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.sim.get_eye_tracking_data()
         if is_valid:
             eye_data_list = [is_valid]
             eye_data_list.extend(origin)
             eye_data_list.extend(dir)
+            eye_data_list.extend(screen_pos)
             eye_data_list.append(left_pupil_diameter)
             eye_data_list.append(right_pupil_diameter)
             eye_data_list.append(left_eye_openness)
