@@ -16,7 +16,7 @@ from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.utils.ig_logging import IGLogWriter
 
-from simple_task import catch, navigation, place, slice, throw, wipe
+from simple_task import catch, navigate, place, slice, throw, wipe
 
 
 # HDR files for PBR rendering
@@ -64,7 +64,7 @@ def load_scene(simulator, task):
 
 
 def parse_args():
-    tasks_choices = ["catch", "navigation", "place", "slice", "throw", "wipe"]
+    tasks_choices = ["catch", "navigate", "place", "slice", "throw", "wipe"]
     parser = argparse.ArgumentParser(description="Run and collect a demo of a task")
     parser.add_argument(
         "--task",
@@ -73,7 +73,7 @@ def parse_args():
         required=False,
         default="catch",
         nargs="?",
-        help="Name of task to collect a demo of. Choose from catch/navigation/place/slice/slice/throw/wipe",
+        help="Name of task to collect a demo of. Choose from catch/navigate/place/slice/slice/throw/wipe",
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
     parser.add_argument(
@@ -87,7 +87,7 @@ def main():
     args = parse_args()
     lib = {
         "catch": catch,
-        "navigation": navigation,
+        "navigate": navigate,
         "place": place,
         "slice": slice,
         "throw": throw,
@@ -137,8 +137,7 @@ def main():
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
         # This is necessary to correctly reset object in head 
         bvr_robot.apply_action(np.zeros(28))
-        s.step()
-        ret = lib.set_obj_pos(bvr_robot, objs)
+        ret = lib.set_obj_pos(objs)
         # log writer
         demo_file = os.path.join(tempfile.gettempdir(), f"{args.task}_{trial_id}.hdf5")
         disable_save = False

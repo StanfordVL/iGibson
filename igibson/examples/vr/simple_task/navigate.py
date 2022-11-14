@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 import numpy as np
 from igibson.objects.articulated_object import ArticulatedObject
 
@@ -50,9 +51,9 @@ def set_obj_pos(objs):
 
 
 def main(s, log_writer, disable_save, robot, objs, args): 
-    success, terminate = False, False   
+    success, terminate = False, False 
+    success_time = 0  
     done = set()
-    start_time = 0
     # Main simulation loop
     while True:
         s.step()
@@ -82,8 +83,12 @@ def main(s, log_writer, disable_save, robot, objs, args):
                 objs["obstacles"][i - ducks_checked].set_position_orientation([initial_x + i % 10, initial_y + i // 10, args["heights"][i]], [0.5, 0.5, 0.5, 0.5])
 
         if len(done) == num_of_duck:
-            success = True
-            break
+            if success_time:
+                if time.time() - success_time > 1:
+                    success = True
+                    break
+            else:
+                success_time = time.time()
 
     return success, terminate
 

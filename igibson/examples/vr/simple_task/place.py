@@ -60,7 +60,7 @@ def set_obj_pos(objs):
 
 def main(s, log_writer, disable_save, robot, objs, ret):
     success, terminate = False, False
-    start_time = time.time()
+    success_time = 0
     # Main simulation loop
     while True:
         s.step()
@@ -81,14 +81,19 @@ def main(s, log_writer, disable_save, robot, objs, ret):
         completed = 0
         for b in objs["basket"]:
             for c in objs["cube"]:
-                if c.states[object_states.OnTop].get_value(b, use_ray_casting_method=True):
+                if c.states[object_states.OnTop].get_value(b, use_ray_casting_method=True) and c.get_position()[2] < 0.65:
                     completed += 1
                     break
         if completed == num_of_placing_obj:
-            success = True
-            break
-
-    print("Task complete! Total time: ", time.time() - start_time)
+            if success_time:
+                if time.time() - success_time > 1:
+                    success = True
+                    break
+            else:
+                success_time = time.time()
+        else:
+            success_time = 0
+            
     return success, terminate
     
 

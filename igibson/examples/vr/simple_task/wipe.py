@@ -1,7 +1,7 @@
 import logging
 import os
 import numpy as np
-import pybullet as p
+import time
 import random
 
 from igibson import object_states
@@ -92,6 +92,7 @@ def set_obj_pos(objs):
 
 def main(s, log_writer, disable_save, robot, objs, ret):
     success, terminate = False, False
+    success_time = 0
     # Main simulation loop.
     while True:
         s.step()
@@ -101,9 +102,15 @@ def main(s, log_writer, disable_save, robot, objs, ret):
         s.update_post_processing_effect()
         
         if not objs["desk"].states[object_states.Stained].get_value():
-            print("Table cleaned! Task Complete")
-            success = True
-            break
+            if success_time:
+                if time.time() - success_time > 1:
+                    success = True
+                    break
+            else:
+                success_time = time.time()
+        else:
+            success_time = 0
+            
             # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
             terminate = True
