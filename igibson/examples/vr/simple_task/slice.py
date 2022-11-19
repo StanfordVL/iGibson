@@ -1,18 +1,16 @@
 import logging
 import os
 import time
-import pybullet as p
 
 import igibson
 from igibson import object_states
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.utils.assets_utils import get_ig_model_path
-from igibson.utils.utils import restoreState
 
 
 
-default_robot_pose = ([0.5, 0, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([0, -1, 0.7], [0, 0, 0, 1])
 
 
 def import_obj(s):
@@ -23,7 +21,6 @@ def import_obj(s):
     # slice-related objects
     slicer = URDFObject(f"{igibson.ig_dataset_path}/objects/carving_knife/14_1/14_1.urdf", name="knife", abilities={"slicer": {}})
     s.import_object(slicer)
-    slicer.set_position_orientation((1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
 
     obj_part_list = []
     simulator_obj = URDFObject(
@@ -56,28 +53,28 @@ def import_obj(s):
     apple = ObjectMultiplexer(whole_object.name + "_multiplexer", [whole_object, grouped_obj_parts], 0)
     s.import_object(apple)
         
-    # Set these objects to be far-away locations
-    for i, new_urdf_obj in enumerate(obj_part_list):
-        new_urdf_obj.set_position([100 + i, 100, -100])
-
-    apple.set_position((1.000000, -1.00000, 0.750000))
+    
 
     ret = {}
     ret["slicer"] = slicer
     ret["apple"] = apple
-    ret["pb_initial_state"] = p.saveState() 
+    ret["obj_part_list"] = obj_part_list
     ret["slicer_initial_extended_state"] = slicer.dump_state()
     ret["apple_initial_extended_state"] = apple.dump_state()
     return ret
 
 def set_obj_pos(objs):
     # restore object state
-    restoreState(objs["pb_initial_state"])
     objs["slicer"].load_state(objs["slicer_initial_extended_state"])
     objs["slicer"].force_wakeup()
     objs["apple"].load_state(objs["apple_initial_extended_state"])
     objs["apple"].force_wakeup()
-
+    objs["slicer"].set_position_orientation((1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
+    # Set these objects to be far-away locations
+    for i, new_urdf_obj in enumerate(objs["obj_part_list"]):
+        new_urdf_obj.set_position([100 + i, 100, -100])
+    objs["apple"].set_position((1.000000, -1.00000, 0.750000))
+    
 
 
 def main(s, log_writer, disable_save, robot, objs, ret):

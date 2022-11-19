@@ -6,6 +6,7 @@ import pybullet as p
 import pybullet_data
 import argparse
 import numpy as np
+import datetime
 
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
@@ -84,6 +85,8 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    time_str = datetime.datetime.now().strftime("%Y%m%d_%H-%M-%S")
+
     args = parse_args()
     lib = {
         "catch": catch,
@@ -93,20 +96,35 @@ def main():
         "throw": throw,
         "wipe": wipe,
     }[args.task]
-
-    vr_rendering_settings = MeshRendererSettings(
-        optimized=True,
-        fullscreen=False,
-        env_texture_filename=hdr_texture,
-        env_texture_filename2=hdr_texture2,
-        env_texture_filename3="",
-        light_modulation_map_filename=light_modulation_map_filename,
-        enable_shadow=True,
-        enable_pbr=True,
-        msaa=True,
-        light_dimming_factor=1.0,
-    )
-    s = SimulatorVR(gravity = 9.8, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    
+    if args.task == "navigate":
+        vr_rendering_settings = MeshRendererSettings(
+            optimized=True,
+            fullscreen=False,
+            env_texture_filename="",
+            env_texture_filename2="",
+            env_texture_filename3="",
+            light_modulation_map_filename="",
+            enable_pbr=True,
+            msaa=True,
+            light_dimming_factor=1.0,
+        )
+        gravity = 0
+    else:
+        vr_rendering_settings = MeshRendererSettings(
+            optimized=True,
+            fullscreen=False,
+            env_texture_filename=hdr_texture,
+            env_texture_filename2=hdr_texture2,
+            env_texture_filename3="",
+            light_modulation_map_filename=light_modulation_map_filename,
+            enable_shadow=True,
+            enable_pbr=True,
+            msaa=True,
+            light_dimming_factor=1.0,
+        )
+        gravity = 9.8
+    s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     # scene setup
     load_scene(s, args.task)
@@ -135,11 +153,12 @@ def main():
     while True:
         # set all object positions
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
+        s.set_vr_offset(lib.default_robot_pose[0][:2] + [0])
         # This is necessary to correctly reset object in head 
         bvr_robot.apply_action(np.zeros(28))
         ret = lib.set_obj_pos(objs)
         # log writer
-        demo_file = os.path.join(tempfile.gettempdir(), f"{args.task}_{trial_id}.hdf5")
+        demo_file = os.path.join(tempfile.gettempdir(), f"{time_str}_{args.task}_{trial_id}.hdf5")
         disable_save = False
         profile=False
         instance_id = 0
@@ -161,6 +180,7 @@ def main():
         start_time = time.time()
         # Main simulation loop
         success, terminate = lib.main(s, log_writer, disable_save, bvr_robot, objs, ret)
+        trial_id += 1
         
         if log_writer and not disable_save:
             log_writer.end_log_session()
@@ -182,9 +202,11 @@ def main():
 
         if terminate:
             break
-        s.set_hud_show_state(False)
+        s.set_hud_show_state(False)        
     s.disconnect()
-    print(f"{args.task} data collection complete! Total time: {time.time() - start_time}")
+    np.save(f"{args.task}_success_list.npy", task_success_list)
+    np.save(f"{args.task}_completion_time.npy", task_completion_time)
+    print(f"{args.task} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

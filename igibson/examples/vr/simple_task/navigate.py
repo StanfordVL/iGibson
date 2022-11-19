@@ -6,8 +6,8 @@ from igibson.objects.articulated_object import ArticulatedObject
 
 
 num_of_duck = 1
-initial_x, initial_y = -5, -5
-default_robot_pose = ([0, -6, 1], [0, 0, 0, 1])
+initial_x, initial_y = -5, 1
+default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
 
 def import_obj(s):
     # obstacles and ducks setup

@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 num_of_obstacles = 4
-default_robot_pose = ([0.5, 0, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([1, 0, 0.7], [0, 0, 0, 1])
 
 
 # object setup
