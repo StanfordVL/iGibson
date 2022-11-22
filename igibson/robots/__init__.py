@@ -12,3 +12,4 @@ from igibson.robots.robot_base import REGISTERED_ROBOTS, BaseRobot
 from igibson.robots.tiago import Tiago
 from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.two_wheel_robot import TwoWheelRobot
+from igibson.robots.hsr import HSR
