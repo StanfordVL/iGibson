@@ -54,6 +54,9 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
         # Initialize link & joint dictionary
         joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint', 'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint', 'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint', 'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'base_f_bumper_joint', 'base_b_bumper_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint', 'wrist_ft_sensor_frame_joint', 'hand_motor_joint', 'hand_l_proximal_joint', 'hand_l_spring_proximal_joint', 'hand_l_mimic_distal_joint', 'hand_l_distal_joint', 'hand_r_proximal_joint', 'hand_r_spring_proximal_joint', 'hand_r_mimic_distal_joint', 'hand_r_distal_joint']
+
+        # this is for the new model
+        joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint', 'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint', 'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint', 'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint', 'left_gripper_joint', 'right_gripper_joint']
         self.jn2i = {}
         for i in range(len(joint_list)):
             self.jn2i[joint_list[i]] = i
@@ -83,85 +86,19 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         """
         return "HSR"
 
-    @property
-    def tucked_default_joint_pos(self):
-        return np.array(
-            [
-                0.0,
-                0.0,  # wheels
-                0.02,  # trunk
-                0.0,
-                0.0,  # head
-                1.1707963267948966,
-                1.4707963267948965,
-                -0.4,
-                1.6707963267948966,
-                0.0,
-                1.5707963267948966,
-                0.0,  # arm
-                0.05,
-                0.05,  # gripper
-            ]
-        )
-
-    @property
-    def untucked_default_joint_pos(self):
-        pos = np.zeros(self.n_joints)
-        pos[self.base_control_idx] = 0.0
-        pos[self.trunk_control_idx] = 0.02 + self.default_trunk_offset
-        pos[self.camera_control_idx] = np.array([0.0, 0.45])
-        pos[self.gripper_control_idx[self.default_arm]] = np.array([0.05, 0.05])  # open gripper
-
-        # Choose arm based on setting
-        if self.default_arm_pose == "vertical":
-            pos[self.arm_control_idx[self.default_arm]] = np.array(
-                [-0.94121, -0.64134, 1.55186, 1.65672, -0.93218, 1.53416, 2.14474]
-            )
-        elif self.default_arm_pose == "diagonal15":
-            pos[self.arm_control_idx[self.default_arm]] = np.array(
-                [-0.95587, -0.34778, 1.46388, 1.47821, -0.93813, 1.4587, 1.9939]
-            )
-        elif self.default_arm_pose == "diagonal30":
-            pos[self.arm_control_idx[self.default_arm]] = np.array(
-                [-1.06595, -0.22184, 1.53448, 1.46076, -0.84995, 1.36904, 1.90996]
-            )
-        elif self.default_arm_pose == "diagonal45":
-            pos[self.arm_control_idx[self.default_arm]] = np.array(
-                [-1.11479, -0.0685, 1.5696, 1.37304, -0.74273, 1.3983, 1.79618]
-            )
-        elif self.default_arm_pose == "horizontal":
-            pos[self.arm_control_idx[self.default_arm]] = np.array(
-                [-1.43016, 0.20965, 1.86816, 1.77576, -0.27289, 1.31715, 2.01226]
-            )
-        else:
-            raise ValueError("Unknown default arm pose: {}".format(self.default_arm_pose))
-        return pos
-
     def _create_discrete_action_space(self):
         # Fetch does not support discrete actions
         raise ValueError("HSR does not support discrete actions!")
-
-    def tuck(self):
-        """
-        Immediately set this robot's configuration to be in tucked mode
-        """
-        self.set_joint_positions(self.tucked_default_joint_pos)
-
-    def untuck(self):
-        """
-        Immediately set this robot's configuration to be in untucked mode
-        """
-        self.set_joint_positions(self.untucked_default_joint_pos)
 
     def load(self, simulator):
         # Run super method
         ids = super().load(simulator)
 
-        assert len(ids) == 1, "Fetch robot is expected to have only one body ID."
+        assert len(ids) == 1, "HSR robot is expected to have only one body ID."
 
-        # Extend super method by increasing laterial friction for EEF
-        for link in self.finger_joint_ids[self.default_arm]:
-            p.changeDynamics(self.base_link.body_id, link, lateralFriction=500)
+        # # Extend super method by increasing laterial friction for EEF
+        # for link in self.finger_joint_ids[self.default_arm]:
+        #     p.changeDynamics(self.base_link.body_id, link, lateralFriction=500)
 
         return ids
 
@@ -169,10 +106,10 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Run super method first
         u_vec, u_type_vec = super()._actions_to_control(action=action)
 
-        # Override trunk value if we're keeping the trunk rigid
-        if self.rigid_trunk:
-            u_vec[self.trunk_control_idx] = self.untucked_default_joint_pos[self.trunk_control_idx]
-            u_type_vec[self.trunk_control_idx] = ControlType.POSITION
+        # # Override trunk value if we're keeping the trunk rigid
+        # if self.rigid_trunk:
+        #     u_vec[self.trunk_control_idx] = self.untucked_default_joint_pos[self.trunk_control_idx]
+        #     u_type_vec[self.trunk_control_idx] = ControlType.POSITION
 
         # Return control
         return u_vec, u_type_vec
@@ -180,13 +117,11 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def _get_proprioception_dict(self):
         dic = super()._get_proprioception_dict()
 
-        # Add trunk info
-        dic["trunk_qpos"] = self.joint_positions[self.trunk_control_idx]
-        dic["trunk_qvel"] = self.joint_velocities[self.trunk_control_idx]
+        # # Add trunk info
+        # dic["trunk_qpos"] = self.joint_positions[self.trunk_control_idx]
+        # dic["trunk_qvel"] = self.joint_velocities[self.trunk_control_idx]
 
         return dic
-
-    # TODO: around here
 
     @property
     def default_proprio_obs(self):
@@ -215,61 +150,28 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def _default_controller_config(self):
         # Grab defaults from super method first
         cfg = super()._default_controller_config
-
-        # # Use default IK controller -- also need to override joint idx being controlled to include trunk in default
-        # # IK arm controller
-        # cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["joint_idx"] = np.concatenate(
-        #     [self.trunk_control_idx, self.arm_control_idx[self.default_arm]]
-        # )
-        #
-        # # If using rigid trunk, we also clamp its limits
-        # if self.rigid_trunk:
-        #     cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["control_limits"]["position"][0][
-        #         self.trunk_control_idx
-        #     ] = self.untucked_default_joint_pos[self.trunk_control_idx]
-        #     cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["control_limits"]["position"][1][
-        #         self.trunk_control_idx
-        #     ] = self.untucked_default_joint_pos[self.trunk_control_idx]
-
         return cfg
 
     @property
     def default_joint_pos(self):
-        return self.untucked_default_joint_pos
+        # return self.untucked_default_joint_pos
+        # TODO: this is not rigt but also not critical?
+        return np.zeros(self.n_joints)
 
     @property
     def wheel_radius(self):
-        return 0.04 # from the urdf
+        # from the urdf
+        return 0.04
 
     @property
     def wheel_axle_length(self):
-        return 0.3 # from the urdf
+        # TODO: this might not be accurate
+        return 0.3
 
     @property
     def gripper_link_to_grasp_point(self):
         return {self.default_arm: np.array([0.1, 0, 0])}
 
-    # @property
-    # def assisted_grasp_start_points(self):
-    #     return {
-    #         self.default_arm: [
-    #             GraspingPoint(link_name="r_gripper_finger_link", position=[0.04, -0.012, 0.014]),
-    #             GraspingPoint(link_name="r_gripper_finger_link", position=[0.04, -0.012, -0.014]),
-    #             GraspingPoint(link_name="r_gripper_finger_link", position=[-0.04, -0.012, 0.014]),
-    #             GraspingPoint(link_name="r_gripper_finger_link", position=[-0.04, -0.012, -0.014]),
-    #         ]
-    #     }
-    #
-    # @property
-    # def assisted_grasp_end_points(self):
-    #     return {
-    #         self.default_arm: [
-    #             GraspingPoint(link_name="l_gripper_finger_link", position=[0.04, 0.012, 0.014]),
-    #             GraspingPoint(link_name="l_gripper_finger_link", position=[0.04, 0.012, -0.014]),
-    #             GraspingPoint(link_name="l_gripper_finger_link", position=[-0.04, 0.012, 0.014]),
-    #             GraspingPoint(link_name="l_gripper_finger_link", position=[-0.04, 0.012, -0.014]),
-    #         ]
-    #     }
 
     @property
     def base_control_idx(self):
@@ -283,14 +185,14 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         """
         :return Array[int]: Indices in low-level control vector corresponding to trunk joint.
         """
-        return np.array([2])
+        return np.array([self.jn2i['torso_lift_joint']])
 
     @property
     def camera_control_idx(self):
         """
         :return Array[int]: Indices in low-level control vector corresponding to [tilt, pan] camera joints.
         """
-        return np.array([3, 4])
+        return np.array([self.jn2i['head_pan_joint'], self.jn2i['head_tilt_joint']])
 
     @property
     def arm_control_idx(self):
@@ -298,7 +200,8 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {self.default_arm: np.array([5, 6, 7, 8, 9, 10, 11])}
+        arm_joint_names = ['arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
+        return {self.default_arm: np.array([self.jn2i[joint_name] for joint_name in arm_joint_names])}
 
     @property
     def gripper_control_idx(self):
@@ -306,40 +209,43 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {self.default_arm: np.array([12, 13])}
+        return {self.default_arm: np.array([self.jn2i['left_gripper_joint'], self.jn2i['right_gripper_joint']])}
 
     @property
     def disabled_collision_pairs(self):
-        # TODO: figure this out later
         return [
-            # ["torso_lift_link", "shoulder_lift_link"],
-            # ["torso_lift_link", "torso_fixed_link"],
-            # ["caster_wheel_link", "estop_link"],
-            # ["caster_wheel_link", "laser_link"],
-            # ["caster_wheel_link", "torso_fixed_link"],
-            # ["caster_wheel_link", "l_wheel_link"],
-            # ["caster_wheel_link", "r_wheel_link"],
+            ['wrist_roll_link', 'right_gripper'],
+            ['wrist_roll_link', 'left_gripper'],
+            ['wrist_flex_link', 'gripper_pole'],
+            ['arm_roll_link', 'gripper_pole'],
+            ['arm_roll_link', 'gripper_pole'],
+            ['base_link', 'arm_flex_link'],
+            ['base_link', 'base_l_passive_wheel_z_link'],
+            ['base_link', 'base_r_passive_wheel_z_link'],
+            ['base_link', 'base_l_drive_wheel_link'],
+            ['base_link', 'base_l_drive_wheel_link'],
+            ['base_link', 'base_r_drive_wheel_link']
         ]
 
     @property
     def eef_link_names(self):
-        return {self.default_arm: "hand_palm_link"}
+        return {self.default_arm: "gripper_pole"}  # {self.default_arm: "hand_palm_link"}
 
     @property
     def finger_link_names(self):
-        return {self.default_arm: ["hand_l_finger_tip_frame", "hand_r_finger_tip_frame"]}
+        return {self.default_arm: ["right_tip", "left_tip"]}  # {self.default_arm: ["hand_l_finger_tip_frame", "hand_r_finger_tip_frame"]}
 
     @property
     def finger_joint_names(self):
-        return {self.default_arm: ["hand_l_proximal_joint", "hand_r_proximal_joint"]}
+        return {self.default_arm: ["left_gripper_joint", "right_gripper_joint"]}  # {self.default_arm: ["hand_l_proximal_joint", "hand_r_proximal_joint"]}
 
     @property
     def model_file(self):
-        return os.path.join(igibson.assets_path, "models/hsr/hsrb4s.obj.urdf")
+        return os.path.join(igibson.assets_path, "models/hsr/hsrb4s.urdf")
 
     def dump_config(self):
         """Dump robot config"""
-        dump = super(Fetch, self).dump_config()
+        dump = super(HSR, self).dump_config()
         dump.update(
             {
                 "rigid_trunk": self.rigid_trunk,

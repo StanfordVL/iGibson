@@ -17,8 +17,8 @@ robot:
   self_collision: true
   rendering_params: null
   grasping_mode: physical
-  rigid_trunk: false
-  default_trunk_offset: 0.365
+  rigid_trunk: true
+  default_trunk_offset: 0
   default_arm_pose: vertical
   controller_config:
     base:

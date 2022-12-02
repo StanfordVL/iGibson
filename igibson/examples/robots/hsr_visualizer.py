@@ -9,7 +9,8 @@ from igibson.robots import REGISTERED_ROBOTS
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
-
+import ipdb
+import pybullet as p
 
 def main(selection="user", headless=False, short_exec=False):
     """
@@ -24,6 +25,7 @@ def main(selection="user", headless=False, short_exec=False):
         image_width=512,
         image_height=512,
         rendering_settings=settings,
+        use_pb_gui=True,
     )
     scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
@@ -32,18 +34,7 @@ def main(selection="user", headless=False, short_exec=False):
     position = [0, 0, 0]
     robots = {}
 
-    # if not headless:
-    #     # Set viewer in front
-    #     s.viewer.initial_pos = [1.6, 0, 1.3]
-    #     s.viewer.initial_view_direction = [-0.7, 0, -0.7]
-    #     s.viewer.reset_viewer()
-    #
-    # s.step()
-    # import ipdb
-    # ipdb.set_trace()
-
     config = parse_config(os.path.join(igibson.configs_path, "robots", "hsr.yaml"))
-    # config = parse_config(os.path.join(igibson.configs_path, "robots", "fetch.yaml"))
     robot_config = config["robot"]
     robot_name = robot_config.pop("name")
     robot = REGISTERED_ROBOTS[robot_name](**robot_config)
@@ -51,9 +42,9 @@ def main(selection="user", headless=False, short_exec=False):
     robot.set_position(position)
     robot.reset()
     robot.keep_still()
+
     robots[robot_name] = (robot, position[1])
     print("Loaded " + robot_name)
-    print("Moving " + robot_name)
 
     if not headless:
         # Set viewer in front
@@ -61,19 +52,30 @@ def main(selection="user", headless=False, short_exec=False):
         s.viewer.initial_view_direction = [-0.7, 0, -0.7]
         s.viewer.reset_viewer()
 
-    print("start of staying still")
-    robot.keep_still()
+    examine_self_collision = False
+    if examine_self_collision:
+        # Obtain the correct listing of collisions
+        link_idx_2_name = {}
+        for key in robot.links.keys():
+            link_idx_2_name[robot.links[key].link_id] = key
+
     for i in range(100):  # keep still for 10 seconds
-        print(f"start of staying still {i}")
-        robot.keep_still()
         s.step()
+        collision_links = [
+            collision for bid in robot.get_body_ids() for collision in p.getContactPoints(bodyA=bid)
+        ]
 
-    # import ipdb
-    # ipdb.set_trace()
+        if examine_self_collision:
+            print("printing out collisions")
+            for link in collision_links:
+                if link[2] == 3:
+                    print([link_idx_2_name[link[3]], link_idx_2_name[link[4]]])
+            print(f"colliding links: {[(link[3], link[4]) for link in collision_links]}")
 
-    for _ in range(30):
-        action = np.random.uniform(-1, 1, robot.action_dim) * 0
-        print(action)
+    print("Moving " + robot_name)
+
+    for _ in range(3000):
+        action = np.random.uniform(-1, 1, robot.action_dim)
         robot.apply_action(action)
         for _ in range(10):
             s.step()
