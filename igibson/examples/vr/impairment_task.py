@@ -66,6 +66,7 @@ def load_scene(simulator, task):
 
 def parse_args():
     tasks_choices = ["catch", "navigate", "place", "slice", "throw", "wipe"]
+    vi_choices = ["normal", "cataract", "amd", "glaucoma", "myopia", "presbyopia"]
     parser = argparse.ArgumentParser(description="Run and collect a demo of a task")
     parser.add_argument(
         "--task",
@@ -75,6 +76,15 @@ def parse_args():
         default="catch",
         nargs="?",
         help="Name of task to collect a demo of. Choose from catch/navigate/place/slice/slice/throw/wipe",
+    )
+    parser.add_argument(
+        "--vi",
+        type=str,
+        choices=vi_choices,
+        required=False,
+        default="normal",
+        nargs="?",
+        help="Type of visual impairment. Choose from normal/cataract/amd/glaucoma/myopia/presbyopia",
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
     parser.add_argument(
@@ -136,6 +146,7 @@ def main():
     objs = lib.import_obj(s)
     
     trial_id = 0
+    first_demo = True
 
     task_success_list = []
     task_completion_time = []
@@ -149,8 +160,10 @@ def main():
         size=[90, 50],
     )
     s.set_hud_show_state(False)
-
+    
     while True:
+        start_time = time.time()
+        
         # set all object positions
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
         s.set_vr_offset(lib.default_robot_pose[0][:2] + [0])
@@ -158,7 +171,8 @@ def main():
         bvr_robot.apply_action(np.zeros(28))
         ret = lib.set_obj_pos(objs)
         # log writer
-        demo_file = os.path.join(tempfile.gettempdir(), f"{time_str}_{args.task}_{trial_id}.hdf5")
+        # demo_file = os.path.join(tempfile.gettempdir(), f"{args.task}_{args.vi}_{trial_id}.hdf5")
+        demo_file = f"igibson/data/test/{args.task}_{args.vi}_{trial_id}.hdf5"
         disable_save = False
         profile=False
         instance_id = 0
@@ -177,18 +191,22 @@ def main():
             log_writer.hf.attrs["/metadata/instance_id"] = instance_id
         
 
-        start_time = time.time()
         # Main simulation loop
         success, terminate = lib.main(s, log_writer, disable_save, bvr_robot, objs, ret)
-        trial_id += 1
         
         if log_writer and not disable_save:
             log_writer.end_log_session()
 
         if terminate:
             break
-        task_success_list.append(success)
-        task_completion_time.append(time.time() - start_time)
+        
+        # We don't collect data for the first trial
+        if first_demo:
+            first_demo = False
+        else:
+            task_success_list.append(success)
+            task_completion_time.append(time.time() - start_time)
+            trial_id += 1
 
         # start transition period
         s.set_hud_show_state(True)
@@ -204,9 +222,9 @@ def main():
             break
         s.set_hud_show_state(False)        
     s.disconnect()
-    np.save(f"{args.task}_success_list.npy", task_success_list)
-    np.save(f"{args.task}_completion_time.npy", task_completion_time)
-    print(f"{args.task} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
+    np.save(f"igibson/data/demos/{args.task}_{args.vi}_success_list.npy", task_success_list)
+    np.save(f"igibson/data/demos/{args.task}_{args.vi}_completion_time.npy", task_completion_time)
+    print(f"igibson/data/demos/{args.task}_{args.vi} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

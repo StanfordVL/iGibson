@@ -7,13 +7,13 @@ from igibson.objects.articulated_object import ArticulatedObject
 from igibson import object_states
 
 num_of_placing_obj = 4
-default_robot_pose = ([0, -1, 0.5], [0, 0, 0, 1])
+default_robot_pose = ([0.2, -1, 0.5], [0, 0, 0, 1])
 
 def import_obj(s):
     # table as static object
     table = ArticulatedObject("table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     s.import_object(table)
-    table.set_position((-1.000000, -1.00000, 0.000000))
+    table.set_position((1.000000, -1.00000, 0.000000))
     table.set_orientation((0.000000, 0.000000, 0.707107, 0.707107))
     # basket and cube
     basket = []
@@ -50,11 +50,11 @@ def set_obj_pos(objs):
     # object setup
     basket_pos = random.sample(range(10), 4)
     for i in range(num_of_placing_obj):
-        objs["basket"][i].set_position([random.random() * 0.5 - 1.05, basket_pos[i] / 10 - 1.5, 0.65])
+        objs["basket"][i].set_position([random.random() * 0.5 + 0.55, basket_pos[i] / 10 - 1.5, 0.65])
         objs["basket"][i].set_orientation([0, 0, 0, 1])
         objs["basket"][i].force_wakeup()
 
-        objs["cube"][i].set_position([random.random() * 0.5 - 1.05, random.random()* 0.2 - 1.0 - i * 0.2, 0.7])
+        objs["cube"][i].set_position([random.random() * 0.5 + 0.55, random.random()* 0.2 - 1.0 - i * 0.2, 0.7])
         objs["cube"][i].set_orientation([random.random(), random.random(), random.random(), random.random()])
         objs["cube"][i].force_wakeup()
 

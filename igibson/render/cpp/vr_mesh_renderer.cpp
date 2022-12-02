@@ -176,6 +176,13 @@ py::list VRRendererContext::getEyeTrackingData() {
 	dir.append(gibDir.y);
 	dir.append(gibDir.z);
 
+	py::list leftEyePos;
+	py::list rightEyePos;
+	leftEyePos.append(eyeTrackingData.leftPupilPos.x);
+	leftEyePos.append(eyeTrackingData.leftPupilPos.y);
+	rightEyePos.append(eyeTrackingData.rightPupilPos.x);
+	rightEyePos.append(eyeTrackingData.rightPupilPos.y);
+
 	// Set validity to false if eye tracking is not being used
 	if (this->useEyeTracking) {
 		eyeData.append(eyeTrackingData.isValid);
@@ -185,10 +192,13 @@ py::list VRRendererContext::getEyeTrackingData() {
 	}
 	eyeData.append(origin);
 	eyeData.append(dir);
-	eyeData.append(eyeTrackingData.leftPupilDiameter);
-	eyeData.append(eyeTrackingData.rightPupilDiameter);
 	eyeData.append(eyeTrackingData.leftEyeOpenness);
 	eyeData.append(eyeTrackingData.rightEyeOpenness);
+	eyeData.append(eyeTrackingData.leftPupilDiameter);
+	eyeData.append(eyeTrackingData.rightPupilDiameter);
+	eyeData.append(leftEyePos);
+	eyeData.append(rightEyePos);
+
 	// Return dummy data with false validity if eye tracking is not enabled (on non-Windows system)
 	#else
 	py::list dummy_origin, dummy_dir, dummy_pos_l, dummy_pos_r;
@@ -200,6 +210,9 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(dummy_diameter_r);
 	eyeData.append(dummy_openness_l);
 	eyeData.append(dummy_openness_r);
+	eyeData.append(dummy_pos_l);
+	eyeData.append(dummy_pos_r);
+
 	#endif
 	return eyeData;
 }
@@ -770,6 +783,12 @@ void VRRendererContext::pollAnipal() {
 			eyeTrackingData.dir = glm::normalize(glm::vec3(hmdSpaceDir.x - hmdData.devicePos.x, hmdSpaceDir.y - hmdData.devicePos.y, hmdSpaceDir.z - hmdData.devicePos.z));
 
 			// Record pupil measurements
+			auto leftEyePos = this->eyeData.verbose_data.left.pupil_position_in_sensor_area;
+			auto rightEyePos = this->eyeData.verbose_data.right.pupil_position_in_sensor_area;
+			glm::vec2 leftPupilPos(leftEyePos.x, leftEyePos.y);
+			glm::vec2 rightPupilPos(rightEyePos.x, rightEyePos.y);
+			eyeTrackingData.leftPupilPos = leftPupilPos;
+			eyeTrackingData.rightPupilPos = rightPupilPos;
 			eyeTrackingData.leftPupilDiameter = this->eyeData.verbose_data.left.pupil_diameter_mm;
 			eyeTrackingData.rightPupilDiameter = this->eyeData.verbose_data.right.pupil_diameter_mm;
 			eyeTrackingData.leftEyeOpenness = this->eyeData.verbose_data.left.eye_openness;

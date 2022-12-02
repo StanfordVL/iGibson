@@ -1,11 +1,12 @@
 import time
 import logging
 import igibson
+from random import random
 from igibson.object_states import OnTop
 from igibson.objects.articulated_object import ArticulatedObject
 
 
-default_robot_pose = ([-1, -1, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([-0.75, -1, 0.7], [0, 0, 0, 1])
 
 def import_obj(s):
     ret = {}
@@ -21,10 +22,11 @@ def import_obj(s):
 
 def set_obj_pos(objs):
     # objects
-    objs["table1"].set_position_orientation((1.000000, -1.000000, -0.30000), (0.000000, 0.000000, 0.707107, 0.707107))
-    objs["table2"].set_position_orientation((-0.050000, -1.000000, -0.30000), (0.000000, 0.000000, 0.707107, 0.707107))
-    objs["sphere"].set_position_orientation((-0.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
-    objs["basket"].set_position_orientation((0.5, -1.0, 0.85), (0, 0, 0, 1))
+    objs["table1"].set_position_orientation((1.000000, -1.000000, -0.20000), (0.000000, 0.000000, 0.707107, 0.707107))
+    objs["table2"].set_position_orientation((-0.050000, -1.000000, 0.00000), (0.000000, 0.000000, 0.707107, 0.707107))
+    objs["sphere"].set_position_orientation((-0.400000, -1.00000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
+    basket_y = random()  - 1.5
+    return {"basket_y": basket_y}
 
 
 
@@ -40,7 +42,7 @@ def main(s, log_writer, disable_save, robot, objs, ret):
         s.update_post_processing_effect()
 
         # keep basket still
-        objs["basket"].set_position((0.5, -1.0, 0.52))
+        objs["basket"].set_position((0.7, ret["basket_y"], 0.62))
         objs["basket"].set_orientation((0, 0, 0, 1))
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):

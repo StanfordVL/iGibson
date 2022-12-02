@@ -10,8 +10,8 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 
-num_of_obstacles = 4
-default_robot_pose = ([1, 0, 0.7], [0, 0, 0, 1])
+num_of_obstacles = 0
+default_robot_pose = ([1, -0.2, 0.5], [0, 0, 0, 1])
 
 
 # object setup
@@ -48,6 +48,7 @@ def import_obj(s):
         filename=model_path,
         category="breakfast_table",
         name="19898",
+        fixed_base=True,
         scale=np.array([2, 2, 2]),
         abilities={"stainable": {}},   
     )

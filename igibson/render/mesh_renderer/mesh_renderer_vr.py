@@ -365,6 +365,11 @@ class MeshRendererVR(MeshRenderer):
         elif self.post_processing_mode == 3:
             self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
 
+        # if self.post_processing_mode == 2:
+        #     self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 4, (0.5 - pos[1]) * 4, -1])
+        # elif self.post_processing_mode == 3:
+        #     self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 4, (0.5 - pos[1]) * 4, -1])
+
     def updatre_post_processing_extent(self):
         if self.post_processing_mode == 5:
             if self.dioptres == -3:

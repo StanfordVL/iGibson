@@ -753,13 +753,13 @@ class SimulatorVR(Simulator):
         left pupil diameter, right pupil diameter (both in millimeters)
         Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
         """
-        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness = self.eye_tracking_data
+        is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness, left_eye_pos, right_eye_pos = self.eye_tracking_data
         # Set other values to 0 to avoid very small/large floating point numbers
         if not is_valid:
-            return [False, [0, 0, 0], [0, 0, 0], [0, 0], 0, 0, 0, 0]
+            return [False, [0, 0, 0], [0, 0, 0], [0, 0], 0, 0, 0, 0, [0, 0], [0, 0]]
         else:
             screen_pos = self.proj_gaze(dir, self.renderer.V, self.renderer.P)
-            return [is_valid, origin, dir, screen_pos, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness]
+            return [is_valid, origin, dir, screen_pos, left_pupil_diameter, right_pupil_diameter, left_eye_openness, right_eye_openness, left_eye_pos, right_eye_pos]
 
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
         """
@@ -851,7 +851,7 @@ class SimulatorVR(Simulator):
                 self.renderer.update_post_processing_mode()
             elif touch_x > 0.7:
                 self.renderer.updatre_post_processing_extent()
-        is_valid, _, _, pos, _, _, _, _= self.get_eye_tracking_data()
+        is_valid, _, _, pos, _, _, _, _, _, right_pos = self.get_eye_tracking_data()
         if is_valid:
             self.renderer.update_post_processing_effect(pos)
 

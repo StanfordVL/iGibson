@@ -96,6 +96,8 @@ public:
 		bool isValid = false;
 		glm::vec3 origin;
 		glm::vec3 dir;
+		glm::vec2 leftPupilPos;
+		glm::vec2 rightPupilPos;
 		// Both in mm
 		float leftPupilDiameter;
 		float rightPupilDiameter;

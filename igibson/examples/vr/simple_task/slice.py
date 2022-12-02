@@ -10,7 +10,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 
-default_robot_pose = ([0, -1, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([0.2, -1, 0.5], [0, 0, 0, 1])
 
 
 def import_obj(s):
@@ -69,11 +69,11 @@ def set_obj_pos(objs):
     objs["slicer"].force_wakeup()
     objs["apple"].load_state(objs["apple_initial_extended_state"])
     objs["apple"].force_wakeup()
-    objs["slicer"].set_position_orientation((1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
+    objs["slicer"].set_position_orientation((0.800000, -1.000000, 0.750000), ( 0.707107, 0.000000, 0.707107, 0.000000))
     # Set these objects to be far-away locations
     for i, new_urdf_obj in enumerate(objs["obj_part_list"]):
         new_urdf_obj.set_position([100 + i, 100, -100])
-    objs["apple"].set_position((1.000000, -1.00000, 0.750000))
+    objs["apple"].set_position((0.800000, -0.70000, 0.750000))
     
 
 
@@ -102,7 +102,6 @@ def main(s, log_writer, disable_save, robot, objs, ret):
             break
         if s.query_vr_event("right_controller", "overlay_toggle"):
             break
-            
     return success, terminate
 
 

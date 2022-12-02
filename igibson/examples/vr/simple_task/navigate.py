@@ -39,9 +39,11 @@ def set_obj_pos(objs):
     for i in range(100):
         if i in duck_pos:
             objs["ducks"][ducks_positioned].set_position_orientation([initial_x + i % 10, initial_y + i // 10, heights[i]], [0.5, 0.5, 0.5, 0.5])
+            objs["ducks"][ducks_positioned].force_wakeup()
             ducks_positioned += 1
         else:
             objs["obstacles"][i - ducks_positioned].set_position_orientation([initial_x + i % 10, initial_y + i // 10, heights[i]], [0.5, 0.5, 0.5, 0.5])
+            objs["obstacles"][i - ducks_positioned].force_wakeup()
 
     ret = {}
     ret["heights"] = heights

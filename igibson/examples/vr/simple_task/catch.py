@@ -5,8 +5,8 @@ import random
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 
-total_trial_per_round = 50
-default_robot_pose = ([-2.5, 0, 0.5], [0, 0, 0, 1])
+total_trial_per_round = 10
+default_robot_pose = ([-2.75, 0.85, 0.7], [0, 0, 0, 1])
 
 
 def import_obj(s):
@@ -18,7 +18,7 @@ def set_obj_pos(objs):
     pass
 
 def main(s, log_writer, disable_save, robot, objs, ret):
-    success, terminate = False, False
+    terminate = False
     start_time = time.time()
     cur_time = start_time
     episode_len = 4
@@ -70,14 +70,16 @@ def main(s, log_writer, disable_save, robot, objs, ret):
             is_bounced = True
             objs["ball"].set_velocities([([0, 2 * gamma, (2 * 9.8 * rand_z) ** 0.5 * gamma], [0, 0, 0])])
 
-
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
             terminate = True
             break
-
-    print(f"Total: {total_trial}, Success: {success_trial}, SR: {success_trial / total_trial}")
-    return success, terminate
+        if s.query_vr_event("right_controller", "overlay_toggle"):
+            break
+    
+    sr = success_trial / total_trial if total_trial else 0
+    print(f"Total: {total_trial}, Success: {success_trial}, SR: {sr}")
+    return sr, terminate
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
