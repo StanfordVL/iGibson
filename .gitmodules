@@ -10,3 +10,6 @@
 [submodule "igibson/render/cryptopp"]
 	path = igibson/render/cryptopp
 	url = https://github.com/fxia22/cryptopp
+[submodule "igibson/render/openvr"]
+	path = igibson/render/openvr
+	url = https://github.com/ValveSoftware/openvr

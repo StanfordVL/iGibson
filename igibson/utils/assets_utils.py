@@ -293,7 +293,7 @@ def download_assets():
         log.info("Downloading and decompressing assets from {} (this may take some time)".format(assets_url))
         urlretrieve(assets_url, tmp_file, show_progress)
         log.info("Decompressing assets into {}".format(igibson.assets_path))
-        os.system("tar -zxf {} --directory {}".format(tmp_file, os.path.dirname(igibson.assets_path)))
+        os.system("tar -zxf {} --directory {} --force-local".format(tmp_file, os.path.dirname(igibson.assets_path)))
 
 
 def download_demo_data():
@@ -375,7 +375,7 @@ def download_ig_dataset():
     log.info("Downloading the full iGibson 1.0 Dataset of Objects and Interactive Scenes from {}".format(url))
     urlretrieve(url, tmp_file, show_progress)
     log.info("Decompressing the full iGibson 1.0 Dataset into {}".format(igibson.ig_dataset_path))
-    os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.ig_dataset_path))
+    os.system("tar -zxf {} --strip-components=1 --directory {} --force-local".format(tmp_file, igibson.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
