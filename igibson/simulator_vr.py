@@ -840,7 +840,7 @@ class SimulatorVR(Simulator):
 
         self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
-    def update_post_processing_effect(self):
+    def update_vi_effect(self):
         """
         update post processing visual impairment mode and effect
         """
@@ -848,12 +848,12 @@ class SimulatorVR(Simulator):
         if self.query_vr_event(vr_height_device, "post_processing_toggle"):
             _, touch_x, _, _ = self.get_button_data_for_controller(vr_height_device)
             if touch_x < -0.7:
-                self.renderer.update_post_processing_mode()
+                self.renderer.update_vi_mode()
             elif touch_x > 0.7:
-                self.renderer.updatre_post_processing_extent()
-        is_valid, _, _, pos, _, _, _, _, _, right_pos = self.get_eye_tracking_data()
+                self.renderer.update_vi_level()
+        is_valid, _, _, pos, _, _, _, _, _, _ = self.get_eye_tracking_data()
         if is_valid:
-            self.renderer.update_post_processing_effect(pos)
+            self.renderer.update_vi_with_eye_pose(pos)
 
     def proj_gaze(self, eye_vec, cam_view_matrix, cam_proj_matrix, img_dim=None):
         ''' Map 3D gaze vector to 2D pixel locations'''

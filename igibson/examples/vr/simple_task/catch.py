@@ -17,7 +17,7 @@ def import_obj(s):
 def set_obj_pos(objs):
     pass
 
-def main(s, log_writer, disable_save, robot, objs, ret):
+def main(s, log_writer, disable_save, debug, robot, objs, ret):
     terminate = False
     start_time = time.time()
     cur_time = start_time
@@ -41,7 +41,8 @@ def main(s, log_writer, disable_save, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()       
         robot.apply_action(s.gen_vr_robot_action())
-        s.update_post_processing_effect()
+        if debug:
+            s.update_vi_effect()
 
         ball_pos = objs["ball"].get_position()
 

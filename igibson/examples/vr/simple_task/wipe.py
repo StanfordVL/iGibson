@@ -91,7 +91,7 @@ def set_obj_pos(objs):
     objs["desk"].force_wakeup()
 
 
-def main(s, log_writer, disable_save, robot, objs, ret):
+def main(s, log_writer, disable_save, debug, robot, objs, ret):
     success, terminate = False, False
     success_time = 0
     # Main simulation loop.
@@ -100,7 +100,8 @@ def main(s, log_writer, disable_save, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
-        s.update_post_processing_effect()
+        if debug:
+            s.update_vi_effect()
         
         if not objs["desk"].states[object_states.Stained].get_value():
             if success_time:

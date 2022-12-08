@@ -31,6 +31,10 @@ light_modulation_map_filename = os.path.join(
 )
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
+
+vi_choices = ["normal", "cataract", "amd", "glaucoma", "presbyopia", "myopia"]
+
+
 def load_scene(simulator, task):
     """Setup scene"""
     if task == "slice":
@@ -66,7 +70,6 @@ def load_scene(simulator, task):
 
 def parse_args():
     tasks_choices = ["catch", "navigate", "place", "slice", "throw", "wipe"]
-    vi_choices = ["normal", "cataract", "amd", "glaucoma", "myopia", "presbyopia"]
     parser = argparse.ArgumentParser(description="Run and collect a demo of a task")
     parser.add_argument(
         "--task",
@@ -78,20 +81,29 @@ def parse_args():
         help="Name of task to collect a demo of. Choose from catch/navigate/place/slice/slice/throw/wipe",
     )
     parser.add_argument(
-        "--vi",
+        "--mode",
         type=str,
         choices=vi_choices,
         required=False,
         default="normal",
         nargs="?",
-        help="Type of visual impairment. Choose from normal/cataract/amd/glaucoma/myopia/presbyopia",
+        help="Mode of visual impairment. Choose from normal/cataract/amd/glaucoma/myopia/presbyopia",
+    )
+    parser.add_argument(
+        "--level",
+        type=int,
+        choices=[1, 2, 3],
+        required=False,
+        default=1,
+        nargs="?",
+        help="Level of visual impairment. Choose from 1/2/3",
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
     parser.add_argument(
         "--demo_file", type=str, default=demo_file, required=False, help="Path (and filename) of demo file"
     )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
-    parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
+    parser.add_argument("--debug", action="store_true", help="Whether to enable debug mode (right controller to switch between modes and levels).")
     return parser.parse_args()
 
 def main():
@@ -135,6 +147,8 @@ def main():
         )
         gravity = 9.8
     s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    s.renderer.update_vi_mode(vi_choices.index(args.mode))
+    s.renderer.update_vi_level(level=args.level)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     # scene setup
     load_scene(s, args.task)
@@ -172,19 +186,17 @@ def main():
         ret = lib.set_obj_pos(objs)
         # log writer
         # demo_file = os.path.join(tempfile.gettempdir(), f"{args.task}_{args.vi}_{trial_id}.hdf5")
-        demo_file = f"igibson/data/test/{args.task}_{args.vi}_{trial_id}.hdf5"
-        disable_save = False
-        profile=False
+        demo_file = f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_{trial_id}.hdf5"
+
         instance_id = 0
         log_writer = None
-        if not disable_save:
+        if not args.disable_save:
             log_writer = IGLogWriter(
                 s,
                 log_filepath=demo_file,
                 task=None,
                 store_vr=True,
                 vr_robot=bvr_robot,
-                profiling_mode=profile,
                 filter_objects=True,
             )
             log_writer.set_up_data_storage()
@@ -192,9 +204,9 @@ def main():
         
 
         # Main simulation loop
-        success, terminate = lib.main(s, log_writer, disable_save, bvr_robot, objs, ret)
+        success, terminate = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, ret)
         
-        if log_writer and not disable_save:
+        if not args.disable_save:
             log_writer.end_log_session()
 
         if terminate:
@@ -222,9 +234,10 @@ def main():
             break
         s.set_hud_show_state(False)        
     s.disconnect()
-    np.save(f"igibson/data/demos/{args.task}_{args.vi}_success_list.npy", task_success_list)
-    np.save(f"igibson/data/demos/{args.task}_{args.vi}_completion_time.npy", task_completion_time)
-    print(f"igibson/data/demos/{args.task}_{args.vi} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
+    if not args.disable_save:
+        np.save(f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_success_list.npy", task_success_list)
+        np.save(f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_completion_time.npy", task_completion_time)
+    print(f"igibson/data/demos/{args.task}_{args.mode}-{args.level} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

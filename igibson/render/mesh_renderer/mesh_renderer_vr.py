@@ -230,18 +230,21 @@ class MeshRendererVR(MeshRenderer):
         self.msaa = False
         self.vr_hud = None
 
-        # post processing mode
-        self.post_processing_mode = 0
+        # visual impairment mode
+        self.vi_mode = 0
+        self.vi_level = 1
+
         self.dioptres = -2.0
         self.presbyopia_near_point = 600.0
-        # post processing overlay
-        self.post_processing_overlay1_width = 3
-        self.post_processing_overlay2_width = 3.5
-        # self.post_processing_overlay2_width = 8
-        self.post_processing_overlay1 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/amd4.png", self.post_processing_overlay1_width)
-        self.post_processing_overlay2 = self.gen_static_overlay("D:/Research/ig2/igibson/examples/vr/visual_disease_demo_mtls/gla3.png", self.post_processing_overlay2_width)
-        self.post_processing_overlay1.set_overlay_show_state(False)
-        self.post_processing_overlay2.set_overlay_show_state(False)
+        # visual impairment overlay
+        self.amd_overlay_width = 3
+        self.glaucoma_overlay_width = 3.5
+        self.amd_overlay, self.glaucoma_overlay = [], []
+        for i in range(3):
+            self.amd_overlay.append(self.gen_static_overlay(f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/amd{i+1}.png", self.amd_overlay_width))
+            self.glaucoma_overlay.append(self.gen_static_overlay(f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/gla{i+1}.png", self.glaucoma_overlay_width))
+            self.amd_overlay[i].set_overlay_show_state(False)
+            self.glaucoma_overlay[i].set_overlay_show_state(False)
 
     def gen_vr_hud(self):
         """
@@ -319,7 +322,7 @@ class MeshRendererVR(MeshRenderer):
         if self.vr_settings.use_vr:
             self.vrsys.releaseVR()
     
-    def update_post_processing_mode(self):
+    def update_vi_mode(self, mode=None):
         """
         Update post processing visual impairment mode
         0: Normal
@@ -330,21 +333,23 @@ class MeshRendererVR(MeshRenderer):
         5: Myopia / Hyperopia
         6: light overexposure
         """
-        self.post_processing_mode = (self.post_processing_mode + 1) % 7
-        self.vrsys.updateUniform1i(self.retinaShaderProgram, "postProcessingMode", self.post_processing_mode)
-        if self.post_processing_mode == 2:
-            self.post_processing_overlay1.set_overlay_show_state(True)
-        elif self.post_processing_mode == 3:
-            self.post_processing_overlay1.set_overlay_show_state(False)
-            self.post_processing_overlay2.set_overlay_show_state(True)
-        elif self.post_processing_mode == 4:
-            self.post_processing_overlay2.set_overlay_show_state(False)
+        if mode and not 0 <= mode <= 6:
+            raise ValueError("Unsuported VI mode")
+        self.vi_mode = mode if mode is not None else (self.vi_mode + 1) % 7
+        self.vrsys.updateUniform1i(self.retinaShaderProgram, "postProcessingMode", self.vi_mode)
+        if self.vi_mode == 2:
+            self.amd_overlay[self.vi_level].set_overlay_show_state(True)
+        elif self.vi_mode == 3:
+            self.amd_overlay[self.vi_level].set_overlay_show_state(False)
+            self.glaucoma_overlay[self.vi_level].set_overlay_show_state(True)
+        elif self.vi_mode == 4:
+            self.glaucoma_overlay[self.vi_level].set_overlay_show_state(False)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", self.presbyopia_near_point)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 1.0)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
             self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
-        elif self.post_processing_mode == 5:
+        elif self.vi_mode == 5:
             if self.dioptres < 0: # myopia
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
@@ -355,23 +360,27 @@ class MeshRendererVR(MeshRenderer):
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
-        elif self.post_processing_mode == 6:
+        elif self.vi_mode == 6:
             self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 0)
 
 
-    def update_post_processing_effect(self, pos):
-        if self.post_processing_mode == 2:
-            self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
-        elif self.post_processing_mode == 3:
-            self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
+    def update_vi_with_eye_pose(self, pos):
+        if self.vi_mode == 2:
+            self.amd_overlay[self.vi_level].update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
+        elif self.vi_mode == 3:
+            self.glaucoma_overlay[self.vi_level].update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
 
-        # if self.post_processing_mode == 2:
-        #     self.post_processing_overlay1.update_pos([(pos[0] - 0.5) * 4, (0.5 - pos[1]) * 4, -1])
-        # elif self.post_processing_mode == 3:
-        #     self.post_processing_overlay2.update_pos([(pos[0] - 0.5) * 4, (0.5 - pos[1]) * 4, -1])
-
-    def updatre_post_processing_extent(self):
-        if self.post_processing_mode == 5:
+    def update_vi_level(self, level = None):
+        if level and not 1 <= level <= 3:
+            raise ValueError("Currently VI level only supports 1 - 3")
+        new_vi_level = level - 1 if level is not None else (self.vi_level + 1) % 3
+        if self.vi_mode == 2:
+            self.amd_overlay[self.vi_level].set_overlay_show_state(False)
+            self.amd_overlay[new_vi_level].set_overlay_show_state(True)
+        elif self.vi_mode == 3:
+            self.glaucoma_overlay[self.vi_level].set_overlay_show_state(False)
+            self.glaucoma_overlay[new_vi_level].set_overlay_show_state(True)
+        elif self.vi_mode == 5:
             if self.dioptres == -3:
                 self.dioptres = 3
             else:
@@ -386,6 +395,8 @@ class MeshRendererVR(MeshRenderer):
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
+
+        self.vi_level = new_vi_level
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

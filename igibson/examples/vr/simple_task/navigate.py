@@ -52,7 +52,7 @@ def set_obj_pos(objs):
 
 
 
-def main(s, log_writer, disable_save, robot, objs, args): 
+def main(s, log_writer, disable_save, debug, robot, objs, args): 
     success, terminate = False, False 
     success_time = 0  
     done = set()
@@ -62,7 +62,8 @@ def main(s, log_writer, disable_save, robot, objs, args):
         if log_writer and not disable_save:
             log_writer.process_frame()       
         robot.apply_action(s.gen_vr_robot_action())
-        s.update_post_processing_effect()
+        if debug:
+            s.update_vi_effect()
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
