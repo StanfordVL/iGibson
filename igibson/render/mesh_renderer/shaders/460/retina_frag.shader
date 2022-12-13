@@ -6,7 +6,7 @@ in vec2 TexCoords;
 uniform sampler2D s_color;
 uniform sampler2D s_bloom;
 uniform int postProcessingMode;  
-uniform int eyeOffset; // 1: left, -1: right
+uniform int cataractLevel;
 
 float glareWidth = 0.7;
 float c = 0.5; // constrast reduction factor
@@ -39,7 +39,7 @@ float rand(vec2 co){
     return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-vec3 lensflare(vec2 uv,vec2 pos)
+vec3 lensflare(vec2 uv, vec2 pos)
 {
 	vec2 main = uv-pos;
 	vec2 uvd = uv*(length(uv));
@@ -107,7 +107,6 @@ void main()
     vec3 texColor = texture(s_color, TexCoords).rgb;
     vec3 bloomColor = texture(s_bloom, TexCoords).rgb;
 
-    vec2 center = vec2(0.4, 0.6);
     // ======================== gaussian noise =============================
     float noise = sqrt(-2.0 * log(rand(TexCoords * 2))) * sin(2.0 * PI * rand(TexCoords)); // Box-Muller Transform
 
@@ -127,42 +126,33 @@ void main()
                 col += sampleTex[i] * kernel[i];
             // 2. reduce contrast
             vec3 tempColor = col * (1 - c) + vec3(0.5 * c);
+            if (cataractLevel == 1) {
+                FragColor = vec4(tempColor, 1.0);
+                break;
+            }
             // 3. Color shift
-            tempColor = tempColor * (1 - t) + TintColor * t;
-            // 4. bloom
-            // const float gamma = 2.2;
-            // tempColor += bloomColor; // additive blending
+            const float gamma = 2.2;
             // // tone mapping
-            // vec3 result = vec3(1.0) - exp(-tempColor * exposure);
-            // // also gamma correct while we're at it       
-            // result = pow(result, vec3(1.0 / gamma));
-            FragColor = vec4(tempColor, 1.0);
+            tempColor = vec3(1.0) - exp(-tempColor * exposure);
+            // also gamma correct while we're at it       
+            tempColor = pow(tempColor, vec3(1.0 / gamma));
+            tempColor = tempColor * (1 - t) + TintColor * t;
+            if (cataractLevel == 2) {
+                FragColor = vec4(tempColor, 1.0);
+                break;
+            }
+            // 4. light overexposure
+            tempColor += 0.5 * bloomColor; // additive blending for bloom
+            vec2 center = vec2(0.5, 0.5);
+            vec3 color = vec3(1.4, 1.2, 1.0) * lensflare(TexCoords, center);
+            color = cc(color, .5, .1);
+            FragColor = vec4(mix(color, tempColor, 0.7), 1.0);
             break;
         case 2: // AMD
         case 3: // Glaucoma
         case 4: // Presbyopia
         case 5: // myopia / hyperopia
             FragColor = vec4(texColor, 1.0);
-            break;
-        case 6: // ad hoc (light overexposure)
-             // 1. blur
-            vec3 sampleTex1[9];
-            for(int i = 0; i < 9; i++)
-            {
-                sampleTex1[i] = vec3(texture(s_color, TexCoords.st + offsets[i]));
-            }
-            vec3 col1 = vec3(0.0);
-            for(int i = 0; i < 9; i++)
-                col1 += sampleTex1[i] * kernel[i];
-            // 2. reduce contrast
-            vec3 tempColor1 = col1 * (1 - c) + vec3(0.5 * c);
-            FragColor = vec4(tempColor1, 1.0);
-            break;
-            // 3. Color shift
-            tempColor1 = tempColor1 * (1 - t) + TintColor * t;
-            vec3 color = vec3(1.4, 1.2, 1.0) * lensflare(TexCoords, center);
-            color = cc(color, .5, .1);
-            FragColor = vec4(mix(color, tempColor1, 0.7), 1.0);
-            break;
+            break;            
     }
 }  

@@ -166,6 +166,19 @@ def main():
     task_completion_time = []
 
     s.add_vr_overlay_text(
+        text_data=lib.intro_paragraph,
+        font_size=40,
+        font_style="Bold",
+        color=[0, 0, 0],
+        pos=[0, 75],
+        size=[100, 50],
+    )
+    s.set_hud_show_state(True)
+    s.step()
+    while not s.query_vr_event("right_controller", "overlay_toggle"):
+        s.step()
+
+    s.add_vr_overlay_text(
         text_data="Task Complete! Toggle right controller to restart or left controller to terminate...",
         font_size=40,
         font_style="Bold",

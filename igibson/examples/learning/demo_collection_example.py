@@ -235,7 +235,7 @@ def collect_demo(
             break
         
         # update post processing
-        env.simulator.update_post_processing_effect()
+        env.simulator.update_vi_effect()
 
     assert env.current_step > PHYSICS_WARMING_TIMESTEPS, "No actions were applied."
 

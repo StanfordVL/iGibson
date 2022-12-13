@@ -7,6 +7,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 
 
 default_robot_pose = ([-0.75, -1, 0.7], [0, 0, 0, 1])
+intro_paragraph = "Welcome to the throw experiment! In this experiment there will be a basket and a ball on the table. We need to grab the ball and throw it into the basket."
 
 def import_obj(s):
     ret = {}
@@ -25,7 +26,12 @@ def set_obj_pos(objs):
     objs["table1"].set_position_orientation((1.000000, -1.000000, -0.20000), (0.000000, 0.000000, 0.707107, 0.707107))
     objs["table2"].set_position_orientation((-0.050000, -1.000000, 0.00000), (0.000000, 0.000000, 0.707107, 0.707107))
     objs["sphere"].set_position_orientation((-0.400000, -1.00000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107))
+
     basket_y = random()  - 1.5
+    objs["basket"].set_position((0.7, basket_y, 0.62))
+    objs["basket"].set_orientation((0, 0, 0, 1))
+    objs["basket"].force_wakeup()
+
     return {"basket_y": basket_y}
 
 
@@ -45,6 +51,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         # keep basket still
         objs["basket"].set_position((0.7, ret["basket_y"], 0.62))
         objs["basket"].set_orientation((0, 0, 0, 1))
+
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
             terminate = True

@@ -12,7 +12,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 num_of_obstacles = 0
 default_robot_pose = ([1, -0.2, 0.5], [0, 0, 0, 1])
-
+intro_paragraph = "Welcome to the wipe experiment! In this experiment there will be a cleaning brush and a table with stain on it. We need to grab the brush and wipe the stain off the table with it"
 
 # object setup
 objects = [

@@ -8,6 +8,7 @@ from igibson import object_states
 
 num_of_placing_obj = 4
 default_robot_pose = ([0.2, -1, 0.5], [0, 0, 0, 1])
+intro_paragraph = "Welcome to the place experiment! In this experiment there will be 4 baskets and 4 cubes on a desk. We need to place the cube into the basket (rder doesn't matter)"
 
 def import_obj(s):
     # table as static object

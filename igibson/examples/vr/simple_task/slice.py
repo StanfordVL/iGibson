@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 default_robot_pose = ([0.2, -1, 0.5], [0, 0, 0, 1])
-
+intro_paragraph = "Welcome to the slice experiment! In this experiment there will be a knife and an apple on the table. We need to grab the knofe and slice the apple into 2 pieces with it"
 
 def import_obj(s):
     table = ArticulatedObject("table/table.urdf", scale=1)

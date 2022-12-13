@@ -477,6 +477,7 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer_post_processing(int
     glUniform1i(glGetUniformLocation(shaderProgramRetina, "s_color"), 0); 
     glUniform1i(glGetUniformLocation(shaderProgramRetina, "s_bloom"), 1); 
     glUniform1i(glGetUniformLocation(shaderProgramRetina, "postProcessingMode"), 0); 
+    glUniform1i(glGetUniformLocation(shaderProgramRetina, "cataractLevel"), 1); 
 
     // lens buffers
     unsigned int lensFramebuffer;

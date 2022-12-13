@@ -1034,13 +1034,13 @@ class MeshRenderer(object):
                 self.color_tex_rgb,
                 self.depth_tex,
             )
-            # self.r.renderBloom(
-            #     self.blurShaderProgram, 
-            #     self.quadVAO, 
-            #     self.color_tex_bloom,
-            #     self.fbo_blurs,
-            #     self.color_tex_blurs,
-            # )
+            self.r.renderBloom(
+                self.blurShaderProgram, 
+                self.quadVAO, 
+                self.color_tex_bloom,
+                self.fbo_blurs,
+                self.color_tex_blurs,
+            )
             self.r.renderRetina(
                 self.retinaShaderProgram, 
                 self.quadVAO, 

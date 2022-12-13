@@ -234,11 +234,12 @@ class MeshRendererVR(MeshRenderer):
         self.vi_mode = 0
         self.vi_level = 1
 
-        self.dioptres = -2.0
-        self.presbyopia_near_point = 600.0
+        self.dioptres = -1.5
+        self.myopia_level = [-1.5, -4.5, -7.5]
+        self.presbyopia_level = [1.35, 2.15, 2.9]
         # visual impairment overlay
         self.amd_overlay_width = 3
-        self.glaucoma_overlay_width = 3.5
+        self.glaucoma_overlay_width = 4.5
         self.amd_overlay, self.glaucoma_overlay = [], []
         for i in range(3):
             self.amd_overlay.append(self.gen_static_overlay(f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/amd{i+1}.png", self.amd_overlay_width))
@@ -344,22 +345,16 @@ class MeshRendererVR(MeshRenderer):
             self.glaucoma_overlay[self.vi_level].set_overlay_show_state(True)
         elif self.vi_mode == 4:
             self.glaucoma_overlay[self.vi_level].set_overlay_show_state(False)
-            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", self.presbyopia_near_point)
-            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
-            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 1.0)
-            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
             self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
         elif self.vi_mode == 5:
-            if self.dioptres < 0: # myopia
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING)
-            else:   # hyperopia
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
+            self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING)                
         elif self.vi_mode == 6:
             self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 0)
 
@@ -374,27 +369,27 @@ class MeshRendererVR(MeshRenderer):
         if level and not 1 <= level <= 3:
             raise ValueError("Currently VI level only supports 1 - 3")
         new_vi_level = level - 1 if level is not None else (self.vi_level + 1) % 3
-        if self.vi_mode == 2:
+        if self.vi_mode == 1:
+            self.vrsys.updateUniform1i(self.retinaShaderProgram, "cataractLevel", new_vi_level)
+        elif self.vi_mode == 2:
             self.amd_overlay[self.vi_level].set_overlay_show_state(False)
             self.amd_overlay[new_vi_level].set_overlay_show_state(True)
         elif self.vi_mode == 3:
             self.glaucoma_overlay[self.vi_level].set_overlay_show_state(False)
             self.glaucoma_overlay[new_vi_level].set_overlay_show_state(True)
-        elif self.vi_mode == 5:
-            if self.dioptres == -3:
-                self.dioptres = 3
-            else:
-                self.dioptres -= 0.5  
-            if self.dioptres < 0: # myopia
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
-                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING)
-            else:   # hyperopia
+        elif self.vi_mode == 4:
+                self.dioptres = self.presbyopia_level[new_vi_level]
+                self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
+        elif self.vi_mode == 5:
+                self.dioptres = self.myopia_level[new_vi_level]
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
+                self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 1.0 - self.dioptres * DIOPTRES_SCALING) 
 
         self.vi_level = new_vi_level
 

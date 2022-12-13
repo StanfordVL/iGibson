@@ -8,6 +8,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 num_of_duck = 1
 initial_x, initial_y = -5, 1
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
+intro_paragraph = "Welcome to the navigate experiment! In this experiment there will be a yellow duck among a bunch of objects. We need to navigate and find the duck and push it with our hand."
 
 def import_obj(s):
     # obstacles and ducks setup

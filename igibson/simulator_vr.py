@@ -478,13 +478,13 @@ class SimulatorVR(Simulator):
             inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn
         )
         body_delta_rot = p.getEulerFromQuaternion(body_delta_orn)
-        action[self.main_vr_robot.controller_action_idx["base"]] = np.concatenate([body_delta_pos, body_delta_rot])
 
         # Get new body position so we can calculate correct relative transforms for other VR objects
         clipped_body_delta_pos = np.clip(body_delta_pos, -BODY_LINEAR_VELOCITY, BODY_LINEAR_VELOCITY).tolist()
-        clipped_body_delta_orn = p.getQuaternionFromEuler(
-            np.clip(body_delta_rot, -BODY_ANGULAR_VELOCITY, BODY_ANGULAR_VELOCITY).tolist()
-        )
+        clipped_body_delta_rot = np.clip(body_delta_rot, -BODY_ANGULAR_VELOCITY, BODY_ANGULAR_VELOCITY).tolist()
+        clipped_body_delta_orn = p.getQuaternionFromEuler(clipped_body_delta_rot)
+        action[self.main_vr_robot.controller_action_idx["base"]] = np.concatenate([clipped_body_delta_pos, clipped_body_delta_rot])
+
         new_body_pos, new_body_orn = p.multiplyTransforms(
             prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn
         )
