@@ -53,6 +53,8 @@ def import_obj(s):
         abilities={"stainable": {}},   
     )
     s.import_object(desk)
+    # need this to import stain visual marker
+    desk.states[object_states.Stained].set_value(True)
 
     objs = []
     # other objects
@@ -66,6 +68,8 @@ def import_obj(s):
     ret["brush"] = brush
     ret["desk"] = desk
     ret["objs"] = objs
+
+
     return ret
 
 def set_obj_pos(objs):
@@ -81,6 +85,7 @@ def set_obj_pos(objs):
 
     for i, pos in enumerate(random.sample(randomize_pos, num_of_obstacles)):        
         objs["objs"][i].set_position([random.uniform(*pos[0]), random.uniform(*pos[1]), pos[2]])
+        objs["objs"][i].force_wakeup()
 
     objs["brush"].set_position([1, -1, 0.8])
     objs["desk"].set_position([1, -1, 0.5])

@@ -73,8 +73,9 @@ def set_obj_pos(objs):
     # Set these objects to be far-away locations
     for i, new_urdf_obj in enumerate(objs["obj_part_list"]):
         new_urdf_obj.set_position([100 + i, 100, -100])
+        new_urdf_obj.force_wakeup()
     objs["apple"].set_position((0.800000, -0.70000, 0.750000))
-    
+    objs["apple"].force_wakeup()
 
 
 def main(s, log_writer, disable_save, debug, robot, objs, ret):

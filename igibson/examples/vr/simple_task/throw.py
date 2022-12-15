@@ -30,7 +30,8 @@ def set_obj_pos(objs):
     basket_y = random()  - 1.5
     objs["basket"].set_position((0.7, basket_y, 0.62))
     objs["basket"].set_orientation((0, 0, 0, 1))
-    objs["basket"].force_wakeup()
+    for obj in objs:
+        objs[obj].force_wakeup()
 
     return {"basket_y": basket_y}
 

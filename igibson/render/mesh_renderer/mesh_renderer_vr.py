@@ -332,7 +332,7 @@ class MeshRendererVR(MeshRenderer):
         3: Glaucoma
         4: presbyopia
         5: Myopia / Hyperopia
-        6: light overexposure
+        6: black screen
         """
         if mode and not 0 <= mode <= 6:
             raise ValueError("Unsuported VI mode")

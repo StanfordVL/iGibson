@@ -174,9 +174,11 @@ def main():
         size=[100, 50],
     )
     s.set_hud_show_state(True)
+    s.renderer.update_vi_mode(mode=6) # black screen
     s.step()
     while not s.query_vr_event("right_controller", "overlay_toggle"):
         s.step()
+    s.renderer.update_vi_mode(mode=0)
 
     s.add_vr_overlay_text(
         text_data="Task Complete! Toggle right controller to restart or left controller to terminate...",
