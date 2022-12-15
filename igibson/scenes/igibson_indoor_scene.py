@@ -161,7 +161,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
         # Load room semantic and instance segmentation map
-        self.load_room_sem_ins_seg_map(seg_map_resolution)
+        # self.load_room_sem_ins_seg_map(seg_map_resolution)
 
         # Decide which room(s) and object categories to load
         self.filter_rooms_and_object_categories(
@@ -251,7 +251,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if in_rooms is not None:
                     in_rooms = in_rooms.split(",")
 
-                if category in ["walls", "floors", "ceilings"]:
+                if False: # category in ["walls", "floors", "ceilings"]:
                     model_path = self.scene_dir
                     filename = os.path.join(model_path, "urdf", model + "_" + category + ".urdf")
                 else:

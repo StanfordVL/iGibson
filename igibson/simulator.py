@@ -118,6 +118,7 @@ class Simulator:
         self._urdfs = {}
 
     def register_urdf(self, bid, urdf_path):
+        return
         assert bid not in self._urdfs
         self._urdfs[bid] = urdfpy.URDF.load(urdf_path)
 
@@ -378,7 +379,7 @@ class Simulator:
                 dimensions = [100, 100, 0.01]
 
             # Always load overwrite material
-            if overwrite_material is not None:
+            if False:  #  overwrite_material is not None:
                 if isinstance(overwrite_material, RandomizedMaterial):
                     self.renderer.load_randomized_material(overwrite_material, texture_scale)
                 elif isinstance(overwrite_material, ProceduralMaterial):
@@ -462,7 +463,7 @@ class Simulator:
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
 
-        self._non_physics_step()
+        # self._non_physics_step()
         self.sync()
         self.frame_count += 1
 
