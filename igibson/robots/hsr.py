@@ -11,6 +11,10 @@ from igibson.robots.two_wheel_robot import TwoWheelRobot
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
 
+# We add support for both the mesh with r2d2 hand and the normal mesh
+# Passive joint seems to have a lot of problem, so we stick with r2d2hand for now
+r2d2_hand = True
+
 DEFAULT_ARM_POSES = {
     "vertical",
     "diagonal15",
@@ -27,9 +31,8 @@ RESET_JOINT_OPTIONS = {
 
 class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     """
-    HSR Robot
+    HSRB Robot
     Reference: https://www.hsr.io/en/
-    For now, let's stick with HSRB?
     """
 
     def __init__(
@@ -53,10 +56,27 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         """
 
         # Initialize link & joint dictionary
-        joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint', 'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint', 'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint', 'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'base_f_bumper_joint', 'base_b_bumper_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint', 'wrist_ft_sensor_frame_joint', 'hand_motor_joint', 'hand_l_proximal_joint', 'hand_l_spring_proximal_joint', 'hand_l_mimic_distal_joint', 'hand_l_distal_joint', 'hand_r_proximal_joint', 'hand_r_spring_proximal_joint', 'hand_r_mimic_distal_joint', 'hand_r_distal_joint']
 
-        # this is for the new model
-        joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint', 'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint', 'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint', 'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint', 'left_gripper_joint', 'right_gripper_joint']
+        if r2d2_hand:
+            joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint',
+                          'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint',
+                          'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint',
+                          'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'torso_lift_joint',
+                          'head_pan_joint', 'head_tilt_joint', 'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint',
+                          'wrist_flex_joint', 'wrist_roll_joint', 'left_gripper_joint', 'right_gripper_joint']
+
+        else:
+            joint_list = ['base_roll_joint', 'base_r_drive_wheel_joint', 'base_l_drive_wheel_joint',
+                          'base_r_passive_wheel_x_frame_joint', 'base_r_passive_wheel_y_frame_joint',
+                          'base_r_passive_wheel_z_joint', 'base_l_passive_wheel_x_frame_joint',
+                          'base_l_passive_wheel_y_frame_joint', 'base_l_passive_wheel_z_joint', 'base_f_bumper_joint',
+                          'base_b_bumper_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint',
+                          'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint',
+                          'wrist_ft_sensor_frame_joint', 'hand_motor_joint', 'hand_l_proximal_joint',
+                          'hand_l_spring_proximal_joint', 'hand_l_mimic_distal_joint', 'hand_l_distal_joint',
+                          'hand_r_proximal_joint', 'hand_r_spring_proximal_joint', 'hand_r_mimic_distal_joint',
+                          'hand_r_distal_joint']
+
         self.jn2i = {}
         for i in range(len(joint_list)):
             self.jn2i[joint_list[i]] = i
@@ -172,7 +192,6 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def gripper_link_to_grasp_point(self):
         return {self.default_arm: np.array([0.1, 0, 0])}
 
-
     @property
     def base_control_idx(self):
         """
@@ -209,39 +228,74 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {self.default_arm: np.array([self.jn2i['left_gripper_joint'], self.jn2i['right_gripper_joint']])}
+        if r2d2_hand:
+            return {self.default_arm: np.array([self.jn2i['left_gripper_joint'], self.jn2i['right_gripper_joint']])}
+        else:
+            return {self.default_arm: np.array([self.jn2i['hand_motor_joint']])}
+
 
     @property
     def disabled_collision_pairs(self):
-        return [
-            ['wrist_roll_link', 'right_gripper'],
-            ['wrist_roll_link', 'left_gripper'],
-            ['wrist_flex_link', 'gripper_pole'],
-            ['arm_roll_link', 'gripper_pole'],
-            ['arm_roll_link', 'gripper_pole'],
-            ['base_link', 'arm_flex_link'],
-            ['base_link', 'base_l_passive_wheel_z_link'],
-            ['base_link', 'base_r_passive_wheel_z_link'],
-            ['base_link', 'base_l_drive_wheel_link'],
-            ['base_link', 'base_l_drive_wheel_link'],
-            ['base_link', 'base_r_drive_wheel_link']
-        ]
+        if r2d2_hand:
+            return [
+                ['wrist_roll_link', 'right_gripper'],
+                ['wrist_roll_link', 'left_gripper'],
+                ['wrist_flex_link', 'gripper_pole'],
+                ['arm_roll_link', 'gripper_pole'],
+                ['base_link', 'arm_flex_link'],
+                ['base_link', 'base_l_passive_wheel_z_link'],
+                ['base_link', 'base_r_passive_wheel_z_link'],
+                ['base_link', 'base_l_drive_wheel_link'],
+                ['base_link', 'base_r_drive_wheel_link']
+            ]
+        else:
+            return [
+                ['hand_r_spring_proximal_link', 'hand_r_distal_link'],
+                ['hand_l_spring_proximal_link', 'hand_l_distal_link'],
+                ['hand_r_spring_proximal_link', 'hand_palm_link'],
+                ['hand_l_spring_proximal_link', 'hand_palm_link'],
+                ['wrist_roll_link', 'hand_r_spring_proximal_link'],
+                ['wrist_roll_link', 'hand_l_spring_proximal_link'],
+                ['wrist_roll_link', 'hand_r_distal_link'],
+                ['wrist_roll_link', 'hand_l_distal_link'],
+                ['arm_roll_link', 'hand_r_distal_link'],
+                ['arm_roll_link', 'hand_l_distal_link'],
+                ['hand_r_distal_link', 'wrist_flex_link'],
+                ['hand_l_distal_link', 'wrist_flex_link'],
+                ['base_link', 'arm_flex_link'],
+                ['base_link', 'base_l_passive_wheel_z_link'],
+                ['base_link', 'base_r_passive_wheel_z_link'],
+                ['base_link', 'base_l_drive_wheel_link'],
+                ['base_link', 'base_r_drive_wheel_link'],
+            ]
 
     @property
     def eef_link_names(self):
-        return {self.default_arm: "gripper_pole"}  # {self.default_arm: "hand_palm_link"}
+        if r2d2_hand:
+            return {self.default_arm: "gripper_pole"}
+        else:
+            return {self.default_arm: "hand_palm_link"}
 
     @property
     def finger_link_names(self):
-        return {self.default_arm: ["right_tip", "left_tip"]}  # {self.default_arm: ["hand_l_finger_tip_frame", "hand_r_finger_tip_frame"]}
+        if r2d2_hand:
+            return {self.default_arm: ["right_tip", "left_tip"]}
+        else:
+            return {self.default_arm: ["hand_l_finger_tip_frame", "hand_r_finger_tip_frame"]}
 
     @property
     def finger_joint_names(self):
-        return {self.default_arm: ["left_gripper_joint", "right_gripper_joint"]}  # {self.default_arm: ["hand_l_proximal_joint", "hand_r_proximal_joint"]}
+        if r2d2_hand:
+            return {self.default_arm: ["left_gripper_joint", "right_gripper_joint"]}
+        else:
+            return {self.default_arm: ["hand_l_proximal_joint", "hand_r_proximal_joint"]}
 
     @property
     def model_file(self):
-        return os.path.join(igibson.assets_path, "models/hsr/hsrb4s.urdf")
+        if r2d2_hand:
+            return os.path.join(igibson.assets_path, "models/hsr/hsrb4s.urdf")
+        else:
+            return os.path.join(igibson.assets_path, "models/hsr/hsrb4s.obj.urdf")
 
     def dump_config(self):
         """Dump robot config"""
