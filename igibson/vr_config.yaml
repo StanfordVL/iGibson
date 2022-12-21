@@ -22,7 +22,7 @@ shared_settings:
   # Speed of touchpad/joystick movement
   movement_speed: 0.01
   # Width of HUD display in meters
-  hud_width: 1
+  hud_width: 0.8
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
   # Height boundaries for VR user

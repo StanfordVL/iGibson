@@ -7,7 +7,9 @@ from igibson.objects.articulated_object import ArticulatedObject
 
 total_trial_per_round = 10
 default_robot_pose = ([-2.75, 0.85, 0.7], [0, 0, 0, 1])
-intro_paragraph = "Welcome to the catch experiment! In this experiment we can see a ball flying towards us. We need to catch the ball by moving our hand to the ball."
+intro_paragraph = """   Welcome to the catch experiment!
+    In this experiment you can see a ball flying towards you. Catch the ball by moving your hand to the ball and pressing the trigger.
+    Press menu button on the right controller to proceed."""
 
 def import_obj(s):
     ret = {"ball": ArticulatedObject(os.path.join(igibson.ig_dataset_path, "objects/ball/ball_000/ball_000.urdf"), scale=0.16)}

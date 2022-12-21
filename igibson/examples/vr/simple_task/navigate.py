@@ -8,22 +8,26 @@ from igibson.objects.articulated_object import ArticulatedObject
 num_of_duck = 1
 initial_x, initial_y = -5, 1
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
-intro_paragraph = "Welcome to the navigate experiment! In this experiment there will be a yellow duck among a bunch of objects. We need to navigate and find the duck and push it with our hand."
+intro_paragraph = """   Welcome to the navigate experiment!
+    There will be a yellow duck among a bunch of spheres. Navigate using the touchpad and push the duck using your hand.
+    Press menu button on the right controller to proceed."""
 
 def import_obj(s):
     # obstacles and ducks setup
     obstacles = []
     ducks = []
-    for _ in range(100 - num_of_duck):
+    for i in range(100 - num_of_duck):
         obstacles.append(ArticulatedObject(
             "sphere_1cm.urdf", scale=50, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         ))
         s.import_object(obstacles[-1])
+        obstacles[-1].set_position([0, 0, i]) # dummy position
     for _ in range(num_of_duck):
         ducks.append(ArticulatedObject(
             "duck_vhacd.urdf", scale=2, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         ))
         s.import_object(ducks[-1])
+        ducks[-1].set_position([0, 1, i]) # dummy position
 
     ret = {}
     ret["obstacles"] = obstacles

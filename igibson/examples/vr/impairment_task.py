@@ -146,7 +146,13 @@ def main():
             light_dimming_factor=1.0,
         )
         gravity = 9.8
-    s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+
+    # task specific vr settings 
+    vr_settings = VrSettings(use_vr=True)
+    vr_settings.touchpad_movement = False if args.task == "throw" else True
+    vr_settings.movement_speed = 0.02 if args.task == "navigate" else 0.01
+
+    s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
     s.renderer.update_vi_mode(vi_choices.index(args.mode))
     s.renderer.update_vi_level(level=args.level)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -160,18 +166,17 @@ def main():
     objs = lib.import_obj(s)
     
     trial_id = 0
-    first_demo = True
 
     task_success_list = []
     task_completion_time = []
 
-    s.add_vr_overlay_text(
+    overlay_text = s.add_vr_overlay_text(
         text_data=lib.intro_paragraph,
         font_size=40,
         font_style="Bold",
         color=[0, 0, 0],
         pos=[0, 75],
-        size=[100, 50],
+        size=[100, 80],
     )
     s.set_hud_show_state(True)
     s.renderer.update_vi_mode(mode=6) # black screen
@@ -179,16 +184,12 @@ def main():
     while not s.query_vr_event("right_controller", "overlay_toggle"):
         s.step()
     s.renderer.update_vi_mode(mode=0)
-
-    s.add_vr_overlay_text(
-        text_data="Task Complete! Toggle right controller to restart or left controller to terminate...",
-        font_size=40,
-        font_style="Bold",
-        color=[0, 0, 0],
-        pos=[0, 75],
-        size=[90, 50],
-    )
     s.set_hud_show_state(False)
+    overlay_text.set_text("""
+        Task Complete! 
+        Toggle menu button on the right controller to restart the task.
+        Toggle menu button on the left controller to finish data collection..."""
+    )
     
     while True:
         start_time = time.time()
@@ -219,6 +220,7 @@ def main():
         
 
         # Main simulation loop
+        s.vr_attached = True
         success, terminate = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, ret)
         
         if not args.disable_save:
@@ -227,13 +229,9 @@ def main():
         if terminate:
             break
         
-        # We don't collect data for the first trial
-        if first_demo:
-            first_demo = False
-        else:
-            task_success_list.append(success)
-            task_completion_time.append(time.time() - start_time)
-            trial_id += 1
+        task_success_list.append(success)
+        task_completion_time.append(time.time() - start_time)
+        trial_id += 1
 
         # start transition period
         s.set_hud_show_state(True)

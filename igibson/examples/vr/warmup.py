@@ -30,12 +30,12 @@ background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background
 
 vi_choices = ["normal", "cataract", "amd", "glaucoma", "presbyopia", "myopia"]
 lib = {
-    "navigate": navigate,
     "catch": catch,
+    "navigate": navigate,
+    "place": place,
+    "slice": slice,
     "throw": throw,
     "wipe": wipe,
-    "slice": slice,
-    "place": place,
 }
 
 def load_scene(simulator, task):
@@ -99,7 +99,13 @@ def main():
                 light_dimming_factor=1.0,
             )
             gravity = 9.8
-        s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+
+        # task specific vr settings
+        vr_settings = VrSettings(use_vr=True)
+        vr_settings.touchpad_movement = False if task == "throw" else True
+        vr_settings.movement_speed = 0.02 if task == "navigate" else 0.01
+
+        s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         
         # scene setup
@@ -111,7 +117,7 @@ def main():
         # object setup
         objs = lib[task].import_obj(s)
 
-        s.add_vr_overlay_text(
+        overlay_text = s.add_vr_overlay_text(
             text_data=lib[task].intro_paragraph,
             font_size=40,
             font_style="Bold",
@@ -119,24 +125,20 @@ def main():
             pos=[0, 75],
             size=[100, 50],
         )
-
         s.set_hud_show_state(True)
+        s.renderer.update_vi_mode(mode=6) # black screen
         s.step()
         while not s.query_vr_event("right_controller", "overlay_toggle"):
             s.step()
-
-        s.add_vr_overlay_text(
-            text_data="Task Complete! Toggle right controller to restart or left controller to terminate...",
-            font_size=40,
-            font_style="Bold",
-            color=[0, 0, 0],
-            pos=[0, 75],
-            size=[90, 50],
-        )
+        s.renderer.update_vi_mode(mode=0)
         s.set_hud_show_state(False)
+        overlay_text.set_text("""
+            Task Complete! 
+            Toggle menu button on the right controller to restart the task.
+            Toggle menu button on the left controller to switch to the next task..."""
+        )
         
         while True:
-            start_time = time.time()
             
             # set all object positions
             bvr_robot.set_position_orientation(*lib[task].default_robot_pose)
@@ -146,7 +148,8 @@ def main():
             ret = lib[task].set_obj_pos(objs)
             
             # Main simulation loop
-            success, terminate = lib[task].main(s, None, True, False, bvr_robot, objs, ret)
+            s.vr_attached = True
+            _, terminate = lib[task].main(s, None, True, False, bvr_robot, objs, ret)
 
             if terminate:
                 break
