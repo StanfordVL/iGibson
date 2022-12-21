@@ -74,7 +74,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     print("Moving " + robot_name)
 
-    for _ in range(3000):
+    for _ in range(300):
         action = np.random.uniform(-1, 1, robot.action_dim)
         robot.apply_action(action)
         for _ in range(10):

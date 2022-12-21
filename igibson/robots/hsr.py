@@ -11,22 +11,11 @@ from igibson.robots.two_wheel_robot import TwoWheelRobot
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
 
+# TODO: proprioceptive info
+
 # We add support for both the mesh with r2d2 hand and the normal mesh
 # Passive joint seems to have a lot of problem, so we stick with r2d2hand for now
 r2d2_hand = True
-
-DEFAULT_ARM_POSES = {
-    "vertical",
-    "diagonal15",
-    "diagonal30",
-    "diagonal45",
-    "horizontal",
-}
-
-RESET_JOINT_OPTIONS = {
-    "tuck",
-    "untuck",
-}
 
 
 class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
@@ -39,8 +28,6 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         self,
         reset_joint_pos=None,
         rigid_trunk=False,
-        default_trunk_offset=0.365,
-        default_arm_pose="vertical",
         **kwargs,
     ):
         """
@@ -50,8 +37,6 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             instead.
         :param rigid_trunk: bool, if True, will prevent the trunk from moving during execution.
         :param default_trunk_offset: float, sets the default height of the robot's trunk
-        :param default_arm_pose: Default pose for the robot arm. Should be one of {"vertical", "diagonal15",
-            "diagonal30", "diagonal45", "horizontal"}
         :param **kwargs: see ManipulationRobot, TwoWheelRobot, ActiveCameraRobot
         """
 
@@ -83,21 +68,14 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
         # Store args
         self.rigid_trunk = rigid_trunk
-        self.default_trunk_offset = default_trunk_offset
-        assert_valid_key(key=default_arm_pose, valid_keys=DEFAULT_ARM_POSES, name="default_arm_pose")
-        self.default_arm_pose = default_arm_pose
 
         # Parse reset joint pos if specifying special string
         if isinstance(reset_joint_pos, str):
-            assert (
-                reset_joint_pos in RESET_JOINT_OPTIONS
-            ), "reset_joint_pos should be one of {} if using a string!".format(RESET_JOINT_OPTIONS)
-            reset_joint_pos = (
-                self.tucked_default_joint_pos if reset_joint_pos == "tuck" else self.untucked_default_joint_pos
-            )
+            raise Exception("reset joint pos str mode not implemented for HSR")
 
         # Run super init
         super().__init__(reset_joint_pos=reset_joint_pos, **kwargs)
+
 
     @property
     def model_name(self):
@@ -126,10 +104,10 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Run super method first
         u_vec, u_type_vec = super()._actions_to_control(action=action)
 
-        # # Override trunk value if we're keeping the trunk rigid
-        # if self.rigid_trunk:
-        #     u_vec[self.trunk_control_idx] = self.untucked_default_joint_pos[self.trunk_control_idx]
-        #     u_type_vec[self.trunk_control_idx] = ControlType.POSITION
+        # Override trunk value if we're keeping the trunk rigid
+        if self.rigid_trunk:
+            u_vec[self.trunk_control_idx] = self.untucked_default_joint_pos[self.trunk_control_idx]
+            u_type_vec[self.trunk_control_idx] = ControlType.POSITION
 
         # Return control
         return u_vec, u_type_vec
@@ -161,7 +139,7 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # We use multi finger gripper, differential drive, and Joint controllers as default
         controllers["base"] = "DifferentialDriveController"
         controllers["camera"] = "JointController"
-        controllers["arm_{}".format(self.default_arm)] = "JointController"
+        controllers["arm_{}".format(self.default_arm)] = "InverseKinematicsController"
         controllers["gripper_{}".format(self.default_arm)] = "MultiFingerGripperController"
 
         return controllers
@@ -170,12 +148,30 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def _default_controller_config(self):
         # Grab defaults from super method first
         cfg = super()._default_controller_config
+
+        # Use default IK controller -- also need to override joint idx being controlled to include trunk in default
+        # IK arm controller
+        cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["joint_idx"] = np.concatenate(
+            [self.trunk_control_idx, self.arm_control_idx[self.default_arm]]
+        )
+
+        # If using rigid trunk, we also clamp its limits
+        if self.rigid_trunk:
+            cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["control_limits"]["position"][0][
+                self.trunk_control_idx
+            ] = self.untucked_default_joint_pos[self.trunk_control_idx]
+            cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["control_limits"]["position"][1][
+                self.trunk_control_idx
+            ] = self.untucked_default_joint_pos[self.trunk_control_idx]
+
         return cfg
 
     @property
+    def untucked_default_joint_pos(self):
+        return np.zeros(self.n_joints)
+
+    @property
     def default_joint_pos(self):
-        # return self.untucked_default_joint_pos
-        # TODO: this is not rigt but also not critical?
         return np.zeros(self.n_joints)
 
     @property
@@ -190,6 +186,7 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
     @property
     def gripper_link_to_grasp_point(self):
+        # Todo: need change
         return {self.default_arm: np.array([0.1, 0, 0])}
 
     @property
@@ -300,11 +297,4 @@ class HSR(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def dump_config(self):
         """Dump robot config"""
         dump = super(HSR, self).dump_config()
-        dump.update(
-            {
-                "rigid_trunk": self.rigid_trunk,
-                "default_trunk_offset": self.default_trunk_offset,
-                "default_arm_pose": self.default_arm_pose,
-            }
-        )
         return dump
