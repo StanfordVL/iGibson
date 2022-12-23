@@ -296,21 +296,21 @@ class SimulatorVR(Simulator):
                 )
                 self.set_vr_offset(new_offset)
 
-        # Adjust user height based on y-axis (vertical direction) touchpad input
-        vr_height_device = "left_controller" if self.vr_settings.movement_controller == "right" else "right_controller"
-        is_height_valid, _, _ = self.get_data_for_vr_device(vr_height_device)
-        if is_height_valid:
-            curr_offset = self.get_vr_offset()
-            hmd_height = self.get_hmd_world_pos()[2]
-            _, _, height_y, _ = self.get_button_data_for_controller(vr_height_device)
-            if height_y < -0.7:
-                vr_z_offset = -0.01
-                if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
-            elif height_y > 0.7:
-                vr_z_offset = 0.01
-                if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+            # Adjust user height based on y-axis (vertical direction) touchpad input
+            vr_height_device = "left_controller" if self.vr_settings.movement_controller == "right" else "right_controller"
+            is_height_valid, _, _ = self.get_data_for_vr_device(vr_height_device)
+            if is_height_valid:
+                curr_offset = self.get_vr_offset()
+                hmd_height = self.get_hmd_world_pos()[2]
+                _, _, height_y, _ = self.get_button_data_for_controller(vr_height_device)
+                if height_y < -0.7:
+                    vr_z_offset = -0.01
+                    if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
+                        self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+                elif height_y > 0.7:
+                    vr_z_offset = 0.01
+                    if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
+                        self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
         # Update haptics for body and hands
         if self.main_vr_robot:

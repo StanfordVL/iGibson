@@ -6,9 +6,10 @@ import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 
 total_trial_per_round = 10
-default_robot_pose = ([-2.75, 0.85, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the catch experiment!
     In this experiment you can see a ball flying towards you. Catch the ball by moving your hand to the ball and pressing the trigger.
+    Make sure to keep grabbing the ball until the ball resets!
     Press menu button on the right controller to proceed."""
 
 def import_obj(s):
@@ -25,21 +26,22 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     cur_time = start_time
     episode_len = 4
     is_bounced = False
-    gamma = 0.9
-    init_y_pos = -7
+    gamma = 0.85
+    init_x_pos = 9
 
-    rand_z = random.random() * 0.5 + 2
-    objs["ball"].set_position((-3, init_y_pos , rand_z))
-    objs["ball"].set_velocities([([0, 6, 4], [0, 0, 0])])
+    rand_z = random.random() * 0.5 + 2.25
+    rand_y = random.random() * 0.5 - 0.25
+    objs["ball"].set_position((init_x_pos, rand_y, rand_z))
+    objs["ball"].set_velocities([([-6, 0, 4], [0, 0, 0])])
     objs["ball"].force_wakeup()
 
-    trial_offset = 5
+    trial_offset = 1
     total_trial = 0
     success_trial = 0
 
     # Main simulation loop
     while True:
-        s.step()
+        s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()       
         robot.apply_action(s.gen_vr_robot_action())
@@ -61,17 +63,17 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
             if total_trial == total_trial_per_round:
                 break
             start_time = cur_time
-            rand_z = random.random() * 0.5 + 2 
-            objs["ball"].set_position((-3, init_y_pos , rand_z))
-            objs["ball"].set_velocities([([0, 6, 4], [0, 0, 0])])
+            rand_z = random.random() * 0.5 + 2.25
+            rand_y = random.random() * 0.5 - 0.25
+            objs["ball"].set_position((init_x_pos, rand_y, rand_z))
+            objs["ball"].set_velocities([([-6, 0, 4], [0, 0, 0])])
             is_bounced = False
             objs["ball"].force_wakeup()
             continue
 
-
         if (ball_pos[2] < 0.07 and not is_bounced):
             is_bounced = True
-            objs["ball"].set_velocities([([0, 2 * gamma, (2 * 9.8 * rand_z) ** 0.5 * gamma], [0, 0, 0])])
+            objs["ball"].set_velocities([([-4, 0, (2 * 9.8 * rand_z) ** 0.5 * gamma], [0, 0, 0])])
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):

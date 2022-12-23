@@ -92,7 +92,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Main simulation loop
     while True:
-        s.step()
+        s.step(print_stats=True)
 
         bvr_robot.apply_action(s.gen_vr_robot_action())
 

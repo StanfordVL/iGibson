@@ -52,7 +52,7 @@ def load_scene(simulator, task):
         if task == "catch":
             # wall setup
             wall = ArticulatedObject(
-                f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
             )
             simulator.import_object(wall)
             wall.set_position_orientation([0, -18, 0], [0.707, 0, 0, 0.707])
@@ -65,7 +65,7 @@ def load_scene(simulator, task):
             ]
             for i in range(4):
                 wall = ArticulatedObject(
-                    f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                    "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
                 )
                 simulator.import_object(wall)
                 wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
@@ -102,8 +102,7 @@ def main():
 
         # task specific vr settings
         vr_settings = VrSettings(use_vr=True)
-        vr_settings.touchpad_movement = False if task == "throw" else True
-        vr_settings.movement_speed = 0.02 if task == "navigate" else 0.01
+        vr_settings.touchpad_movement = False
 
         s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -138,8 +137,8 @@ def main():
             Toggle menu button on the left controller to switch to the next task..."""
         )
         
+        num_trials = 0
         while True:
-            
             # set all object positions
             bvr_robot.set_position_orientation(*lib[task].default_robot_pose)
             s.set_vr_offset(lib[task].default_robot_pose[0][:2] + [0])
@@ -151,7 +150,8 @@ def main():
             s.vr_attached = True
             _, terminate = lib[task].main(s, None, True, False, bvr_robot, objs, ret)
 
-            if terminate:
+            num_trials += 1
+            if terminate or num_trials >= 10:
                 break
 
             # start transition period

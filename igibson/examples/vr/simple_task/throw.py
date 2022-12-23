@@ -6,16 +6,16 @@ from igibson.object_states import OnTop
 from igibson.objects.articulated_object import ArticulatedObject
 
 
-default_robot_pose = ([-0.75, -1, 0.7], [0, 0, 0, 1])
+default_robot_pose = ([-0.75, -1, 0], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the throw experiment!
     There will be a basket on the ground and a ball on the table. Grab the ball using your hand and throw it into the basket.
     Press menu button on the right controller to proceed."""
 
 def import_obj(s):
     ret = {}
-    ret["table"] = ArticulatedObject("table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    ret["table"] = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     ret["sphere"] = ArticulatedObject("sphere_small.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=2, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=1.5, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     for obj in ret.values():
         s.import_object(obj)
     return ret
@@ -25,10 +25,10 @@ def import_obj(s):
 def set_obj_pos(objs):
     # objects
     objs["table"].set_position_orientation((-1.2, -1.75, 0), (0, 0, 0, 1))
-    objs["sphere"].set_position_orientation((-0.6, -1.4, 0.66), (0.000000, 0.707107, 0.000000, 0.707107))
+    objs["sphere"].set_position_orientation((-0.6, -1.4, 1.1), (0, 0, 0, 1))
 
     basket_y = random()  - 1.5
-    objs["basket"].set_position((0.7, basket_y, 0.2))
+    objs["basket"].set_position((0.7, basket_y, 0.15))
     objs["basket"].set_orientation((0, 0, 0, 1))
     for obj in objs:
         objs[obj].force_wakeup()
@@ -42,7 +42,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     complete_time = 0
     # Main simulation loop
     while True:
-        s.step()
+        s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())

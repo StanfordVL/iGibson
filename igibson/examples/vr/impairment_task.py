@@ -49,10 +49,10 @@ def load_scene(simulator, task):
         if task == "catch":
             # wall setup
             wall = ArticulatedObject(
-                f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
             )
             simulator.import_object(wall)
-            wall.set_position_orientation([0, -18, 0], [0.707, 0, 0, 0.707])
+            wall.set_position_orientation([19, 0, 0], [0, 0.707, 0, 0.707])
         else:
             walls_pos = [
                 ([-15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
@@ -62,7 +62,7 @@ def load_scene(simulator, task):
             ]
             for i in range(4):
                 wall = ArticulatedObject(
-                    f"{os.getcwd()}/igibson/examples/vr/visual_disease_demo_mtls/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                    "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
                 )
                 simulator.import_object(wall)
                 wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
@@ -98,10 +98,6 @@ def parse_args():
         nargs="?",
         help="Level of visual impairment. Choose from 1/2/3",
     )
-    demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
-    parser.add_argument(
-        "--demo_file", type=str, default=demo_file, required=False, help="Path (and filename) of demo file"
-    )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
     parser.add_argument("--debug", action="store_true", help="Whether to enable debug mode (right controller to switch between modes and levels).")
     return parser.parse_args()
@@ -127,7 +123,7 @@ def main():
             env_texture_filename2="",
             env_texture_filename3="",
             light_modulation_map_filename="",
-            enable_pbr=True,
+            enable_pbr=False,
             msaa=True,
             light_dimming_factor=1.0,
         )
@@ -149,10 +145,9 @@ def main():
 
     # task specific vr settings 
     vr_settings = VrSettings(use_vr=True)
-    vr_settings.touchpad_movement = False if args.task == "throw" else True
-    vr_settings.movement_speed = 0.02 if args.task == "navigate" else 0.01
+    vr_settings.touchpad_movement = False
 
-    s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
+    s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/360.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
     s.renderer.update_vi_mode(vi_choices.index(args.mode))
     s.renderer.update_vi_level(level=args.level)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -196,7 +191,7 @@ def main():
         
         # set all object positions
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
-        s.set_vr_offset(lib.default_robot_pose[0][:2] + [0])
+        s.set_vr_offset([*lib.default_robot_pose[0][:2], 0])
         # This is necessary to correctly reset object in head 
         bvr_robot.apply_action(np.zeros(28))
         ret = lib.set_obj_pos(objs)

@@ -351,6 +351,7 @@ class MeshRendererVR(MeshRenderer):
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_vision_factor", 0.0)
         elif self.vi_mode == 5:
+            self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 0.0)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", -1000.0 / self.dioptres)
             self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor", 0.0)
@@ -379,7 +380,6 @@ class MeshRendererVR(MeshRenderer):
             self.glaucoma_overlay[new_vi_level].set_overlay_show_state(True)
         elif self.vi_mode == 4:
                 self.dioptres = self.presbyopia_level[new_vi_level]
-                self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 1)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_point", 1000.0 / (4.4 - self.dioptres))
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_far_point", 1000000000.0)
                 self.vrsys.updateUniform1f(self.lensShaderProgram, "u_near_vision_factor",  1.0 + self.dioptres * DIOPTRES_SCALING)

@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 num_of_obstacles = 0
-default_robot_pose = ([1, -0.2, 0.5], [0, 0, 0, 1])
+default_robot_pose = ([1, -0.2, 0], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the wipe experiment! 
     There will be a soaked brush and a table with stain on it. Grab the brush with your hand and wipe the stain off the table with it.
     Press menu button on the right controller to proceed."""
@@ -45,6 +45,7 @@ def import_obj(s):
     
     # Load table with dust
     # need to delete the last 4 lines of default.mtl in order to get clean surface
+    # need to change stain.mtl Kd to be 0.5 0.4 0.1
     model_path = os.path.join(get_ig_model_path("desk", "ea45801f26b84935d0ebb3b81115ac90"), "ea45801f26b84935d0ebb3b81115ac90.urdf")
     desk = URDFObject(
         filename=model_path,
@@ -103,7 +104,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     success_time = 0
     # Main simulation loop.
     while True:
-        s.step()
+        s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())

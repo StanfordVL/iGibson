@@ -10,13 +10,13 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 
-default_robot_pose = ([0.2, -1, 0.5], [0, 0, 0, 1])
+default_robot_pose = ([0.2, -1, 0], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the slice experiment! 
     There will be a knife and an apple on the table. Grab the knife with your hand and slice the apple into 2 pieces with it.
     Press menu button on the right controller to proceed."""
 
 def import_obj(s):
-    table = ArticulatedObject("table/table.urdf", scale=1)
+    table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1)
     s.import_object(table)
     table.set_position_orientation((1.000000, -1.000000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107))
     
@@ -71,12 +71,12 @@ def set_obj_pos(objs):
     objs["slicer"].force_wakeup()
     objs["apple"].load_state(objs["apple_initial_extended_state"])
     objs["apple"].force_wakeup()
-    objs["slicer"].set_position_orientation((0.800000, -1.000000, 0.750000), ( 0.707107, 0.000000, 0.707107, 0.000000))
+    objs["slicer"].set_position_orientation((0.800000, -1.000000, 1.1), ( 0.707107, 0.000000, 0.707107, 0.000000))
     # Set these objects to be far-away locations
     for i, new_urdf_obj in enumerate(objs["obj_part_list"]):
         new_urdf_obj.set_position([100 + i, 100, -100])
         new_urdf_obj.force_wakeup()
-    objs["apple"].set_position((0.800000, -0.70000, 0.750000))
+    objs["apple"].set_position((0.800000, -0.70000, 1.1))
     objs["apple"].force_wakeup()
 
 
@@ -84,7 +84,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     success, terminate = False, False
     success_time = 0
     while True:
-        s.step()
+        s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
