@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 num_of_obstacles = 0
-default_robot_pose = ([1, -0.2, 0], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 0], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the wipe experiment! 
     There will be a soaked brush and a table with stain on it. Grab the brush with your hand and wipe the stain off the table with it.
     Press menu button on the right controller to proceed."""
@@ -76,22 +76,22 @@ def import_obj(s):
     return ret
 
 def set_obj_pos(objs):
-    # 0.5 - 1.5 | -1.4 - -0.6
+    # -0.5 - 0.5 | -1.2 - -0.8
     randomize_pos = (
-        [(0.5, 0.8), (-1.4, -1.05), 0.7],
-        [(0.85, 1.15), (-1.4, -1.05), 0.7],
-        [(1.2, 1.5), (-1.4, -1.05), 0.7],
-        [(0.5, 0.8), (-0.95, -0.6), 0.7],
-        [(0.85, 1.15), (-0.95, -0.6), 0.7],
-        [(1.2, 1.5), (-0.95, -0.6), 0.7],
+        [(-0.5, -0.2), (-1.2, -0.85), 0.7],
+        [(-0.15, 0.15), (-1.2, -0.85), 0.7],
+        [(1.2, 1.5), (-1.2, -0.85), 0.7],
+        [(-0.5, -0.2), (-0.75, -0.4), 0.7],
+        [(-0.15, 0.15), (-0.75, -0.4), 0.7],
+        [(0.2, 0.5), (-0.75, -0.4), 0.7],
     )
 
     for i, pos in enumerate(random.sample(randomize_pos, num_of_obstacles)):        
         objs["objs"][i].set_position([random.uniform(*pos[0]), random.uniform(*pos[1]), pos[2]])
         objs["objs"][i].force_wakeup()
 
-    objs["brush"].set_position([1, -1, 0.8])
-    objs["desk"].set_position([1, -1, 0.5])
+    objs["brush"].set_position([0, -0.8, 0.8])
+    objs["desk"].set_position([0, -0.8, 0.5])
     objs["brush"].states[object_states.Soaked].set_value(True)
     objs["desk"].states[object_states.Stained].set_value(False) # need this to resample stain
     objs["desk"].states[object_states.Stained].set_value(True)

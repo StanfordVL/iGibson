@@ -1,15 +1,17 @@
 import logging
 import os
 import time
-import tempfile
 import pybullet as p
 import pybullet_data
 import argparse
 import numpy as np
 import datetime
+import random
+import json
 
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
@@ -72,6 +74,13 @@ def parse_args():
     tasks_choices = ["catch", "navigate", "place", "slice", "throw", "wipe"]
     parser = argparse.ArgumentParser(description="Run and collect a demo of a task")
     parser.add_argument(
+        "--name",
+        type=str,
+        required=True,
+        nargs="?",
+        help="Name of the experiment subject",
+    )
+    parser.add_argument(
         "--task",
         type=str,
         choices=tasks_choices,
@@ -81,7 +90,7 @@ def parse_args():
         help="Name of task to collect a demo of. Choose from catch/navigate/place/slice/slice/throw/wipe",
     )
     parser.add_argument(
-        "--mode",
+        "--vi",
         type=str,
         choices=vi_choices,
         required=False,
@@ -103,9 +112,16 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    time_str = datetime.datetime.now().strftime("%Y%m%d_%H-%M-%S")
-
     args = parse_args()
+    if not args.disable_save:
+        save_dir = f"igibson/data/demos/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        os.makedirs(save_dir, exist_ok=False)
+    # get seed for this expriment's configuration
+    with open("igibson/examples/vr/visual_disease_demo_mtls/seed.json", "r") as f:
+        seed_num = json.load(f)[args.task][args.vi][args.level - 1]
+        random.seed(seed_num)
+        np.random.seed(seed_num)
+    
     lib = {
         "catch": catch,
         "navigate": navigate,
@@ -148,8 +164,6 @@ def main():
     vr_settings.touchpad_movement = False
 
     s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/360.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
-    s.renderer.update_vi_mode(vi_choices.index(args.mode))
-    s.renderer.update_vi_level(level=args.level)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     # scene setup
     load_scene(s, args.task)
@@ -159,6 +173,12 @@ def main():
     s.import_object(bvr_robot)
     # object setup
     objs = lib.import_obj(s)
+    # import a visual marker for robot's initial pose
+    robot_pos_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.1], radius=0.1, length=1)
+    s.import_object(robot_pos_marker)
+    robot_pos_marker.set_position([0, 0, 0.5])
+    for instance in robot_pos_marker.renderer_instances:
+        instance.hidden = True
     
     trial_id = 0
 
@@ -178,13 +198,9 @@ def main():
     s.step()
     while not s.query_vr_event("right_controller", "overlay_toggle"):
         s.step()
-    s.renderer.update_vi_mode(mode=0)
     s.set_hud_show_state(False)
-    overlay_text.set_text("""
-        Task Complete! 
-        Toggle menu button on the right controller to restart the task.
-        Toggle menu button on the left controller to finish data collection..."""
-    )
+    s.renderer.update_vi_mode(vi_choices.index(args.vi))
+    s.renderer.update_vi_level(level=args.level)
     
     while True:
         start_time = time.time()
@@ -196,12 +212,9 @@ def main():
         bvr_robot.apply_action(np.zeros(28))
         ret = lib.set_obj_pos(objs)
         # log writer
-        # demo_file = os.path.join(tempfile.gettempdir(), f"{args.task}_{args.vi}_{trial_id}.hdf5")
-        demo_file = f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_{trial_id}.hdf5"
-
-        instance_id = 0
         log_writer = None
         if not args.disable_save:
+            demo_file = f"{save_dir}/{trial_id}.hdf5"
             log_writer = IGLogWriter(
                 s,
                 log_filepath=demo_file,
@@ -211,7 +224,7 @@ def main():
                 filter_objects=True,
             )
             log_writer.set_up_data_storage()
-            log_writer.hf.attrs["/metadata/instance_id"] = instance_id
+            log_writer.hf.attrs["/metadata/instance_id"] = trial_id
         
 
         # Main simulation loop
@@ -229,23 +242,34 @@ def main():
         trial_id += 1
 
         # start transition period
+        overlay_text.set_text(f"""Task {args.task} with {args.vi} level{args.level} trial #{trial_id} complete! \nToggle menu button on the left controller to finish data collection...\n To restart the task, return to the original position, then toggle menu button on the right controller.""")
         s.set_hud_show_state(True)
+        # Temporarily disable visual impairment
+        s.renderer.update_vi_mode(0)
+        for instance in robot_pos_marker.renderer_instances:
+            instance.hidden = False
         while True:
             s.step()
+            bvr_robot.apply_action(s.gen_vr_robot_action())
             if s.query_vr_event("left_controller", "overlay_toggle"):
                 terminate = True
                 break
             if s.query_vr_event("right_controller", "overlay_toggle"):
-                break
-
+                # check robot position
+                if np.linalg.norm(np.linalg.norm(bvr_robot.get_position()[:2] - [0, 0])) < 0.3:
+                    break
         if terminate:
             break
-        s.set_hud_show_state(False)        
+        for instance in robot_pos_marker.renderer_instances:
+            instance.hidden = True
+        s.set_hud_show_state(False)   
+        s.renderer.update_vi_mode(vi_choices.index(args.vi))
+
     s.disconnect()
     if not args.disable_save:
-        np.save(f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_success_list.npy", task_success_list)
-        np.save(f"igibson/data/demos/{args.task}_{args.mode}-{args.level}_completion_time.npy", task_completion_time)
-    print(f"igibson/data/demos/{args.task}_{args.mode}-{args.level} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
+        np.save(f"{save_dir}/success_list.npy", task_success_list)
+        np.save(f"{save_dir}/completion_time.npy", task_completion_time)
+    print(f"{args.task}_{args.vi}_{args.level} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

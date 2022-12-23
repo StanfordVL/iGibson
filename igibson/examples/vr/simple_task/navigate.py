@@ -8,7 +8,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 # Hyper parameters
 horizontal_level = 6
 vertical_level = 3
-sampling_ratio = 0.7
+sampling_ratio = 0.8
 total_num_objects_before_sampling = horizontal_level ** 2 * vertical_level
 total_num_objects = int(total_num_objects_before_sampling * sampling_ratio)
 

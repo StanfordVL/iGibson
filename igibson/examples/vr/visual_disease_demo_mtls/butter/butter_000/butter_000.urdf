@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="butter_000">
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0. 0. 0." />
+      <mass value="1.0" />
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001" />
+    </inertial>
+    <visual name="butter_package">
+      <origin xyz="0. 0. 0." />
+      <geometry>
+        <mesh filename="shape/visual/butter_package.encrypted.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." />
+      <geometry>
+        <mesh filename="shape/collision/butter_000_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+</robot>

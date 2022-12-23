@@ -126,7 +126,7 @@ void main()
                 col += sampleTex[i] * kernel[i];
             // 2. reduce contrast
             vec3 tempColor = col * (1 - c) + vec3(0.5 * c);
-            if (cataractLevel == 1) {
+            if (cataractLevel == 0) {
                 FragColor = vec4(tempColor, 1.0);
                 break;
             }
@@ -137,7 +137,7 @@ void main()
             // also gamma correct while we're at it       
             tempColor = pow(tempColor, vec3(1.0 / gamma));
             tempColor = tempColor * (1 - t) + TintColor * t;
-            if (cataractLevel == 2) {
+            if (cataractLevel == 1) {
                 FragColor = vec4(tempColor, 1.0);
                 break;
             }

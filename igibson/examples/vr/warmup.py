@@ -7,6 +7,7 @@ import numpy as np
 
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
@@ -55,7 +56,7 @@ def load_scene(simulator, task):
                 "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
             )
             simulator.import_object(wall)
-            wall.set_position_orientation([0, -18, 0], [0.707, 0, 0, 0.707])
+            wall.set_position_orientation([19, 0, 0], [0.707, 0, 0, 0.707])
         else:
             walls_pos = [
                 ([-15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
@@ -104,7 +105,7 @@ def main():
         vr_settings = VrSettings(use_vr=True)
         vr_settings.touchpad_movement = False
 
-        s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/180.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
+        s = SimulatorVR(gravity = gravity, render_timestep=1/90.0, physics_timestep=1/360.0, mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         
         # scene setup
@@ -115,6 +116,12 @@ def main():
         s.import_object(bvr_robot)
         # object setup
         objs = lib[task].import_obj(s)
+        # import a visual marker for robot's initial pose
+        robot_pos_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.1], radius=0.1, length=1)
+        s.import_object(robot_pos_marker)
+        robot_pos_marker.set_position([0, 0, 0.5])
+        for instance in robot_pos_marker.renderer_instances:
+            instance.hidden = True
 
         overlay_text = s.add_vr_overlay_text(
             text_data=lib[task].intro_paragraph,
@@ -156,16 +163,22 @@ def main():
 
             # start transition period
             s.set_hud_show_state(True)
+            for instance in robot_pos_marker.renderer_instances:
+                instance.hidden = False
             while True:
                 s.step()
                 if s.query_vr_event("left_controller", "overlay_toggle"):
                     terminate = True
                     break
                 if s.query_vr_event("right_controller", "overlay_toggle"):
-                    break
-
+                    # check robot position
+                    if np.linalg.norm(np.linalg.norm(bvr_robot.get_position()[:2] - [0, 0])) < 0.3:
+                        break
             if terminate:
                 break
+
+            for instance in robot_pos_marker.renderer_instances:
+                instance.hidden = True
             s.set_hud_show_state(False)        
         s.disconnect()
         del s

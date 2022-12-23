@@ -6,7 +6,7 @@ from igibson.object_states import OnTop
 from igibson.objects.articulated_object import ArticulatedObject
 
 
-default_robot_pose = ([-0.75, -1, 0], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 0], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the throw experiment!
     There will be a basket on the ground and a ball on the table. Grab the ball using your hand and throw it into the basket.
     Press menu button on the right controller to proceed."""
@@ -24,11 +24,11 @@ def import_obj(s):
 
 def set_obj_pos(objs):
     # objects
-    objs["table"].set_position_orientation((-1.2, -1.75, 0), (0, 0, 0, 1))
-    objs["sphere"].set_position_orientation((-0.6, -1.4, 1.1), (0, 0, 0, 1))
+    objs["table"].set_position_orientation((-0.45, -0.75, 0), (0, 0, 0, 1))
+    objs["sphere"].set_position_orientation((0.15, -0.4, 1.1), (0, 0, 0, 1))
 
-    basket_y = random()  - 1.5
-    objs["basket"].set_position((0.7, basket_y, 0.15))
+    basket_y = random() - 0.5
+    objs["basket"].set_position((1.75, basket_y, 0.15))
     objs["basket"].set_orientation((0, 0, 0, 1))
     for obj in objs:
         objs[obj].force_wakeup()
