@@ -840,17 +840,18 @@ class SimulatorVR(Simulator):
 
         self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
 
-    def update_vi_effect(self):
+    def update_vi_effect(self, debug=False):
         """
         update post processing visual impairment mode and effect
         """
-        vr_height_device = "right_controller"
-        if self.query_vr_event(vr_height_device, "post_processing_toggle"):
-            _, touch_x, _, _ = self.get_button_data_for_controller(vr_height_device)
-            if touch_x < -0.7:
-                self.renderer.update_vi_mode()
-            elif touch_x > 0.7:
-                self.renderer.update_vi_level()
+        if debug:
+            vr_height_device = "right_controller"
+            if self.query_vr_event(vr_height_device, "post_processing_toggle"):
+                _, touch_x, _, _ = self.get_button_data_for_controller(vr_height_device)
+                if touch_x < -0.7:
+                    self.renderer.update_vi_mode()
+                elif touch_x > 0.7:
+                    self.renderer.update_vi_level()
         is_valid, _, _, pos, _, _, _, _, _, _ = self.get_eye_tracking_data()
         if is_valid:
             self.renderer.update_vi_with_eye_pose(pos)

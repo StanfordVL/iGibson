@@ -15,8 +15,8 @@ total_num_objects = int(total_num_objects_before_sampling * sampling_ratio)
 num_of_duck = 1
 horizontal_offset = 0.6
 vertical_offset = 0.5
-initial_x, initial_y, initial_z = -1.5, -1.5, 1
-default_robot_pose = ([0, 0, 0], [0, 0, 0, 1])
+initial_x, initial_y, initial_z = -1.5, -1.5, 1.1
+default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the navigate experiment!
     There will be a yellow duck among a bunch of spheres. Navigate using the touchpad and push the duck using your hand.
     Press menu button on the right controller to proceed."""
@@ -28,7 +28,7 @@ def import_obj(s):
 
     for i in range(total_num_objects - num_of_duck):
         obstacles.append(ArticulatedObject(
-            "igibson/examples/vr/visual_disease_demo_mtls/sphere.urdf", scale=40, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            "igibson/examples/vr/visual_disease_demo_mtls/sphere.urdf", scale=37, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         ))
         s.import_object(obstacles[-1])
         obstacles[-1].set_position([0, 0, i]) # dummy position
@@ -82,8 +82,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         if log_writer and not disable_save:
             log_writer.process_frame()       
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
+
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
@@ -97,7 +97,6 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         ducks_checked = 0
         for i in range(num_of_duck):
             if i not in done and np.linalg.norm(objs["ducks"][ducks_checked].get_position() - args["duck_pos"][i]) > 0.1:
-                objs["ducks"][ducks_checked].set_position([0, 0, -i])
                 done.add(i)
             ducks_checked += 1
 

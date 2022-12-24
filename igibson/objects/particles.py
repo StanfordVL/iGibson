@@ -493,7 +493,7 @@ class _Dirt(AttachedParticleSystem):
 
     # This parameters are used when sampling dirt particles.
     # See igibson/utils/sampling_utils.py for how they are used.
-    _SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
+    _SAMPLING_AXIS_PROBABILITIES = [0, 0, 1]
     _SAMPLING_AABB_OFFSET = 0.1
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
     _SAMPLING_BIMODAL_STDEV_FRACTION = 0.2

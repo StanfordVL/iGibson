@@ -45,8 +45,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()       
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
 
         ball_pos = objs["ball"].get_position()
 

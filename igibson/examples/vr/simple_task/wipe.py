@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 num_of_obstacles = 0
-default_robot_pose = ([0, 0, 0], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the wipe experiment! 
     There will be a soaked brush and a table with stain on it. Grab the brush with your hand and wipe the stain off the table with it.
     Press menu button on the right controller to proceed."""
@@ -108,8 +108,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
+
         
         if not objs["desk"].states[object_states.Stained].get_value():
             if success_time:

@@ -35,7 +35,7 @@ background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background
 
 
 vi_choices = ["normal", "cataract", "amd", "glaucoma", "presbyopia", "myopia"]
-
+max_num_trials = 5
 
 def load_scene(simulator, task):
     """Setup scene"""
@@ -226,21 +226,20 @@ def main():
             log_writer.set_up_data_storage()
             log_writer.hf.attrs["/metadata/instance_id"] = trial_id
         
-
         # Main simulation loop
         s.vr_attached = True
         success, terminate = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, ret)
         
         if not args.disable_save:
             log_writer.end_log_session()
-
-        if terminate:
-            break
         
         task_success_list.append(success)
         task_completion_time.append(time.time() - start_time)
         trial_id += 1
 
+        if terminate or trial_id == max_num_trials:
+            break
+        
         # start transition period
         overlay_text.set_text(f"""Task {args.task} with {args.vi} level{args.level} trial #{trial_id} complete! \nToggle menu button on the left controller to finish data collection...\n To restart the task, return to the original position, then toggle menu button on the right controller.""")
         s.set_hud_show_state(True)

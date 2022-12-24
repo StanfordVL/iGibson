@@ -10,13 +10,13 @@ from igibson.utils.assets_utils import get_ig_model_path
 
 
 
-default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the slice experiment! 
     There will be a knife and an apple on the table. Grab the knife with your hand and slice the apple into 2 pieces with it.
     Press menu button on the right controller to proceed."""
 
 def import_obj(s):
-    table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1)
+    table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     s.import_object(table)
     table.set_position_orientation((0.800000, 0.000000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107))
     
@@ -88,8 +88,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
+
 
         if objs["apple"].states[object_states.Sliced].get_value():
             if success_time:

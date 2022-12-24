@@ -2,37 +2,29 @@ import logging
 import os
 import time
 import random
-import igibson
+import numpy as np
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson import object_states
 
 num_of_placing_obj = 4
-default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the place experiment!
     There will be 4 baskets and 4 cubes on the desk. Place the cubes COMPLETELY INSIDE the baskets (order doesn't matter)
     Press menu button on the right controller to proceed."""
 
 def import_obj(s):
     # table as static object
-    table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1)
+    table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     s.import_object(table)
-    table.set_position((0.8500000, 0.00000, 0.000000))
+    table.set_position((0.8000000, 0.00000, 0.000000))
     table.set_orientation((0.00000, 0.000000, 0.707107, 0.707107))
     # basket and cube
     basket = []
     cube = []
     for _ in range(num_of_placing_obj):
-        basket.append(ArticulatedObject(
-            os.path.join(
-                igibson.ig_dataset_path,
-                "objects",
-                "basket",
-                "e3bae8da192ab3d4a17ae19fa77775ff",
-                "e3bae8da192ab3d4a17ae19fa77775ff.urdf",
-            ), scale=0.3,
-        ))
+        basket.append(ArticulatedObject(os.path.join("igibson/examples/vr/visual_disease_demo_mtls/basket/e3bae8da192ab3d4a17ae19fa77775ff.urdf"), scale=0.3))
         s.import_object(basket[-1])
-        cube.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/butter/butter_000/butter_000.urdf", scale=0.05))
+        cube.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/butter/butter_000.urdf", scale=0.05))
         s.import_object(cube[-1])
     ret = {}
     ret["basket"] = basket
@@ -62,8 +54,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
 
         # End demo by pressing left overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):

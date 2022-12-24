@@ -338,7 +338,11 @@ class MeshRendererVR(MeshRenderer):
             raise ValueError("Unsuported VI mode")
         self.vi_mode = mode if mode is not None else (self.vi_mode + 1) % 7
         self.vrsys.updateUniform1i(self.retinaShaderProgram, "postProcessingMode", self.vi_mode)
-        if self.vi_mode == 2:
+        if self.vi_mode == 0:
+            self.vrsys.updateUniform1i(self.lensShaderProgram, "u_active", 0)
+            self.amd_overlay[self.vi_level].set_overlay_show_state(False)
+            self.glaucoma_overlay[self.vi_level].set_overlay_show_state(False)
+        elif self.vi_mode == 2:
             self.amd_overlay[self.vi_level].set_overlay_show_state(True)
         elif self.vi_mode == 3:
             self.amd_overlay[self.vi_level].set_overlay_show_state(False)

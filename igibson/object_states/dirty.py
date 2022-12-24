@@ -3,7 +3,7 @@ from igibson.object_states.object_state_base import AbsoluteObjectState, Boolean
 from igibson.objects.particles import Dust, Stain
 from igibson.utils.constants import SemanticClass
 
-CLEAN_THRESHOLD = 0.3
+CLEAN_THRESHOLD = 0
 FLOOR_CLEAN_THRESHOLD = 0.75
 MIN_PARTICLES_FOR_SAMPLING_SUCCESS = 5
 

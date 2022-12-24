@@ -6,7 +6,7 @@ from igibson.object_states import OnTop
 from igibson.objects.articulated_object import ArticulatedObject
 
 
-default_robot_pose = ([0, 0, 0], [0, 0, 0, 1])
+default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
 intro_paragraph = """   Welcome to the throw experiment!
     There will be a basket on the ground and a ball on the table. Grab the ball using your hand and throw it into the basket.
     Press menu button on the right controller to proceed."""
@@ -15,7 +15,7 @@ def import_obj(s):
     ret = {}
     ret["table"] = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     ret["sphere"] = ArticulatedObject("sphere_small.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=1.5, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=2, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     for obj in ret.values():
         s.import_object(obj)
     return ret
@@ -46,8 +46,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         robot.apply_action(s.gen_vr_robot_action())
-        if debug:
-            s.update_vi_effect()
+        s.update_vi_effect(debug)
+
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):

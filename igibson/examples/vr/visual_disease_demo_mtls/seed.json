@@ -16,12 +16,12 @@
         "myopia": [213, 214, 215]
     },
     "place": {
-        "normal": [300],
+        "normal": [318],
         "cataract": [301, 302, 303],
         "amd": [304, 305, 306],
-        "glaucoma": [307, 308, 309],
-        "presbyopia": [310, 311, 312],
-        "myopia": [313, 314, 315]
+        "glaucoma": [316, 308, 309],
+        "presbyopia": [317, 311, 312],
+        "myopia": [319, 314, 321]
     },
     "slice": {
         "normal": [400],
