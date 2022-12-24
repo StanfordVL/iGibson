@@ -2,9 +2,8 @@ import logging
 import os
 import time
 import random
-import numpy as np
 from igibson.objects.articulated_object import ArticulatedObject
-from igibson import object_states
+from igibson.object_states import Inside
 
 num_of_placing_obj = 4
 default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
@@ -37,11 +36,11 @@ def set_obj_pos(objs):
     # object setup
     basket_pos = random.sample(range(10), num_of_placing_obj)
     for i in range(num_of_placing_obj):
-        objs["basket"][i].set_position([random.random() * 0.5 + 0.4, basket_pos[i] / 10 - 0.5, 1.06])
+        objs["basket"][i].set_position([random.random() * 0.5 + 0.4, basket_pos[i] / 10 - 0.5, 1.05])
         objs["basket"][i].set_orientation([0, 0, 0, 1])
         objs["basket"][i].force_wakeup()
 
-        objs["cube"][i].set_position([random.random() * 0.5 + 0.4, random.random()* 0.2 - i * 0.2, 1.1])
+        objs["cube"][i].set_position([random.random() * 0.5 + 0.4, random.random()* 0.2 - i * 0.15, 1.1])
         objs["cube"][i].set_orientation([random.random(), random.random(), random.random(), random.random()])
         objs["cube"][i].force_wakeup()
 
@@ -50,10 +49,10 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     success_time = 0
     # Main simulation loop
     while True:
+        robot.apply_action(s.gen_vr_robot_action())
         s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
-        robot.apply_action(s.gen_vr_robot_action())
         s.update_vi_effect(debug)
 
         # End demo by pressing left overlay toggle
@@ -68,8 +67,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
         completed = 0
         for b in objs["basket"]:
             for c in objs["cube"]:
-                print(c.get_position()[2])
-                if c.states[object_states.OnTop].get_value(b, use_ray_casting_method=True) and c.get_position()[2] < 1.04:
+                if c.states[Inside].get_value(b, use_ray_casting_method=True) and c.get_position()[2] < 1.0475:
                     completed += 1
                     break
         if completed == num_of_placing_obj:
@@ -81,7 +79,6 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
                 success_time = time.time()
         else:
             success_time = 0
-            
     return success, terminate
     
 

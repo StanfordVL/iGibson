@@ -2,7 +2,7 @@ import time
 import logging
 import igibson
 from random import random
-from igibson.object_states import OnTop
+from igibson.object_states import Inside
 from igibson.objects.articulated_object import ArticulatedObject
 
 
@@ -42,10 +42,10 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     complete_time = 0
     # Main simulation loop
     while True:
+        robot.apply_action(s.gen_vr_robot_action())
         s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
-        robot.apply_action(s.gen_vr_robot_action())
         s.update_vi_effect(debug)
 
 
@@ -57,7 +57,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
             break
 
         # sphere in basket: task complete
-        if objs["sphere"].states[OnTop].get_value(objs["basket"], use_ray_casting_method=True):
+        if objs["sphere"].states[Inside].get_value(objs["basket"], use_ray_casting_method=True):
             if complete_time:
                 if time.time() - complete_time > 1:
                     success = True

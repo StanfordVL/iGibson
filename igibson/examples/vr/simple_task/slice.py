@@ -84,10 +84,10 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     success, terminate = False, False
     success_time = 0
     while True:
+        robot.apply_action(s.gen_vr_robot_action())
         s.step(print_stats=debug)
         if log_writer and not disable_save:
             log_writer.process_frame()     
-        robot.apply_action(s.gen_vr_robot_action())
         s.update_vi_effect(debug)
 
 

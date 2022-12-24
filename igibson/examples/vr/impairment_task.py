@@ -185,6 +185,11 @@ def main():
     task_success_list = []
     task_completion_time = []
 
+    # set robot to default pose to avoid controller vibration
+    bvr_robot.set_position_orientation(*lib.default_robot_pose)
+    s.set_vr_offset([*lib.default_robot_pose[0][:2], 0])
+    
+    # Display welcome message
     overlay_text = s.add_vr_overlay_text(
         text_data=lib.intro_paragraph,
         font_size=40,
@@ -204,12 +209,10 @@ def main():
     
     while True:
         start_time = time.time()
-        
-        # set all object positions
+        # Reset robot to default position
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
         s.set_vr_offset([*lib.default_robot_pose[0][:2], 0])
-        # This is necessary to correctly reset object in head 
-        bvr_robot.apply_action(np.zeros(28))
+        # set all object positions
         ret = lib.set_obj_pos(objs)
         # log writer
         log_writer = None
@@ -241,6 +244,7 @@ def main():
             break
         
         # start transition period
+        # Display transition (task completion) message
         overlay_text.set_text(f"""Task {args.task} with {args.vi} level{args.level} trial #{trial_id} complete! \nToggle menu button on the left controller to finish data collection...\n To restart the task, return to the original position, then toggle menu button on the right controller.""")
         s.set_hud_show_state(True)
         # Temporarily disable visual impairment
@@ -254,11 +258,13 @@ def main():
                 terminate = True
                 break
             if s.query_vr_event("right_controller", "overlay_toggle"):
-                # check robot position
+                # check robot position (need to return to original position)
                 if np.linalg.norm(np.linalg.norm(bvr_robot.get_position()[:2] - [0, 0])) < 0.3:
                     break
         if terminate:
             break
+
+        # restore task rendering settings for the next round
         for instance in robot_pos_marker.renderer_instances:
             instance.hidden = True
         s.set_hud_show_state(False)   
@@ -268,7 +274,7 @@ def main():
     if not args.disable_save:
         np.save(f"{save_dir}/success_list.npy", task_success_list)
         np.save(f"{save_dir}/completion_time.npy", task_completion_time)
-    print(f"{args.task}_{args.vi}_{args.level} data collection complete! Total trial: {trial_id}, Total time: {time.time() - start_time}")
+    print(f"{args.task}_{args.vi}_{args.level} data collection complete! Total trial: {trial_id}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
