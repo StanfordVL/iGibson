@@ -1,81 +1,81 @@
 import logging
-import random
+from random import random, randint
 import time
 import numpy as np
 from igibson.objects.articulated_object import ArticulatedObject
 
 
 # Hyper parameters
-horizontal_level = 6
-vertical_level = 3
-sampling_ratio = 0.8
-total_num_objects_before_sampling = horizontal_level ** 2 * vertical_level
-total_num_objects = int(total_num_objects_before_sampling * sampling_ratio)
+num_trials = {
+    "training": 2,
+    "collecting": 5
+}
+n_obstacle_layers = 2
+horizontal_obstacles = 2
+vertical_obstacles = 2
+obstacle_vel = 0.7
 
-num_of_duck = 1
-horizontal_offset = 0.6
-vertical_offset = 0.5
-initial_x, initial_y, initial_z = -1.5, -1.5, 1.1
-default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
-intro_paragraph = """   Welcome to the navigate experiment!
-    There will be a yellow duck among a bunch of spheres. Navigate using the touchpad and push the duck using your hand.
-    Press menu button on the right controller to proceed."""
+n_vertical_obstacles = n_obstacle_layers * vertical_obstacles
+n_horizontal_obstacles = n_obstacle_layers * horizontal_obstacles
+
+
+initial_x, initial_z = -0.6, 1
+default_robot_pose = ([-1.6, 0, 1], [0, 0, 0, 1])
+duck_positions = [[1.4, 0, 1.5], [-1.4, 0, 1.5]]
+intro_paragraph = """Welcome to the navigate experiment!
+There will be 2 yellow ducks at each end of the hallway. 
+----------------------------------------------------------------
+1. Approach and push the duck in front of you.
+2. Turn around to face the opposite direction
+3. Approach and push the other duck in front of you.
+4. Try to avoid obstacles along the way!
+----------------------------------------------------------------
+Go to the starting point (red marker) and face the duck
+Press menu button on the right controller to begin.
+"""
+
 
 def import_obj(s):
     # obstacles and ducks setup
     obstacles = []
-    ducks = []
-
-    for i in range(total_num_objects - num_of_duck):
+    for i in range(n_vertical_obstacles + n_horizontal_obstacles):
         obstacles.append(ArticulatedObject(
-            "igibson/examples/vr/visual_disease_demo_mtls/sphere.urdf", scale=37, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            "igibson/examples/vr/visual_disease_demo_mtls/sphere.urdf", scale=15, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         ))
         s.import_object(obstacles[-1])
-        obstacles[-1].set_position([0, 0, i]) # dummy position
-    for _ in range(num_of_duck):
-        ducks.append(ArticulatedObject(
-            "duck_vhacd.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
-        ))
-        s.import_object(ducks[-1])
-        ducks[-1].set_position([0, 1, i]) # dummy position
+        obstacles[-1].set_position([20, 20, i]) # dummy position
+
+    duck = ArticulatedObject("duck_vhacd.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    s.import_object(duck)
+    duck.set_position_orientation(duck_positions[0], [0.5, 0.5, 0.5, 0.5])
 
     ret = {}
     ret["obstacles"] = obstacles
-    ret["ducks"] = ducks
+    ret["duck"] = duck
     return ret
 
 
 
 def set_obj_pos(objs):
     # object setup
-    duck_pos = 1        
-    sampled_objects = random.sample(range(total_num_objects_before_sampling), total_num_objects)
-    duck_index = random.sample(sampled_objects, num_of_duck)
-    for idx in duck_index:
-        sampled_objects.remove(idx)
-    duck_pos = []
+    objs["duck"].set_position_orientation(duck_positions[0], [0.5, 0.5, 0.5, 0.5])
+    objs["duck"].force_wakeup()
 
-    for i, duck_idx in enumerate(duck_index):
-        x, y, z = duck_idx % horizontal_level, duck_idx // horizontal_level % horizontal_level, duck_idx // horizontal_level // horizontal_level % vertical_level
-        d_pos = [initial_x + x * horizontal_offset, initial_y + y * horizontal_offset, initial_z + z * vertical_offset]
-        duck_pos.append(d_pos)
-        objs["ducks"][i].set_position_orientation(d_pos, [0.5, 0.5, 0.5, 0.5])
-        objs["ducks"][i].force_wakeup()
-    for i, obj_idx in enumerate(sampled_objects):
-        x, y, z = obj_idx % horizontal_level, obj_idx // horizontal_level % horizontal_level, obj_idx // horizontal_level // horizontal_level % vertical_level
-        objs["obstacles"][i].set_position_orientation([initial_x + x * horizontal_offset, initial_y + y * horizontal_offset, initial_z + z * vertical_offset], [0, 0, 0, 1])
+    for i in range(n_vertical_obstacles):
+        objs["obstacles"][i].set_position_orientation([i % n_obstacle_layers * 1.4 + initial_x, random() * 1.5 - 0.75, i // n_obstacle_layers * 0.3 + initial_z], [0, 0, 0, 1])
+        objs["obstacles"][i].set_velocities([([0, 0, (-1) ** randint(0, 1) * obstacle_vel], [0, 0, 0])])
         objs["obstacles"][i].force_wakeup()
-
-    ret = {}
-    ret["duck_pos"] = duck_pos
-    return ret
-
+    for i in range(n_horizontal_obstacles):
+        idx = i + n_vertical_obstacles
+        objs["obstacles"][idx].set_position_orientation([i % n_obstacle_layers * 1.4 + initial_x, random() * 1.5 - 0.75, i // n_obstacle_layers * 0.3 + initial_z], [0, 0, 0, 1])
+        objs["obstacles"][idx].set_velocities([([0, (-1) ** randint(0, 1) * obstacle_vel, 0], [0, 0, 0])])
+        objs["obstacles"][idx].force_wakeup()
 
 
 def main(s, log_writer, disable_save, debug, robot, objs, args): 
-    success, terminate = False, False 
-    success_time = 0  
-    done = set()
+    is_valid, success = True, False 
+    duck_pos = duck_positions[0]
+    success_time = 0
     # Main simulation loop
     while True:
         robot.apply_action(s.gen_vr_robot_action())
@@ -87,28 +87,37 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
-            terminate = True
+            is_valid = False
             break
 
         # Start counting time by pressing overlay toggle
         if s.query_vr_event("right_controller", "overlay_toggle"):
             break
-        
-        ducks_checked = 0
-        for i in range(num_of_duck):
-            if i not in done and np.linalg.norm(objs["ducks"][ducks_checked].get_position() - args["duck_pos"][i]) > 0.1:
-                done.add(i)
-            ducks_checked += 1
 
-        if len(done) == num_of_duck:
-            if success_time:
-                if time.time() - success_time > 1:
+        for i in range(n_vertical_obstacles):
+            obj_pos, obj_vel = objs["obstacles"][i].get_position()[2], objs["obstacles"][i].get_velocities()[0][0][2]
+            if (obj_pos > 2 and obj_vel > 0) or (obj_pos < 0.2 and obj_vel < 0):
+                objs["obstacles"][i].set_velocities([([0, 0, -obj_vel], [0, 0, 0])])
+        for i in range(n_horizontal_obstacles):
+            idx = i + n_vertical_obstacles
+            obj_pos, obj_vel = objs["obstacles"][idx].get_position()[1], objs["obstacles"][idx].get_velocities()[0][0][1]
+            if (obj_pos > 1 and obj_vel > 0) or (obj_pos < -1 and obj_vel < 0):
+                objs["obstacles"][idx].set_velocities([([0, -obj_vel, 0], [0, 0, 0])])
+
+        if np.linalg.norm(objs["duck"].get_position() - duck_pos) > 0.1:
+            if duck_pos == duck_positions[0]:
+                duck_pos = duck_positions[1]
+                objs["duck"].set_position_orientation(duck_pos, [0.5, 0.5, 0.5, 0.5])
+                objs["duck"].set_velocities([([0, 0, 0], [0, 0, 0])])
+                continue
+            elif success_time:
+                if time.time() - success_time > 0.5:
                     success = True
                     break
             else:
                 success_time = time.time()
 
-    return success, terminate
+    return is_valid, success
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

@@ -4,7 +4,6 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform sampler2D s_color;
-uniform sampler2D s_bloom;
 uniform int postProcessingMode;  
 uniform int cataractLevel;
 
@@ -105,7 +104,6 @@ vec3 merge(vec3 oriColor, vec3 blendColor) {
 void main()
 {   
     vec3 texColor = texture(s_color, TexCoords).rgb;
-    vec3 bloomColor = texture(s_bloom, TexCoords).rgb;
 
     // ======================== gaussian noise =============================
     float noise = sqrt(-2.0 * log(rand(TexCoords * 2))) * sin(2.0 * PI * rand(TexCoords)); // Box-Muller Transform
@@ -142,7 +140,6 @@ void main()
                 break;
             }
             // 4. light overexposure
-            tempColor += 0.5 * bloomColor; // additive blending for bloom
             vec2 center = vec2(0.5, 0.5);
             vec3 color = vec3(1.4, 1.2, 1.0) * lensflare(TexCoords, center);
             color = cc(color, .5, .1);

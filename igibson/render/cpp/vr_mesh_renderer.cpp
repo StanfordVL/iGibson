@@ -929,7 +929,6 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("updateUVData", &VRRendererContext::updateUVData, "TBA");
 	pymodule.def("updateDynamicData", &VRRendererContext::updateDynamicData, "TBA");
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
-	pymodule.def("renderBloom", &VRRendererContext::renderBloom, "TBA");
 	pymodule.def("renderLens", &VRRendererContext::renderLens, "TBA");
 	pymodule.def("renderRetina", &VRRendererContext::renderRetina, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");

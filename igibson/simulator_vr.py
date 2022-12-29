@@ -322,13 +322,12 @@ class SimulatorVR(Simulator):
 
             # Check for body haptics
             wall_ids = [bid for x in self.scene.objects_by_category["walls"] for bid in x.get_body_ids()]
-            for c_info in p.getContactPoints(vr_body_id):
-                if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
-                    for controller in ["left_controller", "right_controller"]:
-                        is_valid, _, _ = self.get_data_for_vr_device(controller)
-                        if is_valid:
-                            # Use 90% strength for body to warn user of collision with wall
-                            self.trigger_haptic_pulse(controller, 0.9)
+            if len(p.getContactPoints(vr_body_id)) > 0:
+                for controller in ["left_controller", "right_controller"]:
+                    is_valid, _, _ = self.get_data_for_vr_device(controller)
+                    if is_valid:
+                        # Use 90% strength for body to warn user of collision with wall
+                        self.trigger_haptic_pulse(controller, 0.9)
 
             # Check for hand haptics
             for hand_device, hand_name in vr_hands:

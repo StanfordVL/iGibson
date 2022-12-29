@@ -66,7 +66,6 @@ layout (location = 3) out vec4 InstanceSegColour;
 layout (location = 4) out vec4 PCColour;
 layout (location = 5) out vec4 SceneFlowColour;
 layout (location = 6) out vec4 OpticalFlowColour;
-layout (location = 7) out vec4 BrightColor;
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -220,11 +219,6 @@ void main() {
             outputColour = texture(smallTex, vec3(theCoords.x, theCoords.y, tex_layer));
         }
     }
-    float brightness = dot(outputColour.rgb, vec3(0.3126, 0.7152, 0.0722));
-    if(brightness > 1.0)
-        BrightColor = vec4(outputColour.rgb, 1.0);
-    else
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
     SemanticSegColour = vec4(semantic_seg_color, 0, 0, 1);
     InstanceSegColour = vec4(instance_seg_color, 0, 0, 1);

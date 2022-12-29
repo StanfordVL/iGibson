@@ -3,12 +3,25 @@ import time
 import random
 from igibson.objects.articulated_object import ArticulatedObject
 
-total_trial_per_round = 5
-default_robot_pose = ([0, 0, 1.5], [0, 0, 0, 1])
-intro_paragraph = """   Welcome to the catch experiment!
-    In this experiment you can see a ball flying towards you. Catch the ball by moving your hand to the ball and pressing the trigger.
-    Make sure to keep grabbing the ball until the ball resets!
-    Press menu button on the right controller to proceed."""
+
+# Hyper parameters
+num_trials = {
+    "training": 1,
+    "collecting": 1
+}
+total_trial_per_round = 10
+default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
+intro_paragraph = """ Welcome to the catch experiment!
+In this experiment you can see a ball flying towards you. 
+----------------------------------------------------------------
+1. Catch the ball by pressing the trigger.
+2. KEEP HOLDING the ball until the ball disappears.
+3. Try to use your dominate hand for catching.
+----------------------------------------------------------------
+Go to the starting point (red marker) and face the wall
+Press menu button on the right controller to begin.
+"""
+
 
 def import_obj(s):
     ret = {"ball": ArticulatedObject("sphere_small.urdf", scale=1.5, rendering_params={"use_pbr": False, "use_pbr_mapping": False})}
@@ -18,13 +31,14 @@ def import_obj(s):
 def set_obj_pos(objs):
     pass
 
-def main(s, log_writer, disable_save, debug, robot, objs, ret):
-    terminate = False
+
+def main(s, log_writer, disable_save, debug, robot, objs, args):
+    is_valid = True
     start_time = time.time()
     cur_time = start_time
     episode_len = 4
     is_bounced = False
-    gamma = 0.8
+    gamma = 0.85
     init_x_pos = 8
 
     rand_z = random.random() * 0.5 + 2.25
@@ -36,6 +50,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
     trial_offset = 1
     total_trial = 0
     success_trial = 0
+    total_consecutive_success = 0
 
     # Main simulation loop
     while True:
@@ -55,10 +70,14 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
             elif ball_pos[2] > 0.25:
                 total_trial += 1
                 success_trial += 1
+                total_consecutive_success += 1
             else:
+                total_consecutive_success = 0
                 total_trial += 1
-
-            if total_trial == total_trial_per_round:
+            
+            if args["training"] and total_consecutive_success == 5:
+                break
+            elif total_trial == total_trial_per_round:
                 break
             start_time = cur_time
             rand_z = random.random() * 0.5 + 2.25
@@ -75,14 +94,14 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
-            terminate = True
+            is_valid = False
             break
         if s.query_vr_event("right_controller", "overlay_toggle"):
             break
     
     sr = success_trial / total_trial if total_trial else 0
     print(f"Total: {total_trial}, Success: {success_trial}, SR: {sr}")
-    return sr, terminate
+    return is_valid, sr
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

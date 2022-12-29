@@ -230,12 +230,10 @@ public:
 		py::array_t<float> eye_pos);
 
 	void renderOptimized(GLuint VAO);
-
-    void renderBloom(int shaderProgramBlur, GLuint quadVAO, unsigned int brightTextureBuffer, py::array_t<int> blurFBOs, py::array_t<int> blurTextureBuffers);
     
     void renderLens(int shaderProgramLens, GLuint quadVAO, unsigned int fbo_lens, unsigned int colorTextureBuffer, unsigned int depthTextureBuffer);
     
-    void renderRetina(int shaderProgramRetina, GLuint quadVAO, unsigned int fbo_window, unsigned int colorTextureBuffer, unsigned int bloomTextureBuffer);
+    void renderRetina(int shaderProgramRetina, GLuint quadVAO, unsigned int fbo_window, unsigned int colorTextureBuffer);
 
 	void loadSkyBox(int shaderProgram, float skybox_size);
 	void renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P);

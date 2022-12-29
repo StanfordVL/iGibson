@@ -366,7 +366,7 @@ class MeshRendererVR(MeshRenderer):
 
     def update_vi_with_eye_pose(self, pos):
         if self.vi_mode == 2:
-            self.amd_overlay[self.vi_level].update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
+            self.amd_overlay[self.vi_level].update_pos([(pos[0] - 0.45) * 2.5, (pos[1] - 0.55) * 2.5, -1])
         elif self.vi_mode == 3:
             self.glaucoma_overlay[self.vi_level].update_pos([(pos[0] - 0.5) * 2.5, (pos[1] - 0.5) * 2.5, -1])
 

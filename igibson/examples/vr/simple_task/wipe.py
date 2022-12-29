@@ -3,27 +3,37 @@ import os
 import numpy as np
 import time
 import random
-
+import pybullet as p
 from igibson import object_states
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.utils.assets_utils import get_ig_model_path
 
 
+num_trials = {
+    "training": 2,
+    "collecting": 5
+}
+num_of_obstacles = 3
+timeout = 60
+default_robot_pose = ([-0.5, 0, 1], [0, 0, 0, 1])
+intro_paragraph = """Welcome to the wipe experiment! 
+There will be a soaked brush and a table with stain on it.
+--------------------------------
+1. Grab the brush on the table
+2. Wipe off ALL the stain with the BARBED side.
+3. Try NOT to move the objects on the table.
+--------------------------------
+Go to the starting point (red marker) and face the desk
+Press menu button on the right controller to begin.
+"""
 
-num_of_obstacles = 0
-default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
-intro_paragraph = """   Welcome to the wipe experiment! 
-    There will be a soaked brush and a table with stain on it. Grab the brush with your hand and wipe the stain off the table with it.
-    Press menu button on the right controller to proceed."""
 
 # object setup
 objects = [
     (os.path.join(get_ig_model_path("bowl", "68_0"), "68_0.urdf"), 0.6),
     (os.path.join(get_ig_model_path("bowl", "68_1"), "68_1.urdf"), 0.6),
-    (os.path.join(get_ig_model_path("cup", "cup_002"), "cup_002.urdf"), 0.25),
     (os.path.join(get_ig_model_path("plate", "plate_000"), "plate_000.urdf"), 0.007),
     (os.path.join(get_ig_model_path("bowl", "80_0"), "80_0.urdf"), 0.9),
-    (os.path.join(get_ig_model_path("apple", "00_0"), "00_0.urdf"), 1),
 ]
 
 
@@ -58,6 +68,7 @@ def import_obj(s):
     s.import_object(desk)
     # need this to import stain visual marker
     desk.states[object_states.Stained].set_value(True)
+    desk.set_position_orientation([0.3, 0, 0.5], (0, 0, 0.707107, 0.707107))
 
     objs = []
     # other objects
@@ -65,6 +76,7 @@ def import_obj(s):
         obj_path, scale = random.choice(objects)
         obj = ArticulatedObject(filename=obj_path, name=f"object_{i}", scale=scale)
         s.import_object(obj)
+        obj.set_position([10, 10, i]) # dummy position
         objs.append(obj)
 
     ret = {}
@@ -72,26 +84,24 @@ def import_obj(s):
     ret["desk"] = desk
     ret["objs"] = objs
 
-
     return ret
 
 def set_obj_pos(objs):
-    # -0.5 - 0.5 | -1.2 - -0.8
+    # -0.1 - 0.7 | -0.5 - 0.5
     randomize_pos = (
-        [(-0.5, -0.2), (-1.2, -0.85), 0.7],
-        [(-0.15, 0.15), (-1.2, -0.85), 0.7],
-        [(1.2, 1.5), (-1.2, -0.85), 0.7],
-        [(-0.5, -0.2), (-0.75, -0.4), 0.7],
-        [(-0.15, 0.15), (-0.75, -0.4), 0.7],
-        [(0.2, 0.5), (-0.75, -0.4), 0.7],
+        [(0.35, 0.7), (-0.5, -0.2), 0.6],
+        [(0.35, 0.7), (-0.15, 0.15), 0.6],
+        [(0.35, 0.7), (0.2, 0.5), 0.6],
+        [(-0.1, 0.25), (-0.5, -0.2), 0.6],
+        [(-0.1, 0.25), (-0.15, 0.15), 0.6],
+        [(-0.1, 0.25), (0.2, 0.5), 0.6],
     )
 
     for i, pos in enumerate(random.sample(randomize_pos, num_of_obstacles)):        
-        objs["objs"][i].set_position([random.uniform(*pos[0]), random.uniform(*pos[1]), pos[2]])
+        objs["objs"][i].set_position_orientation([random.uniform(*pos[0]), random.uniform(*pos[1]), pos[2]], [0, 0, 0, 1])
         objs["objs"][i].force_wakeup()
 
-    objs["brush"].set_position([0, -0.8, 0.8])
-    objs["desk"].set_position([0, -0.8, 0.5])
+    objs["brush"].set_position_orientation([0.3, 0, 0.8], (0, 0.707107, 0, 0.707107))
     objs["brush"].states[object_states.Soaked].set_value(True)
     objs["desk"].states[object_states.Stained].set_value(False) # need this to resample stain
     objs["desk"].states[object_states.Stained].set_value(True)
@@ -99,9 +109,15 @@ def set_obj_pos(objs):
     objs["desk"].force_wakeup()
 
 
-def main(s, log_writer, disable_save, debug, robot, objs, ret):
-    success, terminate = False, False
+def main(s, log_writer, disable_save, debug, robot, objs, args):
+    is_valid, success = True, False
     success_time = 0
+    start_time = time.time()
+    # setup tracked objects
+    if log_writer and not disable_save:
+        log_writer.irrelavant_objects = set(obj.get_body_ids()[0] for obj in objs["objs"])
+        log_writer.prev_pos_of_irrelavant_objects = np.zeros((num_of_obstacles, 3))
+
     # Main simulation loop.
     while True:
         robot.apply_action(s.gen_vr_robot_action())
@@ -110,10 +126,10 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
             log_writer.process_frame()     
         s.update_vi_effect(debug)
 
-        
+        print(objs["objs"][1].get_position()[2])
         if not objs["desk"].states[object_states.Stained].get_value():
             if success_time:
-                if time.time() - success_time > 1:
+                if time.time() - success_time > 0.5:
                     success = True
                     break
             else:
@@ -123,11 +139,14 @@ def main(s, log_writer, disable_save, debug, robot, objs, ret):
             
             # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
-            terminate = True
+            is_valid = False
             break
         if s.query_vr_event("right_controller", "overlay_toggle"):
             break
-    return success, terminate
+        # timeout
+        if time.time() - start_time > 60:
+            break
+    return is_valid, success
 
 
 

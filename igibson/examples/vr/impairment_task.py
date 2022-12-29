@@ -35,7 +35,22 @@ background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background
 
 
 vi_choices = ["normal", "cataract", "amd", "glaucoma", "presbyopia", "myopia"]
-max_num_trials = 5
+
+
+
+def transition_period(s, bvr_robot, target_pos, robot_pos_marker):
+    for instance in robot_pos_marker.renderer_instances:
+        instance.hidden = False
+    while True:
+        s.step()
+        bvr_robot.apply_action(s.gen_vr_robot_action())
+        if s.query_vr_event("left_controller", "overlay_toggle"):
+            return True
+        if s.query_vr_event("right_controller", "overlay_toggle"):
+            # check robot position (need to return to original position)
+            if np.linalg.norm(np.linalg.norm(bvr_robot.get_position()[:2] - target_pos)) < 0.3:
+                return False
+
 
 def load_scene(simulator, task):
     """Setup scene"""
@@ -108,19 +123,19 @@ def parse_args():
         help="Level of visual impairment. Choose from 1/2/3",
     )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
+    parser.add_argument("--training", action="store_true", help="Whether in training mode.")
     parser.add_argument("--debug", action="store_true", help="Whether to enable debug mode (right controller to switch between modes and levels).")
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    if not args.disable_save:
-        save_dir = f"igibson/data/demos/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        os.makedirs(save_dir, exist_ok=False)
     # get seed for this expriment's configuration
     with open("igibson/examples/vr/visual_disease_demo_mtls/seed.json", "r") as f:
         seed_num = json.load(f)[args.task][args.vi][args.level - 1]
         random.seed(seed_num)
         np.random.seed(seed_num)
+    # check training vi mode
+    assert (not args.training) or (args.vi == "normal"), "Training mode only supports normal vision" 
     
     lib = {
         "catch": catch,
@@ -176,18 +191,17 @@ def main():
     # import a visual marker for robot's initial pose
     robot_pos_marker = VisualMarker(visual_shape=p.GEOM_CYLINDER, rgba_color=[1, 0, 0, 0.1], radius=0.1, length=1)
     s.import_object(robot_pos_marker)
-    robot_pos_marker.set_position([0, 0, 0.5])
-    for instance in robot_pos_marker.renderer_instances:
-        instance.hidden = True
+    robot_pos_marker.set_position([*lib.default_robot_pose[0][:2], 0.5])
     
     trial_id = 0
-
+    num_trials = lib.num_trials["training"] if args.training else lib.num_trials["collecting"]
+    n_success_training = 0
     task_success_list = []
     task_completion_time = []
 
     # set robot to default pose to avoid controller vibration
+    s.vr_attached = True
     bvr_robot.set_position_orientation(*lib.default_robot_pose)
-    s.set_vr_offset([*lib.default_robot_pose[0][:2], 0])
     
     # Display welcome message
     overlay_text = s.add_vr_overlay_text(
@@ -199,21 +213,30 @@ def main():
         size=[100, 80],
     )
     s.set_hud_show_state(True)
-    s.renderer.update_vi_mode(mode=6) # black screen
-    s.step()
-    while not s.query_vr_event("right_controller", "overlay_toggle"):
-        s.step()
+    s.renderer.update_vi_mode(mode=0) # normal mode
+    if transition_period(s, bvr_robot, lib.default_robot_pose[0][:2], robot_pos_marker):
+        # terminate
+        return
     s.set_hud_show_state(False)
     s.renderer.update_vi_mode(vi_choices.index(args.vi))
     s.renderer.update_vi_level(level=args.level)
+    for instance in robot_pos_marker.renderer_instances:
+        instance.hidden = True
     
+    # create log file dir
+    if not args.disable_save:
+        if args.training:
+            save_dir = f"igibson/data/training/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        else:
+            save_dir = f"igibson/data/demo/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        os.makedirs(save_dir, exist_ok=False)
+
     while True:
         start_time = time.time()
         # Reset robot to default position
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
-        s.set_vr_offset([*lib.default_robot_pose[0][:2], 0])
         # set all object positions
-        ret = lib.set_obj_pos(objs)
+        lib.set_obj_pos(objs)
         # log writer
         log_writer = None
         if not args.disable_save:
@@ -230,17 +253,22 @@ def main():
             log_writer.hf.attrs["/metadata/instance_id"] = trial_id
         
         # Main simulation loop
-        s.vr_attached = True
-        success, terminate = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, ret)
+        is_valid, success = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, {"training": args.training})
         
         if not args.disable_save:
+            log_writer.hf.attrs["/metadata/is_valid"] = is_valid
             log_writer.end_log_session()
         
         task_success_list.append(success)
         task_completion_time.append(time.time() - start_time)
         trial_id += 1
 
-        if terminate or trial_id == max_num_trials:
+        if args.task != "catch" and args.training:
+            if success:
+                n_success_training += 1
+            if n_success_training == num_trials:
+                break
+        elif trial_id == num_trials:
             break
         
         # start transition period
@@ -249,19 +277,9 @@ def main():
         s.set_hud_show_state(True)
         # Temporarily disable visual impairment
         s.renderer.update_vi_mode(0)
-        for instance in robot_pos_marker.renderer_instances:
-            instance.hidden = False
-        while True:
-            s.step()
-            bvr_robot.apply_action(s.gen_vr_robot_action())
-            if s.query_vr_event("left_controller", "overlay_toggle"):
-                terminate = True
-                break
-            if s.query_vr_event("right_controller", "overlay_toggle"):
-                # check robot position (need to return to original position)
-                if np.linalg.norm(np.linalg.norm(bvr_robot.get_position()[:2] - [0, 0])) < 0.3:
-                    break
-        if terminate:
+        
+        if transition_period(s, bvr_robot, lib.default_robot_pose[0][:2], robot_pos_marker):
+            # terminate
             break
 
         # restore task rendering settings for the next round

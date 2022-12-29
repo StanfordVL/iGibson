@@ -138,6 +138,7 @@ class IGLogWriter(object):
                     ["vr", "vr_event_data", "left_controller"],
                     ["vr", "vr_event_data", "right_controller"],
                     ["vr", "vr_event_data", "reset_actions"],
+                    ["vr", "vr_event_data", "collisions"],
                 ]
             )
         if self.vr_robot:
@@ -227,6 +228,9 @@ class IGLogWriter(object):
                     ),
                     "reset_actions": np.full(
                         (self.frames_before_write, 2), self.default_fill_sentinel, dtype=self.np_dtype
+                    ),
+                    "collisions": np.full(
+                        (self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype
                     ),
                 },
             }
@@ -433,6 +437,19 @@ class IGLogWriter(object):
         for controller in controller_events.keys():
             reset_actions.append(self.sim.query_vr_event(controller, "reset_agent"))
         self.data_map["vr"]["vr_event_data"]["reset_actions"][self.frame_counter, ...] = np.array(reset_actions)
+
+        collisions = [False] * 3
+        all_body_id = self.vr_robot.get_all_ids()
+        for c_info in p.getContactPoints(self.vr_robot.base_link.body_id):
+            if c_info[1] not in all_body_id or c_info[2] not in all_body_id:
+                collisions[0] = True
+                break
+        for i, hand_name in enumerate(self.vr_robot.arm_names):    
+            for c_info in p.getContactPoints(self.vr_robot.eef_links[hand_name].body_id):
+                if c_info[1] not in all_body_id or c_info[2] not in all_body_id:
+                    collisions[i + 1] = True
+                    break
+        self.data_map["vr"]["vr_event_data"]["collisions"][self.frame_counter, ...] = np.array(collisions)
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
