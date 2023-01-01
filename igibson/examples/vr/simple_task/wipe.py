@@ -22,6 +22,8 @@ There will be a soaked brush and a table with stain on it.
 1. Grab the brush on the table
 2. Wipe off ALL the stain with the BARBED side.
 3. Try NOT to move the objects on the table.
+4. Try to use your dominant hand for wiping.
+5. Move your hand away from the table when restarting.
 --------------------------------
 Go to the starting point (red marker) and face the desk
 Press menu button on the right controller to begin.
@@ -51,12 +53,19 @@ def import_obj(s):
         fit_avg_dim_volume=True,
         model_path=model_path,
     )
-    s.import_object(brush)
+    brush_id = s.import_object(brush)
     
     # Load table with dust
     # need to delete the last 4 lines of default.mtl in order to get clean surface
     # need to change stain.mtl Kd to be 0.5 0.4 0.1
     model_path = os.path.join(get_ig_model_path("desk", "ea45801f26b84935d0ebb3b81115ac90"), "ea45801f26b84935d0ebb3b81115ac90.urdf")
+    desk_under = URDFObject(
+        filename=model_path,
+        category="breakfast_table",
+        name="19898",
+        fixed_base=True,
+        scale=np.array([2, 2, 2]),
+    )
     desk = URDFObject(
         filename=model_path,
         category="breakfast_table",
@@ -65,10 +74,13 @@ def import_obj(s):
         scale=np.array([2, 2, 2]),
         abilities={"stainable": {}},   
     )
-    s.import_object(desk)
+    s.import_object(desk_under)
+    desk_id = s.import_object(desk)
     # need this to import stain visual marker
-    desk.states[object_states.Stained].set_value(True)
-    desk.set_position_orientation([0.3, 0, 0.5], (0, 0, 0.707107, 0.707107))
+    for particle in desk.states[object_states.Stained].dirt._all_particles:
+        particle.load(s)
+    desk_under.set_position_orientation([0.3, 0, 0.5], (0, 0, 0.707107, 0.707107))
+    desk.set_position_orientation([0.3, 0, 1], (0, 0, 0.707107, 0.707107))
 
     objs = []
     # other objects
@@ -81,7 +93,9 @@ def import_obj(s):
 
     ret = {}
     ret["brush"] = brush
+    ret["brush_id"] = brush_id[0]
     ret["desk"] = desk
+    ret["desk_id"] = desk_id[0]
     ret["objs"] = objs
 
     return ret
@@ -89,19 +103,19 @@ def import_obj(s):
 def set_obj_pos(objs):
     # -0.1 - 0.7 | -0.5 - 0.5
     randomize_pos = (
-        [(0.35, 0.7), (-0.5, -0.2), 0.6],
-        [(0.35, 0.7), (-0.15, 0.15), 0.6],
-        [(0.35, 0.7), (0.2, 0.5), 0.6],
-        [(-0.1, 0.25), (-0.5, -0.2), 0.6],
-        [(-0.1, 0.25), (-0.15, 0.15), 0.6],
-        [(-0.1, 0.25), (0.2, 0.5), 0.6],
+        [(0.5, 0.7), (-0.5, -0.3), 1.15],
+        [(0.5, 0.7), (-0.1, 0.1), 1.15],
+        [(0.5, 0.7), (0.3, 0.5), 1.15],
+        [(-0.1, 0.1), (-0.5, -0.3), 1.15],
+        [(-0.1, 0.1), (-0.1, 0.1), 1.15],
+        [(-0.1, 0.1), (0.3, 0.5), 1.15],
     )
 
     for i, pos in enumerate(random.sample(randomize_pos, num_of_obstacles)):        
         objs["objs"][i].set_position_orientation([random.uniform(*pos[0]), random.uniform(*pos[1]), pos[2]], [0, 0, 0, 1])
         objs["objs"][i].force_wakeup()
 
-    objs["brush"].set_position_orientation([0.3, 0, 0.8], (0, 0.707107, 0, 0.707107))
+    objs["brush"].set_position_orientation([-0.15, 0, 0.7], (-0.5, -0.5, -0.5, 0.5))
     objs["brush"].states[object_states.Soaked].set_value(True)
     objs["desk"].states[object_states.Stained].set_value(False) # need this to resample stain
     objs["desk"].states[object_states.Stained].set_value(True)
@@ -112,6 +126,8 @@ def set_obj_pos(objs):
 def main(s, log_writer, disable_save, debug, robot, objs, args):
     is_valid, success = True, False
     success_time = 0
+    total_brushing_frame = 0
+    brushing_start_time = 0
     start_time = time.time()
     # setup tracked objects
     if log_writer and not disable_save:
@@ -125,8 +141,6 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         if log_writer and not disable_save:
             log_writer.process_frame()     
         s.update_vi_effect(debug)
-
-        print(objs["objs"][1].get_position()[2])
         if not objs["desk"].states[object_states.Stained].get_value():
             if success_time:
                 if time.time() - success_time > 0.5:
@@ -136,8 +150,20 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
                 success_time = time.time()
         else:
             success_time = 0
-            
-            # End demo by pressing overlay toggle
+        
+        # check desk and brush collision
+        is_contact = False
+        for c_info in p.getContactPoints(objs["brush_id"]):
+            if c_info[1] == objs["desk_id"] or c_info[2] == objs["desk_id"]:
+                if brushing_start_time == 0:
+                    brushing_start_time = time.time()
+                is_contact = True
+                break
+        if not is_contact and brushing_start_time != 0:
+            total_brushing_frame += time.time() - brushing_start_time
+            brushing_start_time = 0
+
+        # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):
             is_valid = False
             break
@@ -146,6 +172,14 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         # timeout
         if time.time() - start_time > 60:
             break
+
+    # end the brushing time
+    if brushing_start_time != 0:
+        total_brushing_frame += time.time() - brushing_start_time
+        
+    # record collision data
+    if log_writer and not disable_save:
+        log_writer.hf.attrs["/task_specific/total_brushing_time"] = total_brushing_frame
     return is_valid, success
 
 

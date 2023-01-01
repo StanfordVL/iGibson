@@ -19,9 +19,9 @@
       </material>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 -5"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-	 	<box size="200 200 10"/>
+	 	<box size="30 30 1"/>
       </geometry>
     </collision>
   </link>

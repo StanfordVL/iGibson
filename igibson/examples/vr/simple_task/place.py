@@ -1,10 +1,8 @@
 import logging
 import time
 import random
-import numpy as np
-from igibson.objects.articulated_object import ArticulatedObject, URDFObject
-from igibson.object_states import Inside
-
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.object_states import OnTop
 
 # Hyper parameters
 num_trials = {
@@ -12,16 +10,18 @@ num_trials = {
     "collecting": 2
 }
 num_of_placing_obj = 4
-timeout = 120
+timeout = 90
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
-object_scale_factor = [0.8, 0.8, 1.2, 1.2]
+object_scale_factor = [0.8, 1.2]
 object_reshape_factor = [0.6, 1, 0.6, 1]
-target_height = [1.0404, 1.0404, 1.0421, 1.0421]
+target_height = [1.0425, 1.0453, 1.0497, 1.0539]
 intro_paragraph = """Welcome to the place experiment!
 There will be 4 baskets and 4 cubes on the desk.
 They have 1 to 1 correspondence based on their shapes and sizes. 
 ----------------------------------------------------------------
 1. Place the cubes COMPLETELY INSIDE the baskets! 
+2. Try to use your dominant hand.
+3. Move your hand away from the table when restarting.
 ----------------------------------------------------------------
 Go to the starting point (red marker) and face the desk
 Press menu button on the right controller to begin.
@@ -37,24 +37,19 @@ def import_obj(s):
     # basket and cube
     basket = []
     cube = []
-    for i in range(num_of_placing_obj):
-        basket.append(
-            URDFObject(
-                "igibson/examples/vr/visual_disease_demo_mtls/basket/e3bae8da192ab3d4a17ae19fa77775ff.urdf", 
-                scale=np.array([0.3 * object_scale_factor[i]] * 3) * np.array([object_reshape_factor[i], 0.8, 0.5]),
-                fixed_base=True
-            )
-        )
+    for i in range(num_of_placing_obj // 2):
+        basket.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/basket/square_basket.urdf", scale=0.3 * object_scale_factor[i]))
         s.import_object(basket[-1])
         basket[-1].set_position([20, 20, i])
-        cube.append(
-            URDFObject(
-                "igibson/examples/vr/visual_disease_demo_mtls/butter/butter_000.urdf",
-                 scale=np.array([0.05 * object_scale_factor[i]] * 3) * np.array([1, object_reshape_factor[i], 1.2])
-            )
-        )
+        basket.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/basket/rectangle_basket.urdf", scale=0.3 * object_scale_factor[i]))
+        s.import_object(basket[-1])
+        basket[-1].set_position([20, 20, 2 + i])
+        cube.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/cube/square_cube.urdf", scale=object_scale_factor[i]))
         s.import_object(cube[-1])
-        cube[-1].set_position([20, 20, 5 + i])
+        cube[-1].set_position([20, 20, 4 + i])
+        cube.append(ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/cube/rectangle_cube.urdf", scale=object_scale_factor[i]))
+        s.import_object(cube[-1])
+        cube[-1].set_position([20, 20, 6 + i])
     ret = {}
     ret["basket"] = basket
     ret["cube"] = cube
@@ -68,10 +63,12 @@ def set_obj_pos(objs):
     for i in range(num_of_placing_obj):
         objs["basket"][i].set_position([random.random() * 0.5 + 0.4, basket_pos[i] / 10 - 0.5, 1.035])
         objs["basket"][i].set_orientation([0, 0, 0, 1])
+        objs["basket"][i].set_velocities([([0, 0, 0], [0, 0, 0])])
         objs["basket"][i].force_wakeup()
 
         objs["cube"][i].set_position([random.random() * 0.5 + 0.4, random.random()* 0.2 - i * 0.15, 1.1])
         objs["cube"][i].set_orientation([0, 0, 0, 1])
+        objs["cube"][i].set_velocities([([0, 0, 0], [0, 0, 0])])
         objs["cube"][i].force_wakeup()
 
 
@@ -97,8 +94,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
             break
         completed = 0
         for i in range(num_of_placing_obj):
-            print(objs["cube"][i].get_position()[2])
-            if objs["cube"][i].states[Inside].get_value(objs["basket"][i], use_ray_casting_method=True) and abs(objs["cube"][i].get_position()[2] - target_height[i]) < 5e-3:
+            cube_z = objs["cube"][i].get_position()[2] 
+            if objs["cube"][i].states[OnTop].get_value(objs["basket"][i], use_ray_casting_method=True) and (cube_z < 1.029 or abs(cube_z - target_height[i]) < 5e-3):
                 completed += 1
         if completed == num_of_placing_obj:
             if success_time:

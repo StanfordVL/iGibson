@@ -56,44 +56,45 @@ def load_scene(simulator, task):
     """Setup scene"""
     if task == "slice":
         scene = InteractiveIndoorScene(
-            "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+            "Ihlen_0_int", load_object_categories=["floors"], load_room_types={"kitchen"}
         )
         simulator.import_scene(scene)
     else:
         # scene setup
         scene = EmptyScene(floor_plane_rgba=[0.5, 0.5, 0.5, 0.5])
         simulator.import_scene(scene)
-        if task == "catch":
-            # wall setup
+
+    if task == "catch" or task == "navigate" or task == "throw":
+        # wall setup
+        wall = ArticulatedObject(
+            "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+        )
+        simulator.import_object(wall)
+        wall.set_position_orientation([19, 0, 0], [0, 0.707, 0, 0.707])
+    else:
+        walls_pos = [
+            ([-1.6, 0, 1.6], [0.5, 0.5, 0.5, 0.5]),
+            ([1.6, 0, 1.6], [0.5, 0.5, 0.5, 0.5]),
+            ([0, -1.6, 1.6], [0.707, 0, 0, 0.707]),
+            ([0, 1.6, 1.6], [0.707, 0, 0, 0.707])
+        ]
+        for i in range(4):
             wall = ArticulatedObject(
-                "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=0.15, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
             )
             simulator.import_object(wall)
-            wall.set_position_orientation([19, 0, 0], [0, 0.707, 0, 0.707])
-        else:
-            walls_pos = [
-                ([-15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
-                ([15, 0, 0], [0.5, 0.5, 0.5, 0.5]),
-                ([0, -15, 0], [0.707, 0, 0, 0.707]),
-                ([0, 15, 0], [0.707, 0, 0, 0.707])
-            ]
-            for i in range(4):
-                wall = ArticulatedObject(
-                    "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
-                )
-                simulator.import_object(wall)
-                wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
+            wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
 
 
 def parse_args():
     tasks_choices = ["catch", "navigate", "place", "slice", "throw", "wipe"]
     parser = argparse.ArgumentParser(description="Run and collect a demo of a task")
     parser.add_argument(
-        "--name",
+        "--id",
         type=str,
         required=True,
         nargs="?",
-        help="Name of the experiment subject",
+        help="ID of the experiment subject",
     )
     parser.add_argument(
         "--task",
@@ -226,13 +227,12 @@ def main():
     # create log file dir
     if not args.disable_save:
         if args.training:
-            save_dir = f"igibson/data/training/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            save_dir = f"igibson/data/vi_data/training/{args.id}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         else:
-            save_dir = f"igibson/data/demo/{args.name}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            save_dir = f"igibson/data/vi_data/demo/{args.id}/{args.task}/{args.vi}_{args.level}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         os.makedirs(save_dir, exist_ok=False)
 
     while True:
-        start_time = time.time()
         # Reset robot to default position
         bvr_robot.set_position_orientation(*lib.default_robot_pose)
         # set all object positions
@@ -253,10 +253,13 @@ def main():
             log_writer.hf.attrs["/metadata/instance_id"] = trial_id
         
         # Main simulation loop
+        start_time = time.time()
         is_valid, success = lib.main(s, log_writer, args.disable_save, args.debug, bvr_robot, objs, {"training": args.training})
         
         if not args.disable_save:
             log_writer.hf.attrs["/metadata/is_valid"] = is_valid
+            log_writer.hf.attrs["/metadata/success"] = success
+            log_writer.hf.attrs["/metadata/task_completion_time"] = time.time() - start_time
             log_writer.end_log_session()
         
         task_success_list.append(success)

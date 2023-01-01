@@ -259,7 +259,7 @@ class Simulator:
             # Non-marker objects require a Scene to be imported.
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
             assert self.scene is not None, "import_object needs to be called after import_scene"
-            self.scene.add_object(obj, self, _is_call_from_simulator=True)
+            return self.scene.add_object(obj, self, _is_call_from_simulator=True)
 
     @load_without_pybullet_vis
     def import_robot(self, robot):

@@ -14,12 +14,13 @@ num_trials = {
     "collecting": 9
 }
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
-basket_pos_choices = list(product([1.6, 1.7, 1.8], [-0.3, 0, 0.3]))
+basket_pos_choices = list(product([1.6, 1.8, 2.0], [-0.5, 0, 0.5]))
 intro_paragraph = """Welcome to the throw experiment!
 There will be a basket on the ground and a ball on the table.
 --------------------------------
 1. Grab the ball and throw it into the basket.
-2. Try NOT to move your body!
+2. Do NOT move or lean your body forward!
+3. Try to use your dominant hand when throwing.
 --------------------------------
 Go to the starting point (red marker) and face the basket
 Press menu button on the right controller to begin.
@@ -60,7 +61,7 @@ def set_obj_pos(objs):
 
 def main(s, log_writer, disable_save, debug, robot, objs, args):
     is_valid, success = True, False
-    complete_time = 0
+    complete_time = None
     # Main simulation loop
     while True:
         robot.apply_action(s.gen_vr_robot_action())
@@ -80,7 +81,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         # sphere in basket: task complete
         if objs["sphere"].states[Inside].get_value(objs["basket"], use_ray_casting_method=True):
             if complete_time:
-                if time.time() - complete_time > 1:
+                if time.time() - complete_time > 0.5:
                     success = True
                     break
             else:

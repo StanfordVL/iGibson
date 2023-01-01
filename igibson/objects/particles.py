@@ -189,7 +189,7 @@ class ParticleSystem(object):
         return len(self._active_particles)
 
     def get_stashed_particles(self):
-        return list(self._stashed_particles)
+        return sorted(list(self._stashed_particles), key=lambda o: id(o))
 
     def get_active_particles(self):
         return list(self._active_particles)

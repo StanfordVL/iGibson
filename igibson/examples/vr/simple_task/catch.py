@@ -1,6 +1,7 @@
 import logging
 import time
 import random
+import numpy as np
 from igibson.objects.articulated_object import ArticulatedObject
 
 
@@ -49,8 +50,8 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
 
     trial_offset = 1
     total_trial = 0
-    success_trial = 0
-    total_consecutive_success = 0
+    success_list = []
+    frame_sep_list = []
 
     # Main simulation loop
     while True:
@@ -67,18 +68,20 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         if (cur_time - start_time > episode_len):
             if trial_offset:
                 trial_offset -= 1
-            elif ball_pos[2] > 0.25:
-                total_trial += 1
-                success_trial += 1
-                total_consecutive_success += 1
             else:
-                total_consecutive_success = 0
-                total_trial += 1
+                # append frame number to frame_sep_list
+                frame_sep_list.append(s.frame_count)
+                if ball_pos[2] > 0.25:
+                    total_trial += 1
+                    success_list.append(True)
+                else:
+                    success_list.append(False)
+                    total_trial += 1
             
-            if args["training"] and total_consecutive_success == 5:
+            if total_trial == total_trial_per_round:
                 break
-            elif total_trial == total_trial_per_round:
-                break
+
+            # reset ball
             start_time = cur_time
             rand_z = random.random() * 0.5 + 2.25
             rand_y = random.random() * 0.5 - 0.25
@@ -99,8 +102,11 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
         if s.query_vr_event("right_controller", "overlay_toggle"):
             break
     
-    sr = success_trial / total_trial if total_trial else 0
-    print(f"Total: {total_trial}, Success: {success_trial}, SR: {sr}")
+    if log_writer and not disable_save:
+        log_writer.hf.attrs["/task_specific/success_list"] = success_list
+        log_writer.hf.attrs["/task_specific/frame_sep_list"] = frame_sep_list
+    sr = np.mean(success_list) if total_trial else 0
+    print(f"Total: {total_trial}, SR: {sr}")
     return is_valid, sr
 
 if __name__ == "__main__":

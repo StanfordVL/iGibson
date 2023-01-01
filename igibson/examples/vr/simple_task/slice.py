@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 import igibson
+from random import random
 from igibson import object_states
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
@@ -14,13 +15,15 @@ num_trials = {
     "training": 5,
     "collecting": 5
 }
-default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
+default_robot_pose = ([-0.3, 0, 1], [0, 0, 0, 1])
 timeout = 60
 intro_paragraph = """Welcome to the slice experiment! 
 There will be a knife and a mushroom on the table. 
 --------------------------------
 1. Grab the knife with your hand
 2. Slice the mushroom into 2 pieces with it.
+3. Try to use your dominant hand when slicing.
+4. Move your hand away from the table when restarting.
 --------------------------------
 Go to the starting point (red marker) and face the desk
 Press menu button on the right controller to begin.
@@ -30,7 +33,7 @@ Press menu button on the right controller to begin.
 def import_obj(s):
     table = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     s.import_object(table)
-    table.set_position_orientation((0.800000, 0.000000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107))
+    table.set_position_orientation((0.500000, 0.000000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107))
     
     # slice-related objects
     slicer = URDFObject(f"{igibson.ig_dataset_path}/objects/carving_knife/14_1/14_1.urdf", name="knife", abilities={"slicer": {}})
@@ -84,12 +87,12 @@ def set_obj_pos(objs):
     objs["slicer"].force_wakeup()
     objs["slicable"].load_state(objs["slicable_initial_extended_state"])
     objs["slicable"].force_wakeup()
-    objs["slicer"].set_position_orientation((0.600000, 0.000000, 1.1), ( 0.707107, 0.000000, 0.707107, 0.000000))
+    objs["slicer"].set_position_orientation((0.300000, 0.000000, 1.1), ( 0.707107, 0.000000, 0.707107, 0.000000))
     # Set these objects to be far-away locations
     for i, new_urdf_obj in enumerate(objs["obj_part_list"]):
         new_urdf_obj.set_position([100 + i, 100, -100])
         new_urdf_obj.force_wakeup()
-    objs["slicable"].set_position((0.600000, 0.30000, 1.1))
+    objs["slicable"].set_position((0.300000, 0.30000, 1.1))
     objs["slicable"].force_wakeup()
 
 
