@@ -11,15 +11,15 @@ num_trials = {
     "collecting": 5
 }
 n_obstacle_layers = 3
-horizontal_obstacles = 4
-vertical_obstacles = 4
-obstacle_vel = 0.3
+horizontal_obstacles = 5
+vertical_obstacles = 0
+obstacle_vel = 0.4 
 
 n_vertical_obstacles = n_obstacle_layers * vertical_obstacles
 n_horizontal_obstacles = n_obstacle_layers * horizontal_obstacles
 
 
-initial_x, initial_z = -1.3, 1.1
+initial_x, initial_z = -1.3, 0.75
 default_robot_pose = ([initial_x, 0, 1], [0, 0, 0, 1])
 duck_position = [1.4, 0, 1.5]
 distance = duck_position[0] - initial_x
