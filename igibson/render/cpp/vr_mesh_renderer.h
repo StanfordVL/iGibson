@@ -103,6 +103,13 @@ public:
 		float rightPupilDiameter;
 		float leftEyeOpenness;
 		float rightEyeOpenness;
+
+
+		// new: left, right gaze ori and dir
+		glm::vec3 leftGazeOrigin;
+		glm::vec3 leftGazeDir;
+		glm::vec3 rightGazeOrigin;
+		glm::vec3 rightGazeDir;
 	};
 
 	EyeTrackingData eyeTrackingData;

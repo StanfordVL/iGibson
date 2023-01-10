@@ -67,7 +67,7 @@ def load_scene(simulator, task):
     if task == "catch" or task == "navigate" or task == "throw":
         # wall setup
         wall = ArticulatedObject(
-            "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            "igibson/examples/vr/visual_disease_demo_mtls/plane/wall.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         )
         simulator.import_object(wall)
         wall.set_position_orientation([19, 0, 0], [0, 0.707, 0, 0.707])
@@ -80,7 +80,7 @@ def load_scene(simulator, task):
         ]
         for i in range(4):
             wall = ArticulatedObject(
-                "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=0.15, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+                "igibson/examples/vr/visual_disease_demo_mtls/plane/wall.urdf", scale=0.15, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
             )
             simulator.import_object(wall)
             wall.set_position_orientation(walls_pos[i][0], walls_pos[i][1])
@@ -197,8 +197,6 @@ def main():
     trial_id = 0
     num_trials = lib.num_trials["training"] if args.training else lib.num_trials["collecting"]
     n_success_training = 0
-    task_success_list = []
-    task_completion_time = []
 
     # set robot to default pose to avoid controller vibration
     s.vr_attached = True
@@ -262,8 +260,6 @@ def main():
             log_writer.hf.attrs["/metadata/task_completion_time"] = time.time() - start_time
             log_writer.end_log_session()
         
-        task_success_list.append(success)
-        task_completion_time.append(time.time() - start_time)
         trial_id += 1
 
         if args.task != "catch" and args.training:
@@ -292,9 +288,6 @@ def main():
         s.renderer.update_vi_mode(vi_choices.index(args.vi))
 
     s.disconnect()
-    if not args.disable_save:
-        np.save(f"{save_dir}/success_list.npy", task_success_list)
-        np.save(f"{save_dir}/completion_time.npy", task_completion_time)
     print(f"{args.task}_{args.vi}_{args.level} data collection complete! Total trial: {trial_id}")
 
 if __name__ == "__main__":

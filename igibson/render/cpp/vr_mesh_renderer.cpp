@@ -176,6 +176,47 @@ py::list VRRendererContext::getEyeTrackingData() {
 	dir.append(gibDir.y);
 	dir.append(gibDir.z);
 
+
+
+	// new for left gaze
+	// Transform data into Gibson coordinate system before returning to user
+	glm::vec3 leftGibOrigin(vrToGib * glm::vec4(eyeTrackingData.leftGazeOrigin, 1.0));
+	glm::vec3 leftGibDir(vrToGib * glm::vec4(eyeTrackingData.leftGazeDir, 1.0));
+
+	py::list leftOrigin;
+	leftOrigin.append(leftGibOrigin.x);
+	leftOrigin.append(leftGibOrigin.y);
+	leftOrigin.append(leftGibOrigin.z);
+
+	py::list leftDir;
+	leftDir.append(leftGibDir.x);
+	leftDir.append(leftGibDir.y);
+	leftDir.append(leftGibDir.z);
+
+
+
+
+
+	// new for right gaze
+	// Transform data into Gibson coordinate system before returning to user
+	glm::vec3 rightGibOrigin(vrToGib * glm::vec4(eyeTrackingData.rightGazeOrigin, 1.0));
+	glm::vec3 rightGibDir(vrToGib * glm::vec4(eyeTrackingData.rightGazeDir, 1.0));
+
+	py::list rightOrigin;
+	rightOrigin.append(rightGibOrigin.x);
+	rightOrigin.append(rightGibOrigin.y);
+	rightOrigin.append(rightGibOrigin.z);
+
+	py::list rightDir;
+	rightDir.append(rightGibDir.x);
+	rightDir.append(rightGibDir.y);
+	rightDir.append(rightGibDir.z);
+
+
+
+
+
+
 	py::list leftEyePos;
 	py::list rightEyePos;
 	leftEyePos.append(eyeTrackingData.leftPupilPos.x);
@@ -198,10 +239,16 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(eyeTrackingData.rightPupilDiameter);
 	eyeData.append(leftEyePos);
 	eyeData.append(rightEyePos);
+	eyeData.append(leftOrigin);
+	eyeData.append(leftDir);
+	eyeData.append(rightOrigin);
+	eyeData.append(rightDir);
+
+
 
 	// Return dummy data with false validity if eye tracking is not enabled (on non-Windows system)
 	#else
-	py::list dummy_origin, dummy_dir, dummy_pos_l, dummy_pos_r;
+	py::list dummy_origin, dummy_dir, dummy_pos_l, dummy_pos_r, dumy_left_origin, dumy_left_dir, dumy_right_origin, dumy_right_dir;
 	float dummy_diameter_l, dummy_diameter_r, dummy_openness_l, dummy_openness_r;
 	eyeData.append(false);
 	eyeData.append(dummy_origin);
@@ -212,6 +259,10 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(dummy_openness_r);
 	eyeData.append(dummy_pos_l);
 	eyeData.append(dummy_pos_r);
+	eyeData.append(dumy_left_origin);
+	eyeData.append(dumy_left_dir);
+	eyeData.append(dumy_right_origin);
+	eyeData.append(dumy_right_dir);
 
 	#endif
 	return eyeData;
@@ -781,6 +832,71 @@ void VRRendererContext::pollAnipal() {
 			glm::vec3 hmdSpaceDir(hmdData.deviceTransform * glm::vec4(eyeSpaceDir, 1.0));
 			// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
 			eyeTrackingData.dir = glm::normalize(glm::vec3(hmdSpaceDir.x - hmdData.devicePos.x, hmdSpaceDir.y - hmdData.devicePos.y, hmdSpaceDir.z - hmdData.devicePos.z));
+
+
+
+
+
+			/// Does it again for left eye coords:
+
+			// Returns value in mm, so need to divide by 1000 to get meters (Gibson uses meters)
+			auto leftGazeOrigin = this->eyeData.verbose_data.left.gaze_origin_mm;
+			if (leftGazeOrigin.x == -1.0f && leftGazeOrigin.y == -1.0f && leftGazeOrigin.z == -1.0f) {
+				eyeTrackingData.isValid = false;
+				continue;
+			}
+			glm::vec3 leftEyeSpaceOrigin(-1 * leftGazeOrigin.x / 1000.0f, leftGazeOrigin.y / 1000.0f, -1 * leftGazeOrigin.z / 1000.0f);
+			eyeTrackingData.leftGazeOrigin = glm::vec3(hmdData.deviceTransform * glm::vec4(leftEyeSpaceOrigin, 1.0));
+
+			auto leftGazeDirection = this->eyeData.verbose_data.left.gaze_direction_normalized;
+			if (leftGazeDirection.x == -1.0f && leftGazeDirection.y == -1.0f && leftGazeDirection.z == -1.0f) {
+				eyeTrackingData.isValid = false;
+				continue;
+			}
+
+			// Convert to OpenVR coordinates
+			glm::vec3 leftEyeSpaceDir(-1 * leftGazeDirection.x, leftGazeDirection.y, -1 * leftGazeDirection.z);
+
+			// Only rotate, no translate - remove translation to preserve rotation
+			glm::vec3 leftHmdSpaceDir(hmdData.deviceTransform * glm::vec4(leftEyeSpaceDir, 1.0));
+			// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
+			eyeTrackingData.leftGazeDir = glm::normalize(glm::vec3(leftHmdSpaceDir.x - hmdData.devicePos.x, leftHmdSpaceDir.y - hmdData.devicePos.y, leftHmdSpaceDir.z - hmdData.devicePos.z));
+
+
+
+
+
+			// does it again for right hand coords
+
+			// Returns value in mm, so need to divide by 1000 to get meters (Gibson uses meters)
+			auto rightGazeOrigin = this->eyeData.verbose_data.right.gaze_origin_mm;
+			if (rightGazeOrigin.x == -1.0f && rightGazeOrigin.y == -1.0f && rightGazeOrigin.z == -1.0f) {
+				eyeTrackingData.isValid = false;
+				continue;
+			}
+			glm::vec3 rightEyeSpaceOrigin(-1 * rightGazeOrigin.x / 1000.0f, rightGazeOrigin.y / 1000.0f, -1 * rightGazeOrigin.z / 1000.0f);
+			eyeTrackingData.rightGazeOrigin = glm::vec3(hmdData.deviceTransform * glm::vec4(rightEyeSpaceOrigin, 1.0));
+
+			auto rightGazeDirection = this->eyeData.verbose_data.right.gaze_direction_normalized;
+			if (rightGazeDirection.x == -1.0f && rightGazeDirection.y == -1.0f && rightGazeDirection.z == -1.0f) {
+				eyeTrackingData.isValid = false;
+				continue;
+			}
+
+			// Convert to OpenVR coordinates
+			glm::vec3 rightEyeSpaceDir(-1 * rightGazeDirection.x, rightGazeDirection.y, -1 * rightGazeDirection.z);
+
+			// Only rotate, no translate - remove translation to preserve rotation
+			glm::vec3 rightHmdSpaceDir(hmdData.deviceTransform * glm::vec4(rightEyeSpaceDir, 1.0));
+			// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
+			eyeTrackingData.rightGazeDir = glm::normalize(glm::vec3(rightHmdSpaceDir.x - hmdData.devicePos.x, rightHmdSpaceDir.y - hmdData.devicePos.y, rightHmdSpaceDir.z - hmdData.devicePos.z));
+
+
+
+
+
+
+
 
 			// Record pupil measurements
 			auto leftEyePos = this->eyeData.verbose_data.left.pupil_position_in_sensor_area;

@@ -13,7 +13,7 @@ num_trials = {
 n_obstacle_layers = 3
 horizontal_obstacles = 5
 vertical_obstacles = 0
-obstacle_vel = 0.4 
+obstacle_vel = 0.5
 
 n_vertical_obstacles = n_obstacle_layers * vertical_obstacles
 n_horizontal_obstacles = n_obstacle_layers * horizontal_obstacles
@@ -39,15 +39,15 @@ def import_obj(s):
     # hallway setup
     for i in range(2):
         wall_left = ArticulatedObject(
-            "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=0.07, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            "igibson/examples/vr/visual_disease_demo_mtls/plane/wall.urdf", scale=0.07, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         )
         s.import_object(wall_left)
-        wall_left.set_position_orientation([i * 2 - 0.6, 1, -0.7], [0.707, 0, 0, 0.707])
+        wall_left.set_position_orientation([i * 2 - 0.6, 1, 1], [0.707, 0, 0, 0.707])
         wall_right = ArticulatedObject(
-            "igibson/examples/vr/visual_disease_demo_mtls/plane/white_plane.urdf", scale=0.07, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
+            "igibson/examples/vr/visual_disease_demo_mtls/plane/wall.urdf", scale=0.07, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
         )
         s.import_object(wall_right)
-        wall_right.set_position_orientation([i * 2 - 0.6, -1, -0.7], [0.707, 0, 0, 0.707])
+        wall_right.set_position_orientation([i * 2 - 0.6, -1, 1], [0.707, 0, 0, 0.707])
 
     # obstacles and ducks setup
     obstacles = []

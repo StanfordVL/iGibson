@@ -31,7 +31,7 @@ def import_obj(s):
     ret = {}
     ret["table"] = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     ret["sphere"] = ArticulatedObject("sphere_small.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=1.75, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=1.5, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     for obj in ret.values():
         s.import_object(obj)
     ret["table"].set_position_orientation((-0.45, -0.75, 0), (0, 0, 0, 1))
@@ -42,7 +42,6 @@ def import_obj(s):
     shuffle(basket_pos_choices)
     ret["basket_pos_choices"] = basket_pos_choices
     ret["basket_pos_choices_idx"] = 0
-
 
     return ret
 

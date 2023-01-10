@@ -67,15 +67,6 @@ struct Simulation
 };
 
 
-// alters the direction of a ray according to the imperfection in the cornea specified by the cornea map
-// vec3 applyCorneaImperfection(vec3 pos, vec3 dir) {
-//     // scale 3D ray to 2D texture coordinates for lookup
-//     // The size of the cornea (~5.5mm radius) is mapped to [0;1],[0;1] texture coordinates
-//     vec2 corneaMapSample = texture(s_cornea, pos.xy * vec2(0.17, -0.17) + 0.5).rg;
-//     vec3 deviation = vec3((corneaMapSample - 0.5) * vec2(CORNEA_MAP_FACTOR), 0.0);
-//     return dir + deviation;
-// }
-
 // calculates the radius of curvature of the outer lens surface
 // while taking accomodation into account.
 // focalLength: the distance between the frontmost point of the
@@ -337,22 +328,11 @@ void main() {
             (TexCoords.xy - 0.5) * TEXTURE_SCALE,
             getDepth(TexCoords.xy)));        
 
-        // This implementation focuses soley on the depth that is in the middle of the screen
-        // float focalLength = length(
-        //     vec3(
-        //         (TexCoords.xy - 0.5) * TEXTURE_SCALE,
-        //         u_depth_max - texture(s_depth, vec2(0.5,0.5)).r * (u_depth_max - u_depth_min)
-        //     )
-        // );  
-
-
         float nAnteriorChamberFactor = 1.0;
         if (focalLength > u_far_point) {
-            // TODO factor 0.08
             nAnteriorChamberFactor = 1.0 / pow((focalLength - u_far_point) / focalLength + 1.0, 0.08 * u_far_vision_factor);
             focalLength = u_far_point;
         } else if (focalLength < u_near_point) {
-            // TODO factor 0.12
             nAnteriorChamberFactor = pow(focalLength / u_near_point, 0.12 * u_near_vision_factor);
             focalLength = u_near_point;
         }

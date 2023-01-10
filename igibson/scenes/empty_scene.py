@@ -31,8 +31,8 @@ class EmptyScene(Scene):
         self.objects.append(obj)
 
     def _load(self, simulator):
-        plane_file = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-        self.floor_body_ids += [p.loadMJCF(plane_file)[0]]
+        plane_file = os.path.join("igibson/examples/vr/visual_disease_demo_mtls/plane/floor.urdf")
+        self.floor_body_ids += [p.loadURDF(plane_file)]
         p.changeDynamics(self.floor_body_ids[0], -1, lateralFriction=1)
         # White floor plane for visualization purpose if needed.
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=self.floor_plane_rgba)

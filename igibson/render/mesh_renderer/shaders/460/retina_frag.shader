@@ -8,8 +8,6 @@ uniform int postProcessingMode;
 uniform int cataractLevel;
 
 float glareWidth = 0.7;
-float c = 0.5; // constrast reduction factor
-float t = 0.1; // tinting factor
 vec3 TintColor = vec3(0.8, 0.5, 0); // tinting color
 float exposure = 1.0; // bloom exposure
 
@@ -90,21 +88,11 @@ vec3 cc(vec3 color, float factor, float factor2) // color modifier
 	return mix(color, vec3(w) * factor, w * factor2);
 }
 
-
-vec3 merge(vec3 oriColor, vec3 blendColor) {
-    const float gamma = 2.2;
-    oriColor += blendColor; // additive blending
-    // tone mapping
-    vec3 result = vec3(1.0) - exp(-oriColor * exposure);
-    // also gamma correct while we're at it       
-    result = pow(result, vec3(1.0 / gamma));
-    return result;
-}
-
 void main()
 {   
     vec3 texColor = texture(s_color, TexCoords).rgb;
-
+    float c = 0.2 + 0.25 * cataractLevel; // constrast reduction factor
+    float t = 0.05 + 0.075 * cataractLevel; // tinting factor
     // ======================== gaussian noise =============================
     float noise = sqrt(-2.0 * log(rand(TexCoords * 2))) * sin(2.0 * PI * rand(TexCoords)); // Box-Muller Transform
 
@@ -124,18 +112,14 @@ void main()
                 col += sampleTex[i] * kernel[i];
             // 2. reduce contrast
             vec3 tempColor = col * (1 - c) + vec3(0.5 * c);
-            if (cataractLevel == 0) {
-                FragColor = vec4(tempColor, 1.0);
-                break;
-            }
             // 3. Color shift
             const float gamma = 2.2;
-            // // tone mapping
+            // tone mapping
             tempColor = vec3(1.0) - exp(-tempColor * exposure);
             // also gamma correct while we're at it       
             tempColor = pow(tempColor, vec3(1.0 / gamma));
             tempColor = tempColor * (1 - t) + TintColor * t;
-            if (cataractLevel == 1) {
+            if (cataractLevel < 2) {
                 FragColor = vec4(tempColor, 1.0);
                 break;
             }
