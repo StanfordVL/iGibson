@@ -116,7 +116,6 @@ float getNAnteriorChamber(float nAnteriorChamberFactor) {
 float getDepth(vec2 pos) {
     float ndc = texture(s_depth, pos).r * 2.0 - 1.0; 
     return (2.0 * u_depth_min * u_depth_max) / (u_depth_max + u_depth_min - ndc * (u_depth_max - u_depth_min));
-    // return u_depth_max - texture(s_depth, pos).r * (u_depth_max - u_depth_min);
 }
 
 vec3 getTargetLocation(in vec3 start, in vec3 dir){
@@ -131,7 +130,6 @@ vec4 getColorWithRay(in vec3 target) {
 }
 
 void getRay(inout vec3 start, inout vec3 dir){
-	// TODO subtract (0.5, 0.5) ?
 	start = vec3((TexCoords.xy - 0.5) * 2000.0, 1000.0 + VITREOUS_HUMOUR_RADIUS);
 	dir = normalize(vec3(0.0, 0.0, VITREOUS_HUMOUR_RADIUS) - start);
 }
