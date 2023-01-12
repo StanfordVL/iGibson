@@ -1,25 +1,25 @@
 import time
 import logging
 import igibson
-from random import shuffle
-import numpy as np
-from itertools import product
+from random import random
 from igibson.object_states import Inside
 from igibson.objects.articulated_object import ArticulatedObject
 
 
 # Hyper parameters
 num_trials = {
-    "training": 15,
-    "collecting": 9
+    "training": 20,
+    "collecting": 10
 }
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
-basket_pos_choices = list(product([1.6, 1.8, 2.0], [-0.5, 0, 0.5]))
+
+basket_movement_bound = 0.7
 intro_paragraph = """Welcome to the throw experiment!
 There will be a basket on the ground and a ball on the table.
 --------------------------------
 1. Grab the ball and throw it into the basket.
 2. Do NOT move or lean your body forward!
+3. The release point should NOT be lower than the table.
 3. Try to use your dominant hand when throwing.
 --------------------------------
 Go to the starting point (red marker) and face the basket
@@ -31,17 +31,13 @@ def import_obj(s):
     ret = {}
     ret["table"] = ArticulatedObject("igibson/examples/vr/visual_disease_demo_mtls/table/table.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     ret["sphere"] = ArticulatedObject("sphere_small.urdf", scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=1.5, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    ret["basket"] = ArticulatedObject(f"{igibson.ig_dataset_path}/objects/basket/e3bae8da192ab3d4a17ae19fa77775ff/e3bae8da192ab3d4a17ae19fa77775ff.urdf", scale=0.8, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
     for obj in ret.values():
         s.import_object(obj)
     ret["table"].set_position_orientation((-0.45, -0.75, 0), (0, 0, 0, 1))
     # dummy positions
     ret["basket"].set_position_orientation((2, 0, 0.1), (0, 0, 0, 1))
     ret["sphere"].set_position_orientation((-0.45, -0.75, 0.1), (0, 0, 0, 1))   
-    # get basket pos choices
-    shuffle(basket_pos_choices)
-    ret["basket_pos_choices"] = basket_pos_choices
-    ret["basket_pos_choices_idx"] = 0
 
     return ret
 
@@ -50,11 +46,9 @@ def import_obj(s):
 def set_obj_pos(objs):
     # objects
     objs["sphere"].set_position_orientation((0.15, -0.4, 1.1), (0, 0, 0, 1))
-    basket_pos_choice = objs["basket_pos_choices"][objs["basket_pos_choices_idx"]]
-    objs["basket_pos_choices_idx"] = (objs["basket_pos_choices_idx"] + 1) % 9
-    objs["basket"].set_position((basket_pos_choice[0], basket_pos_choice[1], 0.15))
-    objs["basket"].set_orientation((0, 0, 0, 1))
+    objs["basket"].set_position_orientation((random() * 0.5 + 0.5, random() * 2 - 1, 0.16), (0, 0, 0, 1))
     objs["sphere"].force_wakeup()
+    objs["basket_vel"] = random() * 0.25 + 1
     objs["basket"].force_wakeup()
 
 
@@ -62,6 +56,7 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
     is_valid, success = True, False
     complete_time = None
     # Main simulation loop
+    vel_dir = objs["basket_vel"]
     while True:
         robot.apply_action(s.gen_vr_robot_action())
         s.step(print_stats=debug)
@@ -69,6 +64,12 @@ def main(s, log_writer, disable_save, debug, robot, objs, args):
             log_writer.process_frame()     
         s.update_vi_effect(debug)
 
+        # update basket
+        if objs["basket"].get_position()[1] < -basket_movement_bound:
+            vel_dir = objs["basket_vel"]
+        elif objs["basket"].get_position()[1] > basket_movement_bound:
+            vel_dir = -objs["basket_vel"]
+        objs["basket"].set_velocities([([0, vel_dir, 0], [0, 0, 0])])
 
         # End demo by pressing overlay toggle
         if s.query_vr_event("left_controller", "overlay_toggle"):

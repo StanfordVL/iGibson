@@ -13,7 +13,6 @@ num_of_placing_obj = 4
 timeout = 90
 default_robot_pose = ([0, 0, 1], [0, 0, 0, 1])
 object_scale_factor = [0.8, 1.2]
-object_reshape_factor = [0.6, 1, 0.6, 1]
 target_height = [1.0425, 1.0453, 1.0497, 1.0539]
 intro_paragraph = """Welcome to the place experiment!
 There will be 4 baskets and 4 cubes on the desk.

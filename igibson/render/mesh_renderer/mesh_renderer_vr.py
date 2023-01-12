@@ -236,7 +236,7 @@ class MeshRendererVR(MeshRenderer):
 
         self.dioptres = -1.5
         self.myopia_level = [-1.5, -4.5, -7.5]
-        self.presbyopia_level = [1.35, 2.15, 2.9]
+        self.presbyopia_level = [1.35, 2.15, 2.90]
         # visual impairment overlay
         self.amd_overlay_width = 3
         self.glaucoma_overlay_width = 4.5
