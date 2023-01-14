@@ -72,7 +72,7 @@ class TwoWheelRobot(LocomotionRobot):
 
         # Compute linear and angular velocities
         lin_vel = (l_vel + r_vel) / 2.0 * self.wheel_radius
-        ang_vel = (l_vel - r_vel) * self.wheel_radius / (2 * self.wheel_axle_length)
+        ang_vel = (r_vel - l_vel) * self.wheel_radius / self.wheel_axle_length
 
         # Add info
         dic["dd_base_lin_vel"] = np.array([lin_vel])
