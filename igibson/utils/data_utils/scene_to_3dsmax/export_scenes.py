@@ -21,7 +21,7 @@ OUT_PATH = r"C:\Users\cgokmen\research\iGibson\igibson\data\scene-conversion"
 
 
 def main():
-    scenes = assets_utils.get_available_ig_scenes()
+    scenes = ["Rs_int", "Wainscott_0_int"]  # assets_utils.get_available_ig_scenes()
     for i, scene in enumerate(scenes):
         print(f"Processing {scene}, {i+1} / {len(scenes)}")
         process_scene(scene)

@@ -34,11 +34,11 @@ class SemanticClass(IntEnum):
     SCENE_OBJS = 3
     # The following class ids count backwards from MAX_CLASS_COUNT (instead of counting forward from 4) because we want
     # to maintain backward compatibility
-    DIRT = 507
-    STAIN = 508
-    WATER = 509
-    HEAT_SOURCE_MARKER = 510
-    TOGGLE_MARKER = 511
+    DIRT = 2043
+    STAIN = 2044
+    WATER = 2045
+    HEAT_SOURCE_MARKER = 2046
+    TOGGLE_MARKER = 2047
 
 
 # Note that we are starting this from bit 6 since bullet seems to be giving special meaning to groups 0-5.
