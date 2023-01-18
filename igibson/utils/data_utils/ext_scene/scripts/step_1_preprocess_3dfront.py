@@ -418,7 +418,7 @@ def get_scene_range(model_id):
     xmin, ymin = stacked.min(axis=0)
     xmax, ymax = stacked.max(axis=0)
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-    max_length = np.ceil(max_length).astype(np.int)
+    max_length = np.ceil(max_length).astype(int)
     return max_length
 
 

@@ -104,7 +104,7 @@ def compute_adjacencies(obj, axes, max_distance):
         )
 
         # Get the object IDs per axis and filter out self-hit cases.
-        obj_ids = np.array([result[0] for result in ray_results], dtype=np.int)
+        obj_ids = np.array([result[0] for result in ray_results], dtype=int)
 
         # Add the results to the appropriate lists
         for direction_idx, result in enumerate(obj_ids):

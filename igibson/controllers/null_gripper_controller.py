@@ -48,7 +48,7 @@ class NullGripperController(ManipulationController):
         super().__init__(
             control_freq=control_freq,
             control_limits=control_limits,
-            joint_idx=np.array([], dtype=np.int),  # no joints controlled
+            joint_idx=np.array([], dtype=int),  # no joints controlled
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
         )

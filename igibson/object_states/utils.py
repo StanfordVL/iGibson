@@ -163,7 +163,7 @@ def sample_kinematics(
                 height, height_map = objB.supporting_surfaces[predicate][(body_id, link_id)][random_height_idx]
                 obj_half_size = np.max(objA.bounding_box) / 2 * 100
                 obj_half_size_scaled = np.array([obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
-                obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(np.int)
+                obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(int)
                 height_map_eroded = cv2.erode(height_map, np.ones(obj_half_size_scaled, np.uint8))
 
                 valid_pos = np.array(height_map_eroded.nonzero())
