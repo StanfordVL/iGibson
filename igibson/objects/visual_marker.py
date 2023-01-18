@@ -1,9 +1,10 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
+from igibson.objects.object_base import BaseObject
+from igibson.utils.constants import NO_COLLISION_GROUPS_MASK
 
 
-class VisualMarker(SingleBodyObject):
+class VisualMarker(BaseObject):
     """
     Visual shape created with shape primitives
     """
@@ -24,7 +25,7 @@ class VisualMarker(SingleBodyObject):
         initial_offset=[0, 0, 0],
         filename=None,
         scale=[1.0] * 3,
-        **kwargs
+        **kwargs,
     ):
         """
         create a visual shape to show in pybullet and MeshRenderer
@@ -84,24 +85,30 @@ class VisualMarker(SingleBodyObject):
 
         return [body_id]
 
+    def load(self, simulator):
+        bids = super(VisualMarker, self).load(simulator)
+
+        # By default, disable collisions for markers.
+        for body_id in self.get_body_ids():
+            for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, NO_COLLISION_GROUPS_MASK)
+
+        return bids
+
     def set_color(self, color):
         """
         Set the color of the marker
 
         :param color: normalized rgba color
         """
-        p.changeVisualShape(self.get_body_id(), -1, rgbaColor=color)
+        p.changeVisualShape(self.get_body_ids()[0], -1, rgbaColor=color)
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.get_body_id()
+            body_id = self.get_body_ids()[0]
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
-
-    def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
     def set_position(self, pos):
         self.force_wakeup()

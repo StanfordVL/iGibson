@@ -1,11 +1,10 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
+from igibson.utils.constants import NO_COLLISION_GROUPS_MASK
 
 
-class Cube(StatefulObject, SingleBodyObject):
+class Cube(StatefulObject):
     """
     Cube shape primitive
     """
@@ -37,3 +36,14 @@ class Cube(StatefulObject, SingleBodyObject):
         simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
+
+    def load(self, simulator):
+        bids = super(Cube, self).load(simulator)
+
+        # By default, disable collisions for visual-only objects.
+        if self.visual_only:
+            for body_id in self.get_body_ids():
+                for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                    p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, NO_COLLISION_GROUPS_MASK)
+
+        return bids

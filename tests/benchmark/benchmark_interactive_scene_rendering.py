@@ -11,14 +11,14 @@ import igibson
 from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import get_ig_assets_version
+from igibson.utils.assets_utils import get_ig_assets_hash
 from igibson.utils.constants import AVAILABLE_MODALITIES, NamedRenderingPresets
 from igibson.utils.utils import parse_config
 
 
 def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
     config = parse_config(os.path.join(os.path.dirname(__file__), "..", "test.yaml"))
-    assets_version = get_ig_assets_version()
+    assets_version = get_ig_assets_hash()
     print("assets_version", assets_version)
     result = {}
     for scene_name in scene_list:
@@ -40,8 +40,8 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
                 physics_timestep=1 / 240.0,
             )
             s.import_scene(scene)
-            turtlebot = Turtlebot(config)
-            s.import_robot(turtlebot)
+            turtlebot = Turtlebot()
+            s.import_object(turtlebot)
 
             for mode in modality_list:
                 for _ in range(10):

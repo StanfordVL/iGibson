@@ -9,8 +9,6 @@ from igibson.robots.locobot import Locobot
 from igibson.robots.locomotion_robot import LocomotionRobot
 from igibson.robots.manipulation_robot import ManipulationRobot
 from igibson.robots.robot_base import REGISTERED_ROBOTS, BaseRobot
+from igibson.robots.tiago import Tiago
 from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.two_wheel_robot import TwoWheelRobot
-
-# TODO: Remove once BehaviorRobot extends from proper BaseRobot class
-REGISTERED_ROBOTS["BehaviorRobot"] = BehaviorRobot

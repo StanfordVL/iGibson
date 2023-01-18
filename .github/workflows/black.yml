@@ -1,10 +1,12 @@
 name: Lint
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: psf/black@21.12b0
+      - uses: psf/black@stable
+        with:
+          version: 22.3.0

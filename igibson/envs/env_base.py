@@ -1,5 +1,9 @@
+import logging
+
 import gym
 
+from igibson.object_states import AABB
+from igibson.object_states.utils import detect_closeness
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import REGISTERED_ROBOTS
@@ -10,6 +14,8 @@ from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.simulator_vr import SimulatorVR
 from igibson.utils.utils import parse_config
+
+log = logging.getLogger(__name__)
 
 
 class BaseEnv(gym.Env):
@@ -55,8 +61,10 @@ class BaseEnv(gym.Env):
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
 
-        enable_shadow = self.config.get("enable_shadow", False)
-        enable_pbr = self.config.get("enable_pbr", True)
+        default_enable_shadows = False  # What to do if it is not specified in the config file
+        enable_shadow = self.config.get("enable_shadow", default_enable_shadows)
+        default_enable_pbr = False  # What to do if it is not specified in the config file
+        enable_pbr = self.config.get("enable_pbr", default_enable_pbr)
         texture_scale = self.config.get("texture_scale", 1.0)
 
         if self.rendering_settings is None:
@@ -68,6 +76,7 @@ class BaseEnv(gym.Env):
                 texture_scale=texture_scale,
                 optimized=self.config.get("optimized_renderer", True),
                 load_textures=self.config.get("load_texture", True),
+                hide_robot=self.config.get("hide_robot", True),
             )
 
         if mode == "vr":
@@ -157,6 +166,7 @@ class BaseEnv(gym.Env):
                     self.config["task_id"],
                     self.config["instance_id"],
                 )
+            include_robots = self.config.get("include_robots", True)
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
                 urdf_file=urdf_file,
@@ -176,6 +186,7 @@ class BaseEnv(gym.Env):
                 load_room_instances=self.config.get("load_room_instances", None),
                 merge_fixed_links=self.config.get("merge_fixed_links", True)
                 and not self.config.get("online_sampling", False),
+                include_robots=include_robots,
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses.
             first_n = self.config.get("_set_first_n_objects", -1)
@@ -187,26 +198,40 @@ class BaseEnv(gym.Env):
         # Get robot config
         robot_config = self.config["robot"]
 
-        # Get corresponding robot class
-        robot_name = robot_config.pop("name")
-        assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
-
-        # TODO: Remove if statement once BEHAVIOR robot is refactored
-        if robot_name == "BehaviorRobot":
-            robot = REGISTERED_ROBOTS[robot_name](self.simulator)
-        else:
+        # If no robot has been imported from the scene
+        if len(scene.robots) == 0:
+            # Get corresponding robot class
+            robot_name = robot_config.pop("name")
+            assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-        self.simulator.import_robot(robot)
+            self.simulator.import_object(robot)
 
-        # TODO: Remove if statement once BEHAVIOR robot is refactored
-        if robot_name == "BehaviorRobot":
-            self.robot_body_id = robot.links["body"].get_body_id()
-        else:
-            self.robot_body_id = robot.get_body_id()
+            # The scene might contain cached agent pose
+            # By default, we load the agent pose that matches the robot name (e.g. Fetch, BehaviorRobot)
+            # The user can also specify "agent_pose" in the config file to use the cached agent pose for any robot
+            # For example, the user can load a BehaviorRobot and place it at Fetch's agent pose
+            agent_pose_name = self.config.get("agent_pose", robot_name)
+            if isinstance(scene, InteractiveIndoorScene) and agent_pose_name in scene.agent_poses:
+                pos, orn = scene.agent_poses[agent_pose_name]
 
-        self.scene = self.simulator.scene
-        self.robots = self.simulator.robots
+                if agent_pose_name != robot_name:
+                    # Need to change the z-pos - assume we always want to place the robot bottom at z = 0
+                    lower, _ = robot.states[AABB].get_value()
+                    pos[2] = -lower[2]
+
+                robot.set_position_orientation(pos, orn)
+
+                if any(
+                    detect_closeness(
+                        bid, exclude_bodyB=scene.objects_by_category["floors"][0].get_body_ids(), distance=0.01
+                    )
+                    for bid in robot.get_body_ids()
+                ):
+                    log.warning("Robot's cached initial pose has collisions.")
+
+        self.scene = scene
+        self.robots = scene.robots
 
     def clean(self):
         """

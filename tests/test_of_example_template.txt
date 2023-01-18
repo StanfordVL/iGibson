@@ -1,0 +1,4 @@
+import igibson.examples.$module as example_module
+
+def test_$name():
+    example_module.main(selection=$selection, headless=True, short_exec=True)

@@ -20,15 +20,15 @@ robot:
   action_normalize: true
   base_name: null
   scale: 1.0
-  self_collision: false
+  self_collision: true
   rendering_params: null
-  assisted_grasping_mode: null
+  grasping_mode: physical
   controller_config:
     base:
       name: DifferentialDriveController
-    arm:
+    arm_0:
       name: InverseKinematicsController
-    gripper:
+    gripper_0:
       name: NullGripperController
 
 # task
@@ -73,5 +73,5 @@ depth_high: 10.0
 depth_noise_rate: 0.0
 
 # visual objects
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: true
+

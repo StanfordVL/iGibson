@@ -2,7 +2,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
-from igibson.utils.mesh_util import mat2xyz, safemat2quat, transform_vertex, xyz2mat
+from igibson.utils.mesh_util import mat2xyz, safemat2quat, transform_vertex
 
 
 class InstanceGroup(object):
@@ -27,6 +27,7 @@ class InstanceGroup(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body_name=None,
     ):
         """
         :param objects: visual objects
@@ -41,6 +42,7 @@ class InstanceGroup(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body_name: name of the parent body, if any, to be used by the Robosuite/Mujoco bridge
         """
         self.objects = objects
         self.poses_trans = poses_trans
@@ -71,6 +73,7 @@ class InstanceGroup(object):
         self.or_buffer_indices = None
         self.last_trans = [np.copy(item) for item in poses_trans]
         self.last_rot = [np.copy(item) for item in poses_rot]
+        self.parent_body_name = parent_body_name
 
     def set_highlight(self, highlight):
         self.highlight = highlight

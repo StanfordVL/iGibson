@@ -9,6 +9,8 @@ from igibson.scenes.indoor_scene import IndoorScene
 from igibson.utils.assets_utils import get_scene_path, get_texture_file
 from igibson.utils.constants import SemanticClass
 
+log = logging.getLogger(__name__)
+
 
 class StaticIndoorScene(IndoorScene):
     """
@@ -50,7 +52,6 @@ class StaticIndoorScene(IndoorScene):
             num_waypoints,
             waypoint_resolution,
         )
-        logging.info("StaticIndoorScene scene: {}".format(scene_id))
         self.pybullet_load_texture = pybullet_load_texture
         self.render_floor_plane = render_floor_plane
 
@@ -65,7 +66,7 @@ class StaticIndoorScene(IndoorScene):
             raise Exception("floor_heights.txt cannot be found in model: {}".format(self.scene_id))
         with open(floor_height_path, "r") as f:
             self.floor_heights = sorted(list(map(float, f.readlines())))
-            logging.debug("Floors {}".format(self.floor_heights))
+            log.debug("Floors {}".format(self.floor_heights))
 
     def load_scene_mesh(self, simulator):
         """

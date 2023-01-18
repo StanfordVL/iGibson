@@ -26,7 +26,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.initial_dump = None
 
     def _initialize(self):
-        self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump, class_id=SemanticClass.SCENE_OBJS)
+        self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump, class_id=SemanticClass.DIRT)
         self.simulator.import_particle_system(self.dirt)
 
     def _get_value(self):

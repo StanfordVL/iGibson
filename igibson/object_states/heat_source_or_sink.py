@@ -128,7 +128,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
             visual_shape=p.GEOM_MESH,
             filename=_HEATING_ELEMENT_MARKER_FILENAME,
             scale=_HEATING_ELEMENT_MARKER_SCALE,
-            class_id=SemanticClass.SCENE_OBJS,
+            class_id=SemanticClass.HEAT_SOURCE_MARKER,
             rendering_params={"shadow_caster": True},
         )
         self.simulator.import_object(self.marker)

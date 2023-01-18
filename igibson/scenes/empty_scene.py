@@ -9,16 +9,19 @@ from igibson.scenes.scene_base import Scene
 from igibson.utils.constants import SemanticClass
 from igibson.utils.utils import l2_distance
 
+log = logging.getLogger(__name__)
+
 
 class EmptyScene(Scene):
     """
     An empty scene for debugging.
     """
 
-    def __init__(self, render_floor_plane=False):
+    def __init__(self, render_floor_plane=True, floor_plane_rgba=[1.0, 1.0, 1.0, 1.0]):
         super(EmptyScene, self).__init__()
         self.objects = []
         self.render_floor_plane = render_floor_plane
+        self.floor_plane_rgba = floor_plane_rgba
 
     def get_objects(self):
         return list(self.objects)
@@ -31,7 +34,7 @@ class EmptyScene(Scene):
         self.floor_body_ids += [p.loadMJCF(plane_file)[0]]
         p.changeDynamics(self.floor_body_ids[0], -1, lateralFriction=1)
         # White floor plane for visualization purpose if needed.
-        p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 1])
+        p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=self.floor_plane_rgba)
 
         if self.render_floor_plane:
             for id in self.floor_body_ids:
@@ -59,7 +62,7 @@ class EmptyScene(Scene):
         """
         Get a trivial shortest path because the scene is empty.
         """
-        logging.warning("WARNING: trying to compute the shortest path in EmptyScene (assuming empty space)")
+        log.debug("WARNING: trying to compute the shortest path in EmptyScene (assuming empty space)")
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance

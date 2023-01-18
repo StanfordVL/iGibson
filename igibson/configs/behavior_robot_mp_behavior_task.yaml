@@ -1,0 +1,72 @@
+# scene
+scene: igibson
+scene_id: Rs_int
+clutter: false
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+should_open_all_doors: false
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+# robot
+robot:
+  name: BehaviorRobot
+
+  action_normalize: False
+  show_visual_head: False
+  higher_limits: True  # This should probably be false.
+  controller_config:
+    gripper_right_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+    gripper_left_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+
+    # These enable absolute position control like in IK.
+    camera:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+    arm_right_hand:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+    arm_left_hand:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+
+# task
+task: cleaning_kitchen_cupboard
+task_id: 0
+instance_id: 0
+online_sampling: false
+should_highlight_task_relevant_objs: false
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition (VR demo collection should last forever)
+max_step: 10000000000
+
+# sensor spec
+output: [proprioception]
+# image
+fisheye: false
+image_width: 128
+image_height: 128
+vertical_fov: 120
+# depth
+depth_low: 0.0
+depth_high: 10.0
+
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0

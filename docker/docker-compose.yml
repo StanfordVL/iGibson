@@ -2,24 +2,37 @@ version: "3.7"
 
 services:
   igibson:
-    image: ${REGISTRY}/${REPO}:${VERSION}
+    image: docker.io/igibson/igibson:${VERSION}
     build:
       context: ./igibson
       dockerfile: Dockerfile
 
+  igibson-latest:
+    image: docker.io/igibson/igibson:latest
+    build:
+      context: ./igibson
+      dockerfile: Dockerfile
+
+  igibson-vnc:
+    image: docker.io/igibson/igibson-vnc:${VERSION}
+    build:
+      context: ./igibson-vnc
+      dockerfile: Dockerfile
+
+  igibson-vnc-latest:
+    image: docker.io/igibson/igibson-vnc:latest
+    build:
+      context: ./igibson-vnc
+      dockerfile: Dockerfile
+
   igibson-tensorflow:
-    image: ${REGISTRY}/${REPO}:${VERSION}-tensorflow
+    image: docker.io/igibson/igibson-tensorflow:${VERSION}
     build:
       context: ./tensorflow
       dockerfile: Dockerfile
 
-  behavior:
-    image: ${REGISTRY}/${REPO}:${VERSION}-behavior
+  igibson-tensorflow-latest:
+    image: docker.io/igibson/igibson-tensorflow:latest
     build:
-      context: ./behavior
+      context: ./tensorflow
       dockerfile: Dockerfile
-      args:
-        - VERSION=${VERSION}
-        - REGISTRY=${REGISTRY}
-        - REPO=${REPO}
-

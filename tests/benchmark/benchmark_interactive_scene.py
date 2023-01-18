@@ -11,17 +11,15 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import get_ig_assets_version
+from igibson.utils.assets_utils import get_ig_assets_hash
 from igibson.utils.utils import parse_config
 
 
 def benchmark_scene(scene_name, optimized=False, import_robot=True):
     config = parse_config(os.path.join(os.path.dirname(__file__), "..", "test.yaml"))
-    assets_version = get_ig_assets_version()
+    assets_version = get_ig_assets_hash()
     print("assets_version", assets_version)
-    scene = InteractiveIndoorScene(
-        scene_name, texture_randomization=False, object_randomization=False, ignore_visual_shape=True
-    )
+    scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=False)
     settings = MeshRendererSettings(msaa=False, enable_shadow=False, optimized=optimized)
     s = Simulator(
         mode="headless",
@@ -35,8 +33,8 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
     print(time.time() - start)
 
     if import_robot:
-        turtlebot = Turtlebot(config)
-        s.import_robot(turtlebot)
+        turtlebot = Turtlebot()
+        s.import_object(turtlebot)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     fps = []

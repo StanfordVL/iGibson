@@ -43,7 +43,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
         self.water_stream = WaterStream(
-            water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump, class_id=SemanticClass.SCENE_OBJS
+            water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump, class_id=SemanticClass.WATER
         )
         self.simulator.import_particle_system(self.water_stream)
         del self.initial_dump
@@ -65,7 +65,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         # water reusing logic
         contacted_water_body_ids = set(item.bodyUniqueIdB for item in list(self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.get_active_particles():
-            if particle.get_body_id() in contacted_water_body_ids:
+            if not contacted_water_body_ids.isdisjoint(particle.get_body_ids()):
                 self.water_stream.stash_particle(particle)
 
     def _set_value(self, new_value):

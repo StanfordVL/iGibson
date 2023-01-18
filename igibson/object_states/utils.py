@@ -1,24 +1,15 @@
-import itertools
-
 import cv2
 import numpy as np
 import pybullet as p
-import trimesh
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
 import igibson
-from igibson.external.pybullet_tools.utils import (
-    get_aabb,
-    get_aabb_center,
-    get_aabb_extent,
-    get_link_pose,
-    matrix_from_quat,
-    stable_z_on_aabb,
-)
+from igibson import object_states
+from igibson.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, get_link_pose, matrix_from_quat
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
-from igibson.utils import sampling_utils, utils
+from igibson.utils import sampling_utils
 from igibson.utils.utils import restoreState
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
@@ -53,27 +44,25 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def detect_collision(bodyA):
-    collision = False
+def detect_closeness(bodyA, exclude_bodyB=[], distance=0.01):
+    too_close = False
     for body_id in range(p.getNumBodies()):
-        if body_id == bodyA:
+        # Ignore self-closeness
+        if body_id == bodyA or body_id in exclude_bodyB:
             continue
-        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
+        closest_points = p.getClosestPoints(bodyA, body_id, distance=distance)
         if len(closest_points) > 0:
-            collision = True
+            too_close = True
             break
-    return collision
+    return too_close
 
 
-def detect_collision(bodyA):
+def detect_collision_with_others(bodyA):
     collision = False
-    for body_id in range(p.getNumBodies()):
-        if body_id == bodyA:
-            continue
-        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
-        if len(closest_points) > 0:
+    for item in p.getContactPoints(bodyA=bodyA):
+        # Ignore self-collision
+        if item[2] != bodyA:
             collision = True
-            break
     return collision
 
 
@@ -117,7 +106,10 @@ def sample_kinematics(
             _, pos = objB.scene.get_random_point_by_room_instance(objB.room_instance)
 
             if pos is not None:
-                pos[2] = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
+                # Get the combined AABB.
+                lower, _ = objA.states[object_states.AABB].get_value()
+                # Move the position to a stable Z for the object.
+                pos[2] += objA.get_position()[2] - lower[2]
         else:
             if use_ray_casting_method:
                 if predicate == "onTop":
@@ -140,7 +132,7 @@ def sample_kinematics(
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
                     undo_padding=True,
-                    **params
+                    **params,
                 )
 
                 sampled_vector = sampling_results[0][0]
@@ -200,15 +192,17 @@ def sample_kinematics(
                     else:
                         link_pos, link_orn = get_link_pose(body_id, link_id)
                     pos = matrix_from_quat(link_orn).dot(pos) + np.array(link_pos)
-                    z = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
-                    pos[2] = z
+                    # Get the combined AABB.
+                    lower, _ = objA.states[object_states.AABB].get_value()
+                    # Move the position to a stable Z for the object.
+                    pos[2] += objA.get_position()[2] - lower[2]
 
         if pos is None:
             success = False
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
-            success = not detect_collision(objA.get_body_id())  # len(p.getContactPoints(objA.get_body_id())) == 0
+            success = not any(detect_closeness(bid) for bid in objA.get_body_ids())
 
         if igibson.debug_sampling:
             print("sample_kinematics", success)
@@ -223,11 +217,12 @@ def sample_kinematics(
 
     if success and not skip_falling:
         objA.set_position_orientation(pos, orientation)
+
         # Let it fall for 0.2 second
         physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
         for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
-            if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
+            if any(detect_collision_with_others(bid) for bid in objA.get_body_ids()):
                 break
 
     return success

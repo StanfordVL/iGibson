@@ -10,15 +10,13 @@ _IN_REACH_DISTANCE_THRESHOLD = 2.0
 _IN_FOV_PIXEL_FRACTION_THRESHOLD = 0.05
 
 
-def _get_behavior_robot(simulator):
-    from igibson.robots.behavior_robot import BehaviorRobot
-
-    valid_robots = [robot for robot in simulator.robots if isinstance(robot, BehaviorRobot)]
+def _get_robot(simulator):
+    valid_robots = [robot for robot in simulator.scene.robots]
     if not valid_robots:
         return None
 
     if len(valid_robots) > 1:
-        raise ValueError("Multiple VR robots found.")
+        raise ValueError("Multiple robots found.")
 
     return valid_robots[0]
 
@@ -29,11 +27,11 @@ class InReachOfRobot(CachingEnabledObjectState, BooleanState):
         return CachingEnabledObjectState.get_dependencies() + [Pose]
 
     def _compute_value(self):
-        robot = _get_behavior_robot(self.simulator)
+        robot = _get_robot(self.simulator)
         if not robot:
             return False
 
-        robot_pos = robot.links["body"].get_position()
+        robot_pos = robot.get_position()
         object_pos, _ = self.obj.states[Pose].get_value()
         return np.linalg.norm(object_pos - np.array(robot_pos)) < _IN_REACH_DISTANCE_THRESHOLD
 
@@ -54,7 +52,7 @@ class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
         return CachingEnabledObjectState.get_dependencies() + [Pose, InsideRoomTypes]
 
     def _compute_value(self):
-        robot = _get_behavior_robot(self.simulator)
+        robot = _get_robot(self.simulator)
         if not robot:
             return False
 
@@ -62,7 +60,7 @@ class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
         if not scene or not hasattr(scene, "get_room_instance_by_point"):
             return False
 
-        robot_pos = robot.links["body"].get_position()
+        robot_pos = robot.get_position()
         robot_room = scene.get_room_instance_by_point(np.array(robot_pos[:2]))
         object_rooms = self.obj.states[InsideRoomTypes].get_value()
 
@@ -81,11 +79,18 @@ class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
 
 class InHandOfRobot(CachingEnabledObjectState, BooleanState):
     def _compute_value(self):
-        robot = _get_behavior_robot(self.simulator)
+        robot = _get_robot(self.simulator)
         if not robot:
             return False
 
-        return robot.is_grasping(self.obj.get_body_id()).any()
+        # We import this here to avoid cyclical dependency.
+        from igibson.robots.manipulation_robot import IsGraspingState
+
+        return any(
+            robot.is_grasping(arm=arm, candidate_obj=bid) == IsGraspingState.TRUE
+            for bid in self.obj.get_body_ids()
+            for arm in robot.arm_names
+        )
 
     def _set_value(self, new_value):
         raise NotImplementedError("InHandOfRobot state currently does not support setting.")
@@ -104,11 +109,12 @@ class InFOVOfRobot(CachingEnabledObjectState, BooleanState):
         return CachingEnabledObjectState.get_optional_dependencies() + [ObjectsInFOVOfRobot]
 
     def _compute_value(self):
-        robot = _get_behavior_robot(self.simulator)
+        robot = _get_robot(self.simulator)
         if not robot:
             return False
 
-        return self.obj.get_body_id() in robot.links["body"].states[ObjectsInFOVOfRobot].get_value()
+        body_ids = set(self.obj.get_body_ids())
+        return not body_ids.isdisjoint(robot.states[ObjectsInFOVOfRobot].get_value())
 
     def _set_value(self, new_value):
         raise NotImplementedError("InFOVOfRobot state currently does not support setting.")
@@ -127,7 +133,7 @@ class ObjectsInFOVOfRobot(CachingEnabledObjectState):
 
     def _compute_value(self):
         # Pass the FOV through the instance-to-body ID mapping.
-        seg = self.obj.parent.render_camera_image(modes="ins_seg")[0][:, :, 0]
+        seg = self.simulator.renderer.render_single_robot_camera(self.obj, modes="ins_seg")[0][:, :, 0]
         seg = np.round(seg * MAX_INSTANCE_COUNT).astype(int)
         body_ids = self.simulator.renderer.get_pb_ids_for_instance_ids(seg)
 

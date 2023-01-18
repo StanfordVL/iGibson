@@ -1,19 +1,17 @@
 import collections
+import json
+import logging
 import os
+import random
 
 import numpy as np
 import pybullet as p
-import scipy
 import yaml
-from packaging import version
 from PIL import Image
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
 
-# The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
-# We will use the version number for backcompatibility
-scipy_version = version.parse(scipy.version.version)
-
+from igibson.utils.constants import CoordinateSystem
 
 # File I/O related
 
@@ -58,15 +56,19 @@ def dump_config(config):
     return yaml.dump(config)
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 # Geometry related
 
 
 def rotate_vector_3d(v, r, p, y, cck=True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
-    if scipy_version >= version.parse("1.4"):
-        local_to_global = R.from_euler("xyz", [r, p, y]).as_matrix()
-    else:
-        local_to_global = R.from_euler("xyz", [r, p, y]).as_dcm()
+    local_to_global = R.from_euler("xyz", [r, p, y]).as_matrix()
     if cck:
         global_to_local = local_to_global.T
         return np.dot(global_to_local, v)
@@ -81,10 +83,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     xyz = Array of the translation
     rpy = Array with roll, pitch, yaw rotations
     """
-    if scipy_version >= version.parse("1.4"):
-        rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_matrix()
-    else:
-        rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_dcm()
+    rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_matrix()
     transformation = np.eye(4)
     transformation[0:3, 0:3] = rotation
     transformation[0:3, 3] = xyz
@@ -97,16 +96,13 @@ def get_rpy_from_transform(transform):
     homogeneous transformation matrix
     transformation = Array with the rotation (3x3) or full transformation (4x4)
     """
-    rpy = R.from_dcm(transform[0:3, 0:3]).as_euler("xyz")
+    rpy = R.from_matrix(transform[0:3, 0:3]).as_euler("xyz")
     return rpy
 
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
-    if scipy_version >= version.parse("1.4"):
-        local_to_global = R.from_euler("z", yaw).as_matrix()
-    else:
-        local_to_global = R.from_euler("z", yaw).as_dcm()
+    local_to_global = R.from_euler("z", yaw).as_matrix()
     global_to_local = local_to_global.T
     global_to_local = global_to_local[:2, :2]
     if len(v.shape) == 1:
@@ -125,7 +121,7 @@ def l2_distance(v1, v2):
 
 def cartesian_to_polar(x, y):
     """Convert cartesian coordinate to polar coordinate"""
-    rho = np.sqrt(x ** 2 + y ** 2)
+    rho = np.sqrt(x**2 + y**2)
     phi = np.arctan2(y, x)
     return rho, phi
 
@@ -166,6 +162,47 @@ def z_rotation_from_quat(quat):
     return R.from_euler("z", z_angle_from_quat(quat)).as_quat()
 
 
+def convertPointCoordSystem(xyz, from_system, to_system):
+    """
+    Convert point from from_system convention to to_system convention.
+
+    OpenCV coordinate system is (right, downward, forward).
+    OpenGL coordinate system is (right, upward, backward).
+    PyBullet coordinate system is (forward, left, upward).
+    SunRgbd coordinate system is (right, forward, upward).
+
+    :param xyz: (x, y, z) coordinate in from_system convension, or an ndarray with the
+        last dimension being (x, y, z) coordinates in from_system convension
+    :param from_system: choose from OpenCV, OpenGL, PyBullet, SunRgbd
+    :param to_system: choose from OpenCV, OpenGL, PyBullet, SunRgbd
+    :return: (x, y, z) coordinate in to_system convension, or an ndarray with the
+        last dimension being (x, y, z) coordinates in to_system convension
+    """
+    from_system = CoordinateSystem[from_system.upper()]
+    to_system = CoordinateSystem[to_system.upper()]
+
+    if isinstance(xyz, list):
+        xyz = np.array(xyz)
+    if not isinstance(xyz, np.ndarray) or xyz.shape[-1] != 3:
+        raise NotImplementedError
+
+    # Convert from from_system to PyBullet
+    if from_system == CoordinateSystem.OPENCV:
+        xyz = np.stack((xyz[..., 2], -xyz[..., 0], -xyz[..., 1]), axis=-1)
+    elif from_system == CoordinateSystem.OPENGL:
+        xyz = np.stack((-xyz[..., 2], -xyz[..., 0], xyz[..., 1]), axis=-1)
+    elif from_system == CoordinateSystem.SUNRGBD:
+        xyz = np.stack((xyz[..., 1], -xyz[..., 0], xyz[..., 2]), axis=-1)
+    # Convert from PyBullet to to_system.
+    if to_system == CoordinateSystem.OPENCV:
+        xyz = np.stack((-xyz[..., 1], -xyz[..., 2], xyz[..., 0]), axis=-1)
+    elif to_system == CoordinateSystem.OPENGL:
+        xyz = np.stack((-xyz[..., 1], xyz[..., 2], -xyz[..., 0]), axis=-1)
+    elif to_system == CoordinateSystem.SUNRGBD:
+        xyz = np.stack((-xyz[..., 1], xyz[..., 0], xyz[..., 2]), axis=-1)
+    return xyz
+
+
 # Represents a rotation by q1, followed by q0
 def multQuatLists(q0, q1):
     """Multiply two quaternions that are represented as lists."""
@@ -196,6 +233,13 @@ def quat_pos_to_mat(pos, quat):
     mat[:3, :3] = R.from_quat(quat).as_matrix()
     mat[:3, -1] = pos
     return mat
+
+
+def mat_to_quat_pos(mat):
+    """Convert transformation matrix to position and quaternion"""
+    quat = R.from_matrix(mat[0:3, 0:3]).as_quat()
+    pos = mat[0:3, 3]
+    return pos, quat
 
 
 # Texture related
@@ -232,3 +276,35 @@ def restoreState(*args, **kwargs):
             body_id, *p.getBasePositionAndOrientation(body_id), physicsClientId=kwargs.get("physicsClientId", 0)
         )
     return p.restoreState(*args, **kwargs)
+
+
+def let_user_pick(options, print_intro=True, selection="user"):
+    """
+    Tool to make a selection among a set of possibilities
+    :param options: list with the options, strings
+    :param print_intro: if the function prints an intro text or that was done before the call
+    :param selection: type of selection. Three options: "user" (wait user input), "random" (selects a random number),
+                      or an integer indicating the index of the selection (starting at 1)
+    :return: index of the selection option, STARTING AT 1, to len(options)
+    """
+    if print_intro and selection == "user":
+        print("Please choose:")
+    for idx, element in enumerate(options):
+        print("{}) {}".format(idx + 1, element))
+    if selection == "user":
+        i = input("Enter number: ")
+        if i.isdigit():
+            i = int(i)
+        else:
+            raise (ValueError("Input not a valid number"))
+    elif selection == "random":
+        i = random.choice(range(len(options))) + 1
+    elif isinstance(selection, int):
+        i = selection
+    else:
+        raise ValueError("The variable selection does not contain a valid value")
+
+    if 0 < i <= len(options):
+        return i
+    else:
+        raise (ValueError("Input not in the list"))

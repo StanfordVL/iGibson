@@ -7,6 +7,7 @@ from igibson.object_states import Inside, NextTo, OnFloor, OnTop, Pose, Touching
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.multi_object_wrappers import ObjectMultiplexer
+from igibson.robots.robot_base import BaseRobot
 
 SIMULATOR_SETTLE_TIME = 150
 
@@ -24,7 +25,7 @@ class KinematicDisarrangement(MetricBase):
     def update_state_cache(self, env):
         state_cache = {}
         for obj_id, obj in env.scene.objects_by_name.items():
-            if obj.category == "agent":
+            if isinstance(obj, BaseRobot):
                 continue
             if type(obj) == ObjectMultiplexer:
                 assert (
@@ -161,7 +162,7 @@ class LogicalDisarrangement(MetricBase):
             else:
                 relational_state_cache = {}
                 for target_obj_id, target_obj in env.scene.objects_by_name.items():
-                    if obj_id == target_obj_id or target_obj.category == "agent":
+                    if obj_id == target_obj_id or isinstance(target_obj, BaseRobot):
                         continue
                     relational_state_cache[target_obj_id] = False
                     # Relational states with multiplexed target objects currently unhandled
@@ -188,7 +189,7 @@ class LogicalDisarrangement(MetricBase):
 
         state_cache = {}
         for obj_id, obj in env.scene.objects_by_name.items():
-            if obj.category == "agent":
+            if isinstance(obj, BaseRobot):
                 continue
             state_cache[obj_id] = {}
             if type(obj) == ObjectMultiplexer:

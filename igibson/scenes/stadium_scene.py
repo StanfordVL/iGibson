@@ -9,6 +9,8 @@ from igibson.scenes.scene_base import Scene
 from igibson.utils.constants import SemanticClass
 from igibson.utils.utils import l2_distance
 
+log = logging.getLogger(__name__)
+
 
 class StadiumScene(Scene):
     """
@@ -31,7 +33,8 @@ class StadiumScene(Scene):
         p.resetBasePositionAndOrientation(self.floor_body_ids[0], [pos[0], pos[1], pos[2] - 0.005], orn)
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 0.5])
 
-        for id in list(self.stadium) + self.floor_body_ids:
+        # Only load the stadium mesh into the renderer, not the extra floor plane
+        for id in list(self.stadium):
             simulator.load_object_in_renderer(None, id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False)
 
         # Load additional objects & merge body IDs
@@ -54,7 +57,7 @@ class StadiumScene(Scene):
         """
         Get a trivial shortest path because the scene is empty
         """
-        logging.warning("WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)")
+        log.debug("WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)")
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance

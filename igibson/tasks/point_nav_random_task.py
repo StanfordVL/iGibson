@@ -6,6 +6,8 @@ import pybullet as p
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.utils.utils import l2_distance, restoreState
 
+log = logging.getLogger(__name__)
+
 
 class PointNavRandomTask(PointNavFixedTask):
     """
@@ -39,8 +41,10 @@ class PointNavRandomTask(PointNavFixedTask):
             if self.target_dist_min < dist < self.target_dist_max:
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
-            print("WARNING: Failed to sample initial and target positions")
+            log.warning("Failed to sample initial and target positions")
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+        log.debug("Sampled initial pose: {}, {}".format(initial_pos, initial_orn))
+        log.debug("Sampled target position: {}".format(target_pos))
         return initial_pos, initial_orn, target_pos
 
     def reset_scene(self, env):
@@ -59,6 +63,9 @@ class PointNavRandomTask(PointNavFixedTask):
 
         :param env: environment instance
         """
+        # We need to first reset the robot because otherwise we will move the robot in the joint conf. last seen before
+        # the reset
+        env.robots[0].reset()
         reset_success = False
         max_trials = 100
 
@@ -68,14 +75,13 @@ class PointNavRandomTask(PointNavFixedTask):
         for i in range(max_trials):
             initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(env)
             reset_success = env.test_valid_position(
-                env.robots[0], initial_pos, initial_orn
-            ) and env.test_valid_position(env.robots[0], target_pos)
+                env.robots[0], initial_pos, initial_orn, ignore_self_collision=True
+            ) and env.test_valid_position(env.robots[0], target_pos, ignore_self_collision=True)
             restoreState(state_id)
             if reset_success:
                 break
 
-        if not reset_success:
-            logging.warning("WARNING: Failed to reset robot without collision")
+        assert reset_success, "WARNING: Failed to reset robot without collision"
 
         p.removeState(state_id)
 

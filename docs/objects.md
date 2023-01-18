@@ -91,55 +91,8 @@ Instruction can be found here: [External Objects](https://github.com/StanfordVL/
 
 
 ### Examples
-In this example, we import three objects into PyBullet, two of which are articulated objects. The code can be found here: [igibson/examples/demo/object_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/object_example.py).
+In this example, we import a few objects into iGibson. The code can be found here: [igibson/examples/objects/load_objects.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/objects/load_objects.py).
 
-```python
-from igibson.objects.ycb_object import YCBObject
-from igibson.objects.articulated_object import ArticulatedObject
-import igibson
-import os
-import pybullet as p
-import pybullet_data
-import time
-
-
-def main():
-    p.connect(p.GUI)
-    p.setGravity(0, 0, -9.8)
-    p.setTimeStep(1./240.)
-
-    floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-    p.loadMJCF(floor)
-
-    cabinet_0007 = os.path.join(
-        igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
-    cabinet_0004 = os.path.join(
-        igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
-
-    obj1 = ArticulatedObject(filename=cabinet_0007)
-    obj1.load()
-    obj1.set_position([0, 0, 0.5])
-
-    obj2 = ArticulatedObject(filename=cabinet_0004)
-    obj2.load()
-    obj2.set_position([0, 0, 2])
-
-    obj3 = YCBObject('003_cracker_box')
-    obj3.load()
-    obj3.set_position_orientation([0, 0, 1.2], [0, 0, 0, 1])
-
-    for _ in range(24000):  # at least 100 seconds
-        p.stepSimulation()
-        time.sleep(1./240.)
-
-    p.disconnect()
-
-
-if __name__ == '__main__':
-    main()
-
+```{literalinclude} ../igibson/examples/objects/load_objects.py
+:language: python
 ```
-
-You can open the cabinet and the drawer by dragging your mouse over them. You can even put the cereal box into the drawer like this:
-![object](images/object.png)
-

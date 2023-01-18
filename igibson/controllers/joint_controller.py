@@ -1,4 +1,5 @@
 import numpy as np
+import pybullet as p
 
 from igibson.controllers import ControlType, LocomotionController, ManipulationController
 from igibson.utils.python_utils import assert_valid_key
@@ -23,8 +24,12 @@ class JointController(LocomotionController, ManipulationController):
         joint_idx,
         command_input_limits="default",
         command_output_limits="default",
+        parallel_mode=False,
+        inverted=False,
         use_delta_commands=False,
-        use_compliant_mode=True,
+        compute_delta_in_quat_space=[],
+        use_constant_goal_position=False,
+        constant_goal_position=None,
     ):
         """
         :param control_freq: int, controller loop frequency
@@ -48,27 +53,35 @@ class JointController(LocomotionController, ManipulationController):
             then all inputted command values will be scaled from the input range to the output range.
             If either is None, no scaling will be used. If "default", then this range will automatically be set
             to the @control_limits entry corresponding to self.control_type
+        :param parallel_mode: bool, indicating whether the controller should accept a single input and scale it
+            appropriately for each joint (True), or accept a separate input for each joint (False).
+        :param inverted: bool, indicating whether the inputs should be mapped to outputs directly or in the inverse
+            direction (e.g. high command => low control).
         :param use_delta_commands: bool, whether inputted commands should be interpreted as delta or absolute values
-        :param use_compliant_mode: bool, only relevant if @use_delta_command is True. If True, will add delta commands
-            to the current observed joint states. Otherwise, will store initial references
-            to these values and add the delta values to them. Note that setting this to False can only be used with
-            "position" motor control, and may be useful for e.g.: setting an initial large delta value, and then sending
-            subsequent zero commands, which can converge faster than sending individual small delta commands
-            sequentially.
+        :param compute_delta_in_quat_space: List[(rx_idx, ry_idx, rz_idx), ...], groups of joints that need to be
+            processed in quaternion space to avoid gimbal lock issues normally faced by 3 DOF rotation joints. Each
+            group needs to consist of three idxes corresponding to the indices in the input space. This is only
+            used in the delta_commands mode.
         """
         # Store arguments
         assert_valid_key(key=motor_type.lower(), valid_keys=ControlType.VALID_TYPES_STR, name="motor_type")
         self.motor_type = motor_type.lower()
+        self.parallel_mode = parallel_mode
         self.use_delta_commands = use_delta_commands
-        self.use_compliant_mode = use_compliant_mode
+        self.compute_delta_in_quat_space = compute_delta_in_quat_space
+        self.use_constant_goal_position = use_constant_goal_position
+        if self.use_constant_goal_position:
+            command_input_limits = None
+        if constant_goal_position is None:
+            self.constant_goal_position = np.zeros(len(joint_idx))
+        else:
+            self.constant_goal_position = np.array(constant_goal_position)
 
-        # If we're using compliant mode, make sure we're using joint position control (this doesn't make sense for
-        # velocity or torque control)
-        if not self.use_compliant_mode:
-            assert self.motor_type == "position", f"If not using compliant mode, motor control type must be position!"
-
-        # Other variables that will be used at runtime
-        self._joint_target = None
+        # When in delta mode, it doesn't make sense to infer output range using the joint limits (since that's an
+        # absolute range and our values are relative). So reject the default mode option in that case.
+        assert not (
+            self.use_delta_commands and command_output_limits == "default"
+        ), "Cannot use 'default' command output limits in delta commands mode of JointController. Try None instead."
 
         # Run super init
         super().__init__(
@@ -77,11 +90,12 @@ class JointController(LocomotionController, ManipulationController):
             joint_idx=joint_idx,
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
+            inverted=inverted,
         )
 
     def reset(self):
-        # Clear the target
-        self._joint_target = None
+        # Nothing to reset.
+        pass
 
     def _command_to_control(self, command, control_dict):
         """
@@ -96,18 +110,33 @@ class JointController(LocomotionController, ManipulationController):
 
         :return: Array[float], outputted (non-clipped!) control signal to deploy
         """
+        if self.use_constant_goal_position:
+            return self.constant_goal_position
         # If we're using delta commands, add this value
         if self.use_delta_commands:
-            if self.use_compliant_mode:
-                # Add this to the current observed state
-                u = control_dict["joint_{}".format(self.motor_type)][self.joint_idx] + command
-            else:
-                # Otherwise, we add to the internally stored target state
-                # (also, initialize the target if we haven't done so already)
-                if self._joint_target is None:
-                    self._joint_target = np.array(control_dict["joint_{}".format(self.motor_type)][self.joint_idx])
-                self._joint_target = self._joint_target + command
-                u = self._joint_target
+            # Compute the base value for the command.
+            base_value = control_dict["joint_{}".format(self.motor_type)][self.joint_idx]
+
+            # Apply the command to the base value.
+            u = base_value + command
+
+            # Correct any gimbal lock issues using the compute_delta_in_quat_space group.
+            for rx_ind, ry_ind, rz_ind in self.compute_delta_in_quat_space:
+                # Grab the starting rotations of these joints.
+                start_rots = base_value[[rx_ind, ry_ind, rz_ind]]
+
+                # Grab the delta rotations.
+                delta_rots = command[[rx_ind, ry_ind, rz_ind]]
+
+                # Compute the final rotations in the quaternion space.
+                _, end_quat = p.multiplyTransforms(
+                    [0, 0, 0], p.getQuaternionFromEuler(delta_rots), [0, 0, 0], p.getQuaternionFromEuler(start_rots)
+                )
+                end_rots = p.getEulerFromQuaternion(end_quat)
+
+                # Update the command
+                u[[rx_ind, ry_ind, rz_ind]] = end_rots
+
         # Otherwise, control is simply the command itself
         else:
             u = command
@@ -121,4 +150,9 @@ class JointController(LocomotionController, ManipulationController):
 
     @property
     def command_dim(self):
-        return len(self.joint_idx)
+        if self.use_constant_goal_position:
+            return 0
+        elif self.parallel_mode:
+            return 1
+        else:
+            return len(self.joint_idx)

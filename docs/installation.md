@@ -25,9 +25,9 @@ The minimum system requirements are the following:
     - CMake >= 2.8.12 (can install with `pip install cmake`)
     - Microsoft Visual Studio 2017 with visual C++ tool and latest Windows 10 SDK
 - Mac OS X
-    - Tested on 10.15
+    - Tested on several versions (10.15, 11.6, ...)
     - PBR features not supported
-    - CMake >= 2.8.12 (can install with `pip install cmake`)
+    - CMake >= 2.8.12 or CMake >= 2.17 for M1-chip (do NOT install with `pip install cmake`, but system-wide for example with Homebrew)
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
 
@@ -138,7 +138,7 @@ In case you want to build without CUDA support (used for the "rendering to GPU t
 
 ### Installing iGibson
 
-We provide 3 methods to install the simulator.
+We provide 3 methods to install the simulator. After installing the simulator, you will need to download assets and datasets of scenes and object models.
 
 #### 1. pip
 
@@ -147,41 +147,12 @@ iGibson's simulator can be installed as a python package using pip:
 ```bash
 pip install igibson  # This step takes about 4 minutes
 # run the demo
-python -m igibson.examples.demo.demo_static
+python -m igibson.examples.environments.env_nonint_example
 ```
 
-#### 2. Docker image
+#### 2. Compile from source
 
-Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.  
-
-First, install Docker from the [official website](https://www.docker.com/). Please make sure that the docker version is at least v19.0 to enable native GPU support.
-
-Next, download our pre-built images with the script in the `iGibson` repo:
-
-```
-cd iGibson
-./docker/pull-images.sh
-```
-
-Two images will be downloaded:
-* `igibson/igibson:latest`: smaller image, but does not support GUI. 
-* `igibson/igibson-gui:latest`: supports GUI and remote desktop access via VNC.
-
-We also provide scripts to build the images from scratch:
-```
-# image without GUI:
-cd iGibson/docker/base
-./build.sh
-
-# image with GUI and VNC:
-cd iGibson/docker/headless-gui
-./build.sh
-```
-
-
-#### 3. Compile from source
-
-Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). 
+Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). Then: 
 
 ```bash
 git clone https://github.com/StanfordVL/iGibson --recursive
@@ -194,9 +165,39 @@ conda activate igibson
 pip install -e . # This step takes about 4 minutes
 ```
 
-We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
+We recommend the second method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
 Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
+
+
+#### 3. Docker image
+
+Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.  
+
+First, install Docker from the [official website](https://www.docker.com/). Please make sure that the docker version is at least v19.0 to enable native GPU support.
+
+We provide two images:
+* `igibson/igibson:latest`: smaller image, but does not support GUI.
+* `igibson/igibson-vnc:latest`: supports GUI and remote desktop access via VNC.
+
+We also provide scripts to build the images from scratch:
+```
+# image without GUI:
+cd iGibson/docker/igibson
+./build.sh
+
+# image with GUI and VNC:
+cd iGibson/docker/igibson-vnc
+./build.sh
+```
+
+### Issues
+
+If you have installation issues, first, check our section for issues [here](issues.md). We have included solutions to previous known problems there.
+
+If you couldn't find a solution, search open and closed issues in our github issues page [here](https://github.com/StanfordVL/iGibson/issues).
+
+If still no-luck, open a new issue in our github. Our turnaround is usually a couple of days.
 
 ### The SVL pybullet fork
 
@@ -207,7 +208,7 @@ pip uninstall pybullet
 pip install pybullet-svl
 ```
 
-## Downloading the Assets
+## Downloading the Assets and Datasets of Scenes and Objects
 
 Once the environment has been installed, we need to download the assets to enable the simulation including models of the robotic agents, objects, 3D scenes, etc. This process requires three simple steps.
  
@@ -225,32 +226,46 @@ In case you prefer to store the assets in a different location, you can run the 
 python -m igibson.utils.assets_utils --change_data_path
 ```
 
-Second, we need to download the robot models and some small objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
+Second, we need to download the robot models and some small objects from the assets bundle [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
 
 ```bash
 python -m igibson.utils.assets_utils --download_assets
 ```
 
-Third, we need to download datasets of scenes, and, possibly, more object models. For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
-For navigation tasks, we provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset and Matterport3D Dataset.
-In any case, please, follow the instructions [here](dataset.md) to download the datasets.
+Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models. 
+For interactive tasks, you need to download iGibson Scenes and the BEHAVIOR Dataset of Objects. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For navigation tasks, you could use the interactive scenes, but we also provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset, and Matterport3D Dataset that include non-interactive scene models.
+Follow the detailed instructions [here](dataset.md) to download the aforementioned datasets.
 
-Alternatively, to avoid downloading the entire dataset, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo and testing purposes.
-To download the demo data, run:
+Alternatively, to avoid downloading an entire dataset before you can test iGibson's functionalities, we provide a single [high quality small non-interactive scene (R's)](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo and testing purposes.
+To download this demo data, run:
 
 ```bash
 python -m igibson.utils.assets_utils --download_demo_data
 ```
 
-## Testing 
+## Examples
 
-To test iGibson is properly installed, you can run 
+We provide a lot of examples to get you started in your research!
+Check the folder [igibson/examples](https://github.com/StanfordVL/iGibson/tree/master/igibson/examples) and the description [here](examples.md).
+
+After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:
+
+```bash
+python -m igibson.examples.environments.env_nonint_example
+```
+
+## Testing
+
+To test iGibson installation, you can run 
 ```bash
 python
 >> import igibson
 ```
 
 For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for more details. 
+
+You can also run all tests by executing `pytest` within the iGibson installation folder. (For Mac users) Some tests will fail as they require a Nvidia GPU.
 
 ## Uninstalling
 Uninstalling iGibson is easy: `pip uninstall igibson`

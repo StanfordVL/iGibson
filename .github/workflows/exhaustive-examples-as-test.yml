@@ -1,0 +1,101 @@
+name: Exhaustive Examples as Test
+
+on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # Format: minute hour day-of-month month day-of-week(starts on sunday)
+    # Scheduled for 4 am, everyday
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, gpu]
+    if: github.repository == 'StanfordVL/iGibson-dev'
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          path: igibson
+
+      - name: Add CUDA to env
+        run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+          architecture: x64
+
+      - name: Create virtual env
+        run: python -m venv env
+
+      - name: Install dev requirements
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          pip install -r requirements-dev.txt
+
+      - name: Install additional dev requirements
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          pip install -r tests/requirements-tests.txt
+
+      - name: Install
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          pip install -e .
+
+      - name: Uninstall pip bddl
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          pip uninstall -y bddl
+
+      - name: Checkout BDDL
+        uses: actions/checkout@v2
+        with:
+          repository: StanfordVL/bddl-dev
+          ref: 581be50e7cfd2b3a1447aaa1b4fc2424b673339c
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
+          path: bddl
+          submodules: recursive
+          lfs: true
+
+      - name: Install BDDL
+        working-directory: bddl
+        run: |
+          source ../env/bin/activate
+          pip install -e .
+
+      - name: Link Dataset
+        working-directory: igibson
+        run: ln -s /scr/ig-data igibson/data
+
+      - name: Create tests of examples
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          python tests/create_tests_of_examples.py --exhaustive
+
+      - name: Run tests
+        working-directory: igibson
+        run: |
+          source ../env/bin/activate
+          pytest /tmp/tests_of_examples
+
+      - name: Remove files
+        if: always()
+        run: rm -rf /tmp/tests_of_examples || true
+
+      - name: Cleanup virtual env
+        if: always()
+        run: rm -rf env/

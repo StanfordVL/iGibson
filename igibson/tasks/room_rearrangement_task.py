@@ -11,6 +11,8 @@ from igibson.termination_conditions.out_of_bound import OutOfBound
 from igibson.termination_conditions.timeout import Timeout
 from igibson.utils.utils import restoreState
 
+log = logging.getLogger(__name__)
+
 
 class RoomRearrangementTask(BaseTask):
     """
@@ -101,13 +103,13 @@ class RoomRearrangementTask(BaseTask):
         state_id = p.saveState()
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
-            reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn)
+            reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn, ignore_self_collision=True)
             restoreState(state_id)
             if reset_success:
                 break
 
         if not reset_success:
-            logging.warning("WARNING: Failed to reset robot without collision")
+            log.warning("WARNING: Failed to reset robot without collision")
 
         env.land(env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)

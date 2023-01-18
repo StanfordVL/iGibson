@@ -1,7 +1,6 @@
 from bddl.activity import evaluate_goal_conditions
 
 from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
-from igibson.utils.utils import l2_distance
 
 
 class PredicateGoal(BaseTerminationCondition):
@@ -22,6 +21,6 @@ class PredicateGoal(BaseTerminationCondition):
         :param env: environment instance
         :return: done, info
         """
-        done, _ = evaluate_goal_conditions(task.goal_conditions)
+        done, _ = task.check_success()
         success = done
         return done, success

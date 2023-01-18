@@ -9,9 +9,8 @@ import numpy as np
 import pybullet as p
 from transforms3d.euler import euler2quat
 
+from igibson import object_states
 from igibson.envs.env_base import BaseEnv
-from igibson.external.pybullet_tools.utils import stable_z_on_aabb
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
@@ -26,6 +25,8 @@ from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
+
+log = logging.getLogger(__name__)
 
 
 class iGibsonEnv(BaseEnv):
@@ -77,7 +78,7 @@ class iGibsonEnv(BaseEnv):
         """
         self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
-        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
+        drop_distance = 0.5 * 9.8 * (self.action_timestep**2)
         assert drop_distance < self.initial_pos_z_offset, "initial_pos_z_offset is too small for collision checking"
 
         # ignore the agent's collision with these body ids
@@ -205,6 +206,14 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
             )
             scan_modalities.append("scan")
+        if "scan_rear" in self.output:
+            self.n_horizontal_rays = self.config.get("n_horizontal_rays", 128)
+            self.n_vertical_beams = self.config.get("n_vertical_beams", 1)
+            assert self.n_vertical_beams == 1, "scan can only handle one vertical beam for now"
+            observation_space["scan_rear"] = self.build_obs_space(
+                shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
+            )
+            scan_modalities.append("scan_rear")
         if "occupancy_grid" in self.output:
             self.grid_resolution = self.config.get("grid_resolution", 128)
             self.occupancy_grid_space = gym.spaces.Box(
@@ -225,6 +234,9 @@ class iGibsonEnv(BaseEnv):
 
         if len(scan_modalities) > 0:
             sensors["scan_occ"] = ScanSensor(self, scan_modalities)
+
+        if "scan_rear" in scan_modalities:
+            sensors["scan_occ_rear"] = ScanSensor(self, scan_modalities, rear=True)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
@@ -271,9 +283,13 @@ class iGibsonEnv(BaseEnv):
             scan_obs = self.sensors["scan_occ"].get_obs(self)
             for modality in scan_obs:
                 state[modality] = scan_obs[modality]
+        if "scan_occ_rear" in self.sensors:
+            scan_obs = self.sensors["scan_occ_rear"].get_obs(self)
+            for modality in scan_obs:
+                state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
-        if "proprioception" in self.sensors:
+        if "proprioception" in self.output:
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
@@ -285,7 +301,9 @@ class iGibsonEnv(BaseEnv):
         :return: a list of collisions from the last physics timestep
         """
         self.simulator_step()
-        collision_links = list(p.getContactPoints(bodyA=self.robot_body_id))
+        collision_links = [
+            collision for bid in self.robots[0].get_body_ids() for collision in p.getContactPoints(bodyA=bid)
+        ]
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -295,6 +313,7 @@ class iGibsonEnv(BaseEnv):
         :param collision_links: original collisions, a list of collisions
         :return: filtered collisions
         """
+        # TODO: Improve this to accept multi-body robots.
         new_collision_links = []
         for item in collision_links:
             # ignore collision with body b
@@ -306,7 +325,7 @@ class iGibsonEnv(BaseEnv):
                 continue
 
             # ignore self collision with robot link a (body b is also robot itself)
-            if item[2] == self.robot_body_id and item[4] in self.collision_ignore_link_a_ids:
+            if item[2] == self.robots[0].base_link.body_id and item[4] in self.collision_ignore_link_a_ids:
                 continue
             new_collision_links.append(item)
         return new_collision_links
@@ -351,19 +370,20 @@ class iGibsonEnv(BaseEnv):
 
         return state, reward, done, info
 
-    def check_collision(self, body_id):
+    def check_collision(self, body_id, ignore_ids=[]):
         """
         Check whether the given body_id has collision after one simulator step
 
         :param body_id: pybullet body id
+        :param ignore_ids: pybullet body ids to ignore collisions with
         :return: whether the given body_id has collision
         """
         self.simulator_step()
-        collisions = list(p.getContactPoints(bodyA=body_id))
+        collisions = [x for x in p.getContactPoints(bodyA=body_id) if x[2] not in ignore_ids]
 
-        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
+        if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
-                logging.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
+                log.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
 
         return len(collisions) > 0
 
@@ -382,23 +402,24 @@ class iGibsonEnv(BaseEnv):
         if offset is None:
             offset = self.initial_pos_z_offset
 
-        is_robot = isinstance(obj, BaseRobot)
-        body_id = obj.get_body_id()
         # first set the correct orientation
         obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), "wxyz"))
-        # compute stable z based on this orientation
-        stable_z = stable_z_on_aabb(body_id, [pos, pos])
+        # get the AABB in this orientation
+        lower, _ = obj.states[object_states.AABB].get_value()
+        # Get the stable Z
+        stable_z = pos[2] + (pos[2] - lower[2])
         # change the z-value of position with stable_z + additional offset
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None):
+    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False):
         """
         Test if the robot or the object can be placed with no collision.
 
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
+        :param ignore_self_collision: whether the object's self-collisions should be ignored.
         :return: whether the position is valid
         """
         is_robot = isinstance(obj, BaseRobot)
@@ -409,8 +430,8 @@ class iGibsonEnv(BaseEnv):
             obj.reset()
             obj.keep_still()
 
-        body_id = obj.get_body_id()
-        has_collision = self.check_collision(body_id)
+        ignore_ids = obj.get_body_ids() if ignore_self_collision else []
+        has_collision = any(self.check_collision(body_id, ignore_ids) for body_id in obj.get_body_ids())
         return not has_collision
 
     def land(self, obj, pos, orn):
@@ -429,19 +450,17 @@ class iGibsonEnv(BaseEnv):
             obj.reset()
             obj.keep_still()
 
-        body_id = obj.get_body_id()
-
         land_success = False
         # land for maximum 1 second, should fall down ~5 meters
         max_simulator_step = int(1.0 / self.action_timestep)
         for _ in range(max_simulator_step):
             self.simulator_step()
-            if len(p.getContactPoints(bodyA=body_id)) > 0:
+            if any(len(p.getContactPoints(bodyA=body_id)) > 0 for body_id in obj.get_body_ids()):
                 land_success = True
                 break
 
         if not land_success:
-            logging.warning("Object failed to land.")
+            log.warning("Object failed to land.")
 
         if is_robot:
             obj.reset()
@@ -485,6 +504,7 @@ class iGibsonEnv(BaseEnv):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", help="which config file to use [default: use yaml files in examples/configs]")
     parser.add_argument(

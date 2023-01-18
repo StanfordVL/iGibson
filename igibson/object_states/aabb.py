@@ -6,9 +6,16 @@ from igibson.object_states.object_state_base import CachingEnabledObjectState
 
 class AABB(CachingEnabledObjectState):
     def _compute_value(self):
-        body_id = self.obj.get_body_id()
-        all_links = get_all_links(body_id)
-        aabbs = [get_aabb(body_id, link=link) for link in all_links]
+        body_ids = self.obj.get_body_ids()
+
+        # We do this special-casing here: for robots we want to consider all bodies. For URDFObject, only the main body.
+        from igibson.objects.articulated_object import URDFObject
+
+        if isinstance(self.obj, URDFObject):
+            body_ids = [body_ids[self.obj.main_body]]
+
+        all_links = [(body_id, link_id) for body_id in body_ids for link_id in get_all_links(body_id)]
+        aabbs = [get_aabb(body_id, link=link_id) for (body_id, link_id) in all_links]
         aabb_low, aabb_hi = aabb_union(aabbs)
 
         if not hasattr(self.obj, "category") or self.obj.category != "floors" or self.obj.room_floor is None:

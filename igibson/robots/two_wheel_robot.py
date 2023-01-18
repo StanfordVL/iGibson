@@ -2,13 +2,8 @@ from abc import abstractmethod
 
 import gym
 import numpy as np
-from transforms3d.euler import euler2quat
-from transforms3d.quaternions import qmult, quat2mat
 
-from igibson.controllers import LocomotionController
 from igibson.robots.locomotion_robot import LocomotionRobot
-from igibson.utils.constants import SemanticClass
-from igibson.utils.python_utils import assert_valid_key
 
 
 class TwoWheelRobot(LocomotionRobot):
@@ -65,7 +60,7 @@ class TwoWheelRobot(LocomotionRobot):
         self.action_list = action_list
 
         # Return this action space
-        return gym.spaces.Box(len(self.action_list))
+        return gym.spaces.Discrete(len(self.action_list))
 
     def _get_proprioception_dict(self):
         dic = super()._get_proprioception_dict()

@@ -1,11 +1,9 @@
 import os
 
-import gym
 import numpy as np
 
 import igibson
 from igibson.robots.two_wheel_robot import TwoWheelRobot
-from igibson.utils.constants import SemanticClass
 
 
 class Freight(TwoWheelRobot):
@@ -14,6 +12,13 @@ class Freight(TwoWheelRobot):
     Reference: https://fetchrobotics.com/robotics-platforms/freight-base/
     Uses joint velocity control
     """
+
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Freight"
 
     @property
     def wheel_radius(self):

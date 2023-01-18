@@ -1,4 +1,5 @@
 import ctypes
+import logging
 import platform
 import time
 from time import sleep
@@ -9,8 +10,15 @@ import pybullet as p
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
 from igibson.render.viewer import ViewerVR
+from igibson.robots.behavior_robot import BODY_ANGULAR_VELOCITY, BODY_LINEAR_VELOCITY, HAND_BASE_ROTS
+from igibson.robots.manipulation_robot import IsGraspingState
+from igibson.robots.robot_base import BaseRobot
 from igibson.simulator import Simulator
 from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
+
+log = logging.getLogger(__name__)
+
+ATTACHMENT_BUTTON_TIME_THRESHOLD = 1  # second
 
 
 class SimulatorVR(Simulator):
@@ -58,8 +66,14 @@ class SimulatorVR(Simulator):
         # Blend highlight for VR overlay
         rendering_settings.blend_highlight = True
 
+        # Whether the VR system is actively hooked up to the VR agent.
+        self.vr_attached = False
+        self._vr_attachment_button_press_timestamp = None
+        self.main_vr_robot = None
+
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_settings = vr_settings
+        self.vr_data_available = False
         self.vr_overlay_initialized = False
         self.vr_start_pos = None
         self.max_haptic_duration = 4000
@@ -99,7 +113,7 @@ class SimulatorVR(Simulator):
         )
 
     def initialize_renderer(self):
-        self.visual_objects = {}
+        self.visual_object_cache = {}
         self.renderer = MeshRendererVR(
             rendering_settings=self.rendering_settings, vr_settings=self.vr_settings, simulator=self
         )
@@ -169,12 +183,16 @@ class SimulatorVR(Simulator):
         Shows/hides the main VR HUD.
         :param show_state: whether to show HUD or not
         """
+        if not self.vr_overlay_initialized:
+            return
         self.renderer.vr_hud.set_overlay_show_state(show_state)
 
     def get_hud_show_state(self):
         """
         Returns the show state of the main VR HUD.
         """
+        if not self.vr_overlay_initialized:
+            return False
         return self.renderer.vr_hud.get_overlay_show_state()
 
     def step_vr_system(self):
@@ -272,7 +290,7 @@ class SimulatorVR(Simulator):
             vr_offset_device = "{}_controller".format(self.vr_settings.movement_controller)
             is_valid, _, _ = self.get_data_for_vr_device(vr_offset_device)
             if is_valid:
-                _, touch_x, touch_y = self.get_button_data_for_controller(vr_offset_device)
+                _, touch_x, touch_y, _ = self.get_button_data_for_controller(vr_offset_device)
                 new_offset = calc_offset(
                     self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device
                 )
@@ -284,7 +302,7 @@ class SimulatorVR(Simulator):
         if is_height_valid:
             curr_offset = self.get_vr_offset()
             hmd_height = self.get_hmd_world_pos()[2]
-            _, _, height_y = self.get_button_data_for_controller(vr_height_device)
+            _, _, height_y, _ = self.get_button_data_for_controller(vr_height_device)
             if height_y < -0.7:
                 vr_z_offset = -0.01
                 if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
@@ -296,14 +314,14 @@ class SimulatorVR(Simulator):
 
         # Update haptics for body and hands
         if self.main_vr_robot:
-            vr_body_id = self.main_vr_robot.links["body"].get_body_id()
+            vr_body_id = self.main_vr_robot.base_link.body_id
             vr_hands = [
-                ("left_controller", self.main_vr_robot.links["left_hand"]),
-                ("right_controller", self.main_vr_robot.links["right_hand"]),
+                ("left_controller", "left_hand"),
+                ("right_controller", "right_hand"),
             ]
 
             # Check for body haptics
-            wall_ids = [x.get_body_id() for x in self.scene.objects_by_category["walls"]]
+            wall_ids = [bid for x in self.scene.objects_by_category["walls"] for bid in x.get_body_ids()]
             for c_info in p.getContactPoints(vr_body_id):
                 if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
                     for controller in ["left_controller", "right_controller"]:
@@ -313,20 +331,33 @@ class SimulatorVR(Simulator):
                             self.trigger_haptic_pulse(controller, 0.9)
 
             # Check for hand haptics
-            for hand_device, hand_obj in vr_hands:
+            for hand_device, hand_name in vr_hands:
                 is_valid, _, _ = self.get_data_for_vr_device(hand_device)
                 if is_valid:
-                    if len(p.getContactPoints(hand_obj.get_body_id())) > 0 or (
-                        hasattr(hand_obj, "object_in_hand") and hand_obj.object_in_hand
+                    if (
+                        len(p.getContactPoints(self.main_vr_robot.eef_links[hand_name].body_id))  # TODO: Generalize
+                        or self.main_vr_robot.is_grasping(hand_name) == IsGraspingState.TRUE
                     ):
                         # Only use 30% strength for normal collisions, to help add realism to the experience
                         self.trigger_haptic_pulse(hand_device, 0.3)
 
-    def register_main_vr_robot(self, vr_robot):
+        self.vr_data_available = True
+
+    def import_object(self, obj):
+        result = super(SimulatorVR, self).import_object(obj)
+
+        if self.main_vr_robot is None and isinstance(obj, BaseRobot):
+            self.main_vr_robot = obj
+
+        return result
+
+    def switch_main_vr_robot(self, robot):
         """
-        Register the robot representing the VR user.
+        Change the robot representing the VR user. By default, this will be the first robot added to the scene.
         """
-        self.main_vr_robot = vr_robot
+        if robot not in self.scene.robots:
+            raise ValueError("Robot should already be added to the scene.")
+        self.main_vr_robot = robot
 
     def gen_vr_data(self):
         """
@@ -346,7 +377,7 @@ class SimulatorVR(Simulator):
         # Store final rotations of hands, with model rotation applied
         for hand in ["right", "left"]:
             # Base rotation quaternion
-            base_rot = self.main_vr_robot.links["{}_hand".format(hand)].base_rot
+            base_rot = HAND_BASE_ROTS[hand]
             # Raw rotation of controller
             controller_rot = v["{}_controller".format(hand)][2]
             # Use dummy translation to calculation final rotation
@@ -385,13 +416,50 @@ class SimulatorVR(Simulator):
         # Actions are stored as 1D numpy array
         action = np.zeros((28,))
 
+        if not self.vr_data_available:
+            return action
+
         # Get VrData for the current frame
         v = self.gen_vr_data()
+
+        # If a double button press is recognized for ATTACHMENT_BUTTON_TIME_THRESHOLD seconds, attach/detach the VR
+        # system as needed. Forward a zero action to the robot if deactivated or if a switch is recognized.
+        attach_or_detach = self.get_action_button_state(
+            "left_controller", "reset_agent", v
+        ) and self.get_action_button_state("right_controller", "reset_agent", v)
+        if attach_or_detach:
+            # If the button just recently started being pressed, record the time.
+            if self._vr_attachment_button_press_timestamp is None:
+                self._vr_attachment_button_press_timestamp = time.time()
+
+            # If the button has been pressed for ATTACHMENT_BUTTON_TIME_THRESHOLD seconds, attach/detach.
+            if time.time() - self._vr_attachment_button_press_timestamp > ATTACHMENT_BUTTON_TIME_THRESHOLD:
+                # Replace timestamp with infinity so that the condition won't retrigger until button is released.
+                self._vr_attachment_button_press_timestamp = float("inf")
+
+                # Flip the attachment state.
+                self.vr_attached = not self.vr_attached
+                log.info("VR kit {} BehaviorRobot.".format("attached to" if self.vr_attached else "detached from"))
+
+                # Move the VR offset to the right spot.
+                if self.vr_attached:
+                    body_x, body_y, _ = self.main_vr_robot.get_position()
+                    self.set_vr_pos([body_x, body_y, 0], keep_height=True)
+
+                # We don't want to fill in an action in this case.
+                return action
+        else:
+            # If the button is released, stop keeping track.
+            self._vr_attachment_button_press_timestamp = None
+
+        # If the VR system is not attached to the robot, return a zero action.
+        if not self.vr_attached:
+            return action
 
         # Update body action space
         hmd_is_valid, hmd_pos, hmd_orn, hmd_r = v.query("hmd")[:4]
         torso_is_valid, torso_pos, torso_orn = v.query("torso_tracker")
-        vr_body = self.main_vr_robot.links["body"]
+        vr_body = self.main_vr_robot.base_link
         prev_body_pos, prev_body_orn = vr_body.get_position_orientation()
         inv_prev_body_pos, inv_prev_body_orn = p.invertTransform(prev_body_pos, prev_body_orn)
 
@@ -409,12 +477,14 @@ class SimulatorVR(Simulator):
         body_delta_pos, body_delta_orn = p.multiplyTransforms(
             inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn
         )
-        action[:3] = np.array(body_delta_pos)
-        action[3:6] = np.array(p.getEulerFromQuaternion(body_delta_orn))
+        body_delta_rot = p.getEulerFromQuaternion(body_delta_orn)
+        action[self.main_vr_robot.controller_action_idx["base"]] = np.concatenate([body_delta_pos, body_delta_rot])
 
         # Get new body position so we can calculate correct relative transforms for other VR objects
-        clipped_body_delta_pos, clipped_body_delta_orn = vr_body.clip_delta_pos_orn(action[:3], action[3:6])
-        clipped_body_delta_orn = p.getQuaternionFromEuler(clipped_body_delta_orn)
+        clipped_body_delta_pos = np.clip(body_delta_pos, -BODY_LINEAR_VELOCITY, BODY_LINEAR_VELOCITY).tolist()
+        clipped_body_delta_orn = p.getQuaternionFromEuler(
+            np.clip(body_delta_rot, -BODY_ANGULAR_VELOCITY, BODY_ANGULAR_VELOCITY).tolist()
+        )
         new_body_pos, new_body_orn = p.multiplyTransforms(
             prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn
         )
@@ -422,14 +492,12 @@ class SimulatorVR(Simulator):
         inv_new_body_pos, inv_new_body_orn = p.invertTransform(new_body_pos, new_body_orn)
 
         # Update action space for other VR objects
-        body_relative_parts = ["right", "left", "eye"]
-        for part_name in body_relative_parts:
-            vr_part = (
-                self.main_vr_robot.links[part_name]
-                if part_name == "eye"
-                else self.main_vr_robot.links["{}_hand".format(part_name)]
-            )
-
+        body_relative_parts = [
+            ("right_hand", self.main_vr_robot.eef_links["right_hand"]),
+            ("left_hand", self.main_vr_robot.eef_links["left_hand"]),
+            ("eye", self.main_vr_robot.links["eyes"]),
+        ]
+        for part_name, vr_part in body_relative_parts:
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
             prev_local_pos, prev_local_orn = vr_part.get_local_position_orientation()
@@ -437,9 +505,10 @@ class SimulatorVR(Simulator):
             if part_name == "eye":
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
             else:
-                valid, world_pos, _ = v.query("{}_controller".format(part_name))[:3]
+                controller_name = "{}_controller".format(part_name.replace("_hand", ""))
+                valid, world_pos, _ = v.query(controller_name)[:3]
                 # Need rotation of the model so it will appear aligned with the physical controller in VR
-                world_orn = v.query("{}_controller".format(part_name))[6]
+                world_orn = v.query(controller_name)[6]
 
             # Keep in same world position as last frame if controller/tracker data is not valid
             if not valid:
@@ -462,35 +531,35 @@ class SimulatorVR(Simulator):
             # Get the delta local position in the reference frame of the body
             delta_local_pos = np.array(des_local_pos) - np.array(prev_local_pos)
 
-            if part_name == "eye":
-                action[6:9] = np.array(delta_local_pos)
-                action[9:12] = np.array(delta_local_orn)
-            elif part_name == "left":
-                action[12:15] = np.array(delta_local_pos)
-                action[15:18] = np.array(delta_local_orn)
-            else:
-                action[20:23] = np.array(delta_local_pos)
-                action[23:26] = np.array(delta_local_orn)
+            controller_name = "camera" if part_name == "eye" else "arm_" + part_name
+            action[self.main_vr_robot.controller_action_idx[controller_name]] = np.concatenate(
+                [delta_local_pos, delta_local_orn]
+            )
 
             # Process trigger fraction and reset for controllers
-            if part_name in ["right", "left"]:
-                prev_trig_frac = vr_part.trigger_fraction
+            if part_name in ["right_hand", "left_hand"]:
+                fingers = self.main_vr_robot.gripper_control_idx[part_name]
+
+                # The normalized joint positions are inverted and scaled to the (0, 1) range to match VR controller.
+                # Note that we take the minimum (e.g. the most-grasped) finger - this means if the user releases the
+                # trigger, *all* of the fingers are guaranteed to move to the released position.
+                current_trig_frac = 1 - (np.min(self.main_vr_robot.joint_positions_normalized[fingers]) + 1) / 2
+
                 if valid:
-                    trig_frac = v.query("{}_controller_button".format(part_name))[0]
-                    delta_trig_frac = trig_frac - prev_trig_frac
+                    button_name = "{}_controller_button".format(part_name.replace("_hand", ""))
+                    trig_frac = v.query(button_name)[0]
+                    delta_trig_frac = trig_frac - current_trig_frac
                 else:
-                    delta_trig_frac = 0.0
-                if part_name == "left":
-                    action[18] = delta_trig_frac
-                else:
-                    action[26] = delta_trig_frac
+                    # Use the last trigger fraction if no valid input was received from controller.
+                    delta_trig_frac = 0
+
+                grip_controller_name = "gripper_" + part_name
+                action[self.main_vr_robot.controller_action_idx[grip_controller_name]] = delta_trig_frac
+
                 # If we reset, action is 1, otherwise 0
                 reset_action = v.query("reset_actions")[0] if part_name == "left" else v.query("reset_actions")[1]
                 reset_action_val = 1.0 if reset_action else 0.0
-                if part_name == "left":
-                    action[19] = reset_action_val
-                else:
-                    action[27] = reset_action_val
+                action[self.main_vr_robot.controller_action_idx["reset_%s" % part_name]] = reset_action_val
 
         return action
 
@@ -554,17 +623,6 @@ class SimulatorVR(Simulator):
         Returns the VR events processed by the simulator
         """
         return self.vr_event_data
-
-    def get_button_for_action(self, action):
-        """
-        Returns (button, state) tuple corresponding to an action
-        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.yml
-        """
-        return (
-            None
-            if action not in self.vr_settings.action_button_map
-            else tuple(self.vr_settings.action_button_map[action])
-        )
 
     def query_vr_event(self, controller, action):
         """
@@ -641,10 +699,34 @@ class SimulatorVR(Simulator):
 
         # Test for validity when acquiring button data
         if self.get_data_for_vr_device(controller_name)[0]:
-            trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controller_name)
+            trigger_fraction, touch_x, touch_y, buttons_pressed = self.renderer.vrsys.getButtonDataForController(
+                controller_name
+            )
         else:
-            trigger_fraction, touch_x, touch_y = 0.0, 0.0, 0.0
-        return [trigger_fraction, touch_x, touch_y]
+            trigger_fraction, touch_x, touch_y, buttons_pressed = 0.0, 0.0, 0.0, 0
+        return [trigger_fraction, touch_x, touch_y, buttons_pressed]
+
+    def get_action_button_state(self, controller, action, vr_data):
+        """This function can be used to extract the _state_ of a button from the vr_data's buttons_pressed vector.
+
+        If only key press/release events are required, use the event polling mechanism. This function is meant for
+        providing access to the continuous pressed/released state of the button.
+        """
+        # Find the controller and find the button mapping for this action in the config.
+        if (
+            controller not in ["left_controller", "right_controller"]
+            or action not in self.vr_settings.action_button_map.keys()
+        ):
+            return False
+
+        # Find the button index for this action from the config.
+        button_idx, _ = self.vr_settings.action_button_map[action]
+
+        # Get the bitvector corresponding to the buttons currently pressed on the controller.
+        buttons_pressed = int(vr_data.query("%s_button" % controller)[3])
+
+        # Extract and return the value of the bit corresponding to the button.
+        return bool(buttons_pressed & (1 << button_idx))
 
     def get_scroll_input(self):
         """

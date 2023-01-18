@@ -89,7 +89,7 @@ def main():
     # benchmark(render_to_tensor=True, resolution=512)
     results = []
 
-    for obj_num in [item ** 2 for item in [10]]:
+    for obj_num in [item**2 for item in [10]]:
         res = benchmark(render_to_tensor=False, resolution=512, obj_num=obj_num, optimized=True)
 
 

@@ -192,7 +192,7 @@ def main(args):
 
                     if args.save_images:
                         simulator.sync()
-                        scene.open_one_obj(chosen_support_obj.body_ids[chosen_support_obj.main_body], "max")
+                        scene.open_one_obj(chosen_support_obj.get_body_ids()[chosen_support_obj.main_body], "max")
                         pos = urdf_object.get_position()
                         offsets = [[-0.6, 0], [0.0, -0.6], [0.6, 0.0], [0.0, 0.6]]
                         for i in range(4):
@@ -202,7 +202,7 @@ def main(args):
                             plt.imshow(frame)
                             plt.savefig("placement_imgs/%s_placement_%d_%d.png" % (scene_name, placement_count, i))
                             plt.close()
-                        scene.open_one_obj(chosen_support_obj.body_ids[chosen_support_obj.main_body], "zero")
+                        scene.open_one_obj(chosen_support_obj.get_body_ids()[chosen_support_obj.main_body], "zero")
 
                     urdf_object.in_rooms = chosen_support_obj.in_rooms
                     break
@@ -211,7 +211,7 @@ def main(args):
 
         print("Total %d objects placed" % placement_count)
         if args.urdf_name:
-            scene.save_modified_urdf("%s_%s" % (scene_name, args.urdf_name))
+            scene.save("%s_%s" % (scene_name, args.urdf_name))
         if args.save_placement_txt:
             with open("%s_placements.txt" % scene_name, "w") as f:
                 for room in room_placements_counts:

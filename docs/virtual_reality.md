@@ -10,30 +10,30 @@ The HTC Vive Pro Eye tracking driver is not available for Linux. You must have t
 2. (optional) if you plan to use eye tracking on Windows, create a [vive developer account](https://hub.vive.com/sso/login) then download and install the [SRAnipal runtime](https://developer.vive.com/resources/vive-sense/sdk/vive-eye-and-facial-tracking-sdk/). Note you should [calibrate](https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html) the Vive eye tracker before each recording session.
 
 3. Ensure you have installed iGibson according to the installation [instructions](http://svl.stanford.edu/igibson/docs/installation.html#installation-method). 
-    * Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable `USE_VR=TRUE pip install -e .`. You must also have addition development headers installed: on Ubuntu `sudo apt install xorg-dev` and on Centos/Fedora: `sudo dnf install libXinerama-devel libXi-devel libXrandr-devel libXcursor-devel`.
+    * Note: On Windows VR support is enabled by default. On Linux, you must install with an additional environmental variable `USE_VR=TRUE pip install -e .`. You must also have addition development headers installed: on Ubuntu `sudo apt install xorg-dev` and on Centos/Fedora: `sudo dnf install libXinerama-devel libXi-devel libXrandr-devel libXcursor-devel`.
 
 ### VR examples
 
 We have several examples showing how to use our VR interface:
 
-* vr demo files: `igibson/examples/demo/vr_demos`
+* vr demo files: `igibson/examples/vr`
 
-* multi-user VR (experimental): `igibson/examples/demo/vr_demos/muvr` 
+* multi-user VR (experimental): `igibson/examples/vr/muvr` 
 
-* benchmark: `igibson/examples/demo/vr_demos/in_development`
+* benchmark: `igibson/examples/vr/in_development`
   - `vr_hand_dex_benchmark.py` -- Demonstrates various challenging manipulation tasks
   - `vr_hand_speed_benchmark.py` -- Demonstrates various tasks to assess user speed at working in VR
 
 
-* data_save_replay: `igibson/examples/demo/vr_demos/data_save_replay` 
-  - This folder demonstrates how to save VR recordings and "replay" them to reproduce the reorded trajectory
+* data_save_replay: `igibson/examples/vr/data_save_replay` 
+  - This folder demonstrates how to save VR recordings and "replay" them to reproduce the recorded trajectory
 
-* robot_embodiment: `igibson/examples/demo/vr_demos/robot_embodiment` 
+* robot_embodiment: `igibson/examples/vr/robot_embodiment` 
   - This folder demonstrates the VR interface to the Fetch robot (WIP)
 
 Benchmarks:
 
-We have two benchmarks - a hand and speed benchmark, both of which can be found in the top level of the vr_demos folder. In these demos, you can time yourself performing various challenges,
+We have two benchmarks - a hand and speed benchmark, both of which can be found in the top level of the vr examples folder. In these demos, you can time yourself performing various challenges,
 such as putting objects away into specific containers/cabinets. Please see the comments in these demo files for more information.
 
 ### VR config and button mapping:
@@ -54,7 +54,7 @@ Some additional options you may be interested in changing:
 
 We recommend looking at `igibson/render/mesh_renderer/mesh_renderer_vr.py` to see the VrSettings class which reads from `vr_config.yaml`. A single VrSettings object is created and passed in to the `Simulator` constructor.
 
-Note(optional): If you are using a device not already mapped, please run `igibson/examples/demo/vr_demos/in_development/vr_button_mapping.py` to figure out which physical controller buttons correspond to which indices in OpenVR.
+Note(optional): If you are using a device not already mapped, please run `igibson/examples/vr/in_development/vr_button_mapping.py` to figure out which physical controller buttons correspond to which indices in OpenVR.
 
 ### Mirroring the VR view on the monitor
 

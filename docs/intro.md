@@ -5,7 +5,8 @@
 iGibson, the Interactive Gibson Environment, is a simulation environment providing fast visual rendering and physics simulation (based on Bullet). 
 It is packed with a dataset with hundreds of large 3D environments reconstructed from real homes and offices, and interactive objects that can be pushed and actuated. 
 iGibson allows researchers to train and evaluate robotic agents that use RGB images and/or other visual sensors to solve indoor (interactive) navigation and mobile manipulation tasks such as opening doors, picking and placing objects, or searching for objects.
-With the latest extension, iGibson 2.0 supports new types of object state changes (cook, soak, slice, freeze, etc), that can enable new types of simulated activities!
+With the latest extension, iGibson 2.0 supports new types of [object state changes](extended_states.md) (cook, soak, slice, freeze, etc), that can enable new types of simulated activities!
+iGibson implements all features required to evaluate AI solutions in the BEHAVIOR benchmark: [sampling logic activity descriptions](sampling.md), [checking logic states](extended_states.md), connecting to the BEHAVIOR dataset of 3D objects and evaluating BEHAVIOR metrics (information about the [dataset](https://stanfordvl.github.io/behavior/objects.html) and the [metrics](https://stanfordvl.github.io/behavior/metrics.html) can be found in the documentation of the BEHAVIOR repository).
 
 
 ### Citation

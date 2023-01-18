@@ -19,7 +19,7 @@ robot:
   action_normalize: true
   base_name: null
   scale: 1.0
-  self_collision: true
+  self_collision: false
   rendering_params: null
   controller_config:
     base:
@@ -78,5 +78,4 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # visual objects
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: true

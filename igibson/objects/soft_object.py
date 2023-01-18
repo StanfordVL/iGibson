@@ -1,11 +1,9 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class SoftObject(StatefulObject, SingleBodyObject):
+class SoftObject(StatefulObject):
     """
     Soft object (WIP)
     """
@@ -30,7 +28,7 @@ class SoftObject(StatefulObject, SingleBodyObject):
         frictionCoeff=0,
         useFaceContact=0,
         useSelfCollision=0,
-        **kwargs
+        **kwargs,
     ):
         super(SoftObject, self).__init__(**kwargs)
         self.filename = filename
@@ -89,5 +87,5 @@ class SoftObject(StatefulObject, SingleBodyObject):
         Create soft body anchor
         """
         p.createSoftBodyAnchor(
-            self.get_body_id(), nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId
+            self.get_body_ids()[0], nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId
         )
