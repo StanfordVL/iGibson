@@ -17,7 +17,7 @@ from igibson.utils import assets_utils
 from igibson.utils.data_utils.scene_to_3dsmax import translation_utils
 from igibson.utils.mesh_util import xyzw2wxyz
 
-OUT_PATH = r"C:\Users\cgokmen\research\iGibson\igibson\data\cad"
+OUT_PATH = r"C:\Users\cgokmen\research\iGibson\igibson\data\scene-conversion"
 
 
 def main():
@@ -42,7 +42,7 @@ def process_scene(scene_name, visualize=False):
     ctr = collections.Counter()
 
     save_path = os.path.join(OUT_PATH, scene_name)
-    os.mkdir(save_path)
+    os.makedirs(save_path, exist_ok=True)
     body_link_meshes = {
         body_id: process_body(s, body_id, urdf, ctr, save_path)  # , include_non_base_links=False)
         for body_id, urdf in tqdm(s._urdfs.items())
@@ -77,6 +77,8 @@ def process_body(s, body_id, urdf, ctr, save_path, include_non_base_links=True):
 
     instance_id = ctr[(new_cat, new_model)]
     ctr[(new_cat, new_model)] += 1
+
+    rooms = "-".join(obj.in_rooms if obj.in_rooms else [])
 
     # Get the meshes
     link_trimeshes = collections.defaultdict(list)
@@ -149,6 +151,8 @@ def process_body(s, body_id, urdf, ctr, save_path, include_non_base_links=True):
             joint_end = "lower"
             object_name = f"{prefix_bad}{prefix_loose}{new_cat}-{new_model}-{instance_id}-link{link_id}-{parent_name}-{joint_type}-{joint_end}"
 
+        object_name += "---" + rooms
+
         out_dir = os.path.join(save_path, object_name)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -162,7 +166,6 @@ def process_body(s, body_id, urdf, ctr, save_path, include_non_base_links=True):
     return final_meshes
 
 
-# TODO: Figure out how to merge fixed links
 # TODO: Figure out how to annotate joints
 
 if __name__ == "__main__":
