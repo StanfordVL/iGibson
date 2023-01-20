@@ -4,7 +4,7 @@ import platform
 
 import numpy as np
 import pybullet as p
-import urdfpy
+# import urdfpy
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
