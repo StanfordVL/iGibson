@@ -3,6 +3,7 @@ import h5py
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from typing import Dict, List, Optional, Union, Callable
+from igibson.utils.transform_utils import quat_distance
 
 class VIDataLib(object):
     def __init__(self, logfiles: Dict[str, Dict[str, Dict[str, str]]]):
@@ -128,13 +129,25 @@ class VIDataLib(object):
             for s_id in self.hfs[c_id].keys():
                 total_trajectory_length[c_id][s_id] = {}
                 prev_pos = None
+                prev_body_pos = None
                 for t_id in self.hfs[c_id][s_id].keys():
                     total_trajectory_length[c_id][s_id][t_id] = []
-                    for x in self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/{device}']:
-                        if x[0] == 1:
-                            if prev_pos is not None and np.linalg.norm(x[1:4] - prev_pos) > 3e-3:
-                                total_trajectory_length[c_id][s_id][t_id].append(np.linalg.norm(prev_pos - x[1:4]))
-                            prev_pos = x[1:4]
+                    device_data = np.array(self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/{device}'])
+                    body_data = np.array(self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/torso_tracker'])
+                    for i in range(len(device_data)):
+                        if device_data[i, 0] == 1:
+                            if body_data[i, 0] == 1:
+                                prev_body_pos = body_data[i, 1:4]
+                            if prev_body_pos is not None:
+                                if device != 'torso_tracker':
+                                    cur_data = device_data[i, 1:4] - prev_body_pos
+                                else:
+                                    cur_data = device_data[i, 1:4]
+                                if prev_pos is not None:
+                                    pos_diff = np.linalg.norm(cur_data - prev_pos) 
+                                    if pos_diff > 3e-3:
+                                        total_trajectory_length[c_id][s_id][t_id].append(pos_diff)
+                                prev_pos = cur_data
                 total_trajectory_length[c_id][s_id] = {k: method(v) for k, v in total_trajectory_length[c_id][s_id].items()}
         return total_trajectory_length
 
@@ -147,18 +160,27 @@ class VIDataLib(object):
         for c_id in cond_id:
             for s_id in self.hfs[c_id].keys():
                 total_trajectory_rot[c_id][s_id] = {}
-                prev_quat = None
+                prev_rot = None
+                prev_body_rot = None
                 for t_id in self.hfs[c_id][s_id].keys():
                     total_trajectory_rot[c_id][s_id][t_id] = []
-                    for x in self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/{device}']:
-                        if x[0] == 1:
-                            if prev_quat is not None:
-                                val = (prev_quat @ x[4:8]) / (np.linalg.norm(prev_quat) * np.linalg.norm(x[4:8]))
-                                if val > 1 or 1 - val < 1e-6:
-                                    val = 1
-                                total_trajectory_rot[c_id][s_id][t_id].append(np.arccos(val))
-                            prev_quat = x[4:8]
-                total_trajectory_rot[c_id][s_id] = {k: method(v) for k, v in total_trajectory_rot[c_id][s_id].items()}
+                    device_data = np.array(self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/{device}'])
+                    body_data = np.array(self.hfs[c_id][s_id][t_id][f'vr/vr_device_data/torso_tracker'])
+                    for i in range(len(device_data)):
+                        if device_data[i, 0] == 1:
+                            if body_data[i, 0] == 1:
+                                prev_body_rot = body_data[i, 4:8]
+                            if prev_body_rot is not None:
+                                if device != 'torso_tracker':
+                                    cur_data = quat_distance(device_data[i, 4:8], prev_body_rot)
+                                else:
+                                    cur_data = device_data[i, 4:8]
+                                if prev_rot is not None:
+                                    val = (prev_rot @ cur_data) / (np.linalg.norm(prev_rot) * np.linalg.norm(cur_data))
+                                    if val > 0 and 1 - val > 1e-6:
+                                        total_trajectory_rot[c_id][s_id][t_id].append(np.arccos(val))
+                                prev_rot = cur_data
+                total_trajectory_rot[c_id][s_id] = {k: float(method(v)) for k, v in total_trajectory_rot[c_id][s_id].items()}
         return total_trajectory_rot
 
 
@@ -221,6 +243,8 @@ class VIDataLib(object):
                     for x in self.hfs[c_id][s_id][t_id]["vr/vr_eye_tracking_data"]:
                         if x[0] == 1:
                             pupil_diameter[c_id][s_id][t_id].append(x[10])
+                    if len(pupil_diameter[c_id][s_id][t_id]) == 0:
+                        print(f"no pupil data in {c_id} {s_id} {t_id}")
                 pupil_diameter[c_id][s_id] = {k: method(v) for k, v in pupil_diameter[c_id][s_id].items()}
         return pupil_diameter
 

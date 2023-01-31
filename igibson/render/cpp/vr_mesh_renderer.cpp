@@ -827,7 +827,6 @@ void VRRendererContext::pollAnipal() {
 
 			// Convert to OpenVR coordinates
 			glm::vec3 eyeSpaceDir(-1 * gazeDirection.x, gazeDirection.y, -1 * gazeDirection.z);
-
 			// Only rotate, no translate - remove translation to preserve rotation
 			glm::vec3 hmdSpaceDir(hmdData.deviceTransform * glm::vec4(eyeSpaceDir, 1.0));
 			// Make sure to normalize (and also flip x and z, since anipal coordinate convention is different to OpenGL)
