@@ -3419,7 +3419,7 @@ def plan_base_motion_2d(body,
                              robot_footprint_radius_in_map * 2 + 1))
             cv2.circle(mask, (robot_footprint_radius_in_map, robot_footprint_radius_in_map), robot_footprint_radius_in_map,
                        1, -1)
-            mask = mask.astype(np.bool)
+            mask = mask.astype(bool)
 
             # Check if all the points where the shifted mask of the robot base overlaps with the occupancy map are
             # marked as FREESPACE, and return false if not
