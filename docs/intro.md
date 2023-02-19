@@ -13,6 +13,23 @@ iGibson implements all features required to evaluate AI solutions in the BEHAVIO
 If you use iGibson or its assets and models, consider citing the following publications:
 
 ```
+@InProceedings{li2022igibson,
+  title = 	 {iGibson 2.0: Object-Centric Simulation for Robot Learning of Everyday Household Tasks},
+  author =       {Li, Chengshu and Xia, Fei and Mart\'in-Mart\'in, Roberto and Lingelbach, Michael and Srivastava, Sanjana and Shen, Bokui and Vainio, Kent Elliott and Gokmen, Cem and Dharan, Gokul and Jain, Tanish and Kurenkov, Andrey and Liu, Karen and Gweon, Hyowon and Wu, Jiajun and Fei-Fei, Li and Savarese, Silvio},
+  booktitle = 	 {Proceedings of the 5th Conference on Robot Learning},
+  pages = 	 {455--465},
+  year = 	 {2022},
+  editor = 	 {Faust, Aleksandra and Hsu, David and Neumann, Gerhard},
+  volume = 	 {164},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {08--11 Nov},
+  publisher =    {PMLR},
+  pdf = 	 {https://proceedings.mlr.press/v164/li22b/li22b.pdf},
+  url = 	 {https://proceedings.mlr.press/v164/li22b.html},
+} 
+```
+
+```
 @inproceedings{shen2021igibson,
       title={iGibson 1.0: a Simulation Environment for Interactive Tasks in Large Realistic Scenes}, 
       author={Bokui Shen and Fei Xia and Chengshu Li and Roberto Mart\'in-Mart\'in and Linxi Fan and Guanzhi Wang and Claudia Pérez-D'Arpino and Shyamal Buch and Sanjana Srivastava and Lyne P. Tchapmi and Micael E. Tchapmi and Kent Vainio and Josiah Wong and Li Fei-Fei and Silvio Savarese},
@@ -20,17 +37,6 @@ If you use iGibson or its assets and models, consider citing the following publi
       year={2021},
       pages={accepted},
       organization={IEEE}
-}
-```
-
-```
-@misc{li2021igibson,
-      title={iGibson 2.0: Object-Centric Simulation for Robot Learning of Everyday Household Tasks}, 
-      author={Chengshu Li and Fei Xia and Roberto Martín-Martín and Michael Lingelbach and Sanjana Srivastava and Bokui Shen and Kent Vainio and Cem Gokmen and Gokul Dharan and Tanish Jain and Andrey Kurenkov and Karen Liu and Hyowon Gweon and Jiajun Wu and Li Fei-Fei and Silvio Savarese},
-      year={2021},
-      eprint={2108.03272},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO}
 }
 ```
 

@@ -41,7 +41,7 @@ def gen_trav_map(
     xmax, ymax, _ = vertices.max(axis=0)
 
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-    max_length = np.ceil(max_length).astype(np.int)
+    max_length = np.ceil(max_length).astype(int)
 
     wall_maps = gen_map(vertices, faces, output_folder, img_filename_format=obstacle_map_filename_format)
     wall_pts = np.array(np.where(wall_maps[0] == 0)).T
@@ -170,7 +170,7 @@ def gen_map(vertices, faces, output_folder, img_filename_format="floor_{}.png"):
     xmax, ymax, _ = vertices.max(axis=0)
 
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-    max_length = np.ceil(max_length).astype(np.int)
+    max_length = np.ceil(max_length).astype(int)
 
     floors = [0.0]
     print(floors)

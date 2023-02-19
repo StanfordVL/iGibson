@@ -109,7 +109,7 @@ def gen_map(obj_filepath, mesh_dir, img_filename_format="floor_{}.png"):
     xmax, ymax, _ = vertices.max(axis=0)
 
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-    max_length = np.ceil(max_length).astype(np.int)
+    max_length = np.ceil(max_length).astype(int)
 
     with open(os.path.join(mesh_dir, "floors.txt")) as f:
         floors = map(float, f.readlines())
