@@ -36,8 +36,8 @@ def get_lidar_sampling_pattern():
 
     height = 128
 
-    x_samples = (np.tan(xx) / np.cos(yy) * height // 2 + height // 2).astype(np.int)
-    y_samples = (np.tan(yy) * height // 2 + height // 2).astype(np.int)
+    x_samples = (np.tan(xx) / np.cos(yy) * height // 2 + height // 2).astype(int)
+    y_samples = (np.tan(yy) * height // 2 + height // 2).astype(int)
 
     x_samples = x_samples.flatten()
     y_samples = y_samples.flatten()

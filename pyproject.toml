@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="igibson"
-version="2.2.1"
+version="2.2.2"
 readme = "README.md"
 requires-python = ">=2.8"
 license = {text = "MIT"}

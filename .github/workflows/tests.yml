@@ -9,7 +9,6 @@ concurrency:
 jobs:
   test:
     runs-on: [self-hosted, linux, gpu]
-    if: github.repository == 'StanfordVL/iGibson-dev'
 
     steps:
       - name: Checkout source
@@ -51,9 +50,8 @@ jobs:
       - name: Checkout BDDL
         uses: actions/checkout@v2
         with:
-          repository: StanfordVL/bddl-dev
-          ref: 581be50e7cfd2b3a1447aaa1b4fc2424b673339c
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
+          repository: StanfordVL/bddl
+          ref: 7fba5f13cc9f3c83dcce9ef4b014903bbcd6e34f
           path: bddl
           submodules: recursive
           lfs: true

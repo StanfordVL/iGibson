@@ -138,7 +138,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {self.default_arm: np.array([8, 9], dtype=np.int)}
+        return {self.default_arm: np.array([8, 9], dtype=int)}
 
     @property
     def disabled_collision_pairs(self):

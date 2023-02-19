@@ -112,7 +112,7 @@ def gen_trav_map(mp3d_dir, add_clutter=False):
             xmax, ymax, _ = vertices.max(axis=0)
 
             max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-            max_length = np.ceil(max_length).astype(np.int)
+            max_length = np.ceil(max_length).astype(int)
 
             for i_floor in range(len(floors)):
                 floor = floors[i_floor]

@@ -363,7 +363,7 @@ def main():
         xmin, ymin = stacked.min(axis=0)
         xmax, ymax = stacked.max(axis=0)
         max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
-        max_length = np.ceil(max_length).astype(np.int)
+        max_length = np.ceil(max_length).astype(int)
         ins_image = Image.new("L", (2 * max_length * 100, 2 * max_length * 100), 0)
         d1 = ImageDraw.Draw(ins_image)
         sem_image = Image.new("L", (2 * max_length * 100, 2 * max_length * 100), 0)

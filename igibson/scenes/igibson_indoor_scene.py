@@ -1042,7 +1042,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param xy: 2D location in world reference frame (metric)
         :return: 2D location in seg map reference frame (image)
         """
-        return np.flip((xy / self.seg_map_resolution + self.seg_map_size / 2.0)).astype(np.int)
+        return np.flip((xy / self.seg_map_resolution + self.seg_map_size / 2.0)).astype(int)
 
     def get_room_type_by_point(self, xy):
         """
