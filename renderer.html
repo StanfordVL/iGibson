@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Renderer &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Renderer &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -133,7 +133,7 @@
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Minimal example of use of the renderer. Loads Rs (non interactive), renders one set of images (RGB, normals,</span>
 <span class="sd">    3D points (as depth)), shows them.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -176,7 +176,7 @@
 <div class="section" id="interactive-example">
 <h3>Interactive Example<a class="headerlink" href="#interactive-example" title="Permalink to this headline"></a></h3>
 <p>In this example, we show an interactive demo of MeshRenderer.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.renderer.mesh_renderer_example
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.examples.renderer.mesh_renderer_example
 </pre></div>
 </div>
 <p>You may translate the camera by pressing “WASD” on your keyboard and rotate the camera by dragging your mouse. Press <code class="docutils literal notranslate"><span class="pre">Q</span></code> to exit the rendering loop. The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/renderer/mesh_renderer_example.py">igibson/examples/renderer/mesh_renderer_example.py</a>.</p>
@@ -186,7 +186,7 @@
 <p>You can test the physically based renderer with the PBR demo. You can render any objects included in iG dataset, here
 we show a sink for example, as it includes different materials. You need to pass in a folder, since it will load all
 obj files in the folder.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.renderer.mesh_renderer_example_pbr &lt;path to ig_dataset&gt;/objects/sink/sink_1/shape/visual
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.examples.renderer.mesh_renderer_example_pbr<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>ig_dataset&gt;/objects/sink/sink_1/shape/visual
 </pre></div>
 </div>
 <p><img alt="pbr_renderer.png" src="_images/pbr_render.png" /></p>

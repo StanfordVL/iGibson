@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quickstart &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Quickstart &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -112,7 +112,7 @@
 <div class="section" id="igibson-in-action">
 <h2>iGibson in Action<a class="headerlink" href="#igibson-in-action" title="Permalink to this headline"></a></h2>
 <p>Let’s assume you finished the installation and downloading some assets and datasets. Let’s now get our hands dirty and see iGibson in action!</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 <p>If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
@@ -154,7 +154,7 @@
 <p>Performance is a big designing focus for iGibson. We provide a few scripts to measure the performance of rendering and physics simulation in your target machine.</p>
 <div class="section" id="measuring-the-performance-in-static-scene-gibson-scenes">
 <h3>Measuring the performance in static scene (Gibson scenes)<a class="headerlink" href="#measuring-the-performance-in-static-scene-gibson-scenes" title="Permalink to this headline"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_static_scene
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.benchmark_static_scene
 </pre></div>
 </div>
 <p>You will see output similar to:</p>
@@ -173,7 +173,7 @@
 </div>
 <div class="section" id="measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene">
 <h3>Measuring the performance of the physics simulation in interactive scenes (iGibson scene)<a class="headerlink" href="#measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene" title="Permalink to this headline"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_interactive_scene
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.benchmark_interactive_scene
 </pre></div>
 </div>
 <p>It will generate a report like below:</p>
@@ -182,7 +182,7 @@
 <div class="section" id="measuring-the-performance-of-rendering-in-interactive-scenes">
 <h3>Measuring the performance of rendering in interactive scenes<a class="headerlink" href="#measuring-the-performance-of-rendering-in-interactive-scenes" title="Permalink to this headline"></a></h3>
 <p>To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_interactive_scene_rendering
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.benchmark_interactive_scene_rendering
 </pre></div>
 </div>
 <p>It benchmarks two use cases, one for training visual RL agents (low resolution, shadow mapping off), another one for

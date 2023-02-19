@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tests and Examples &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Tests and Examples &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -106,22 +106,22 @@
 <h2>Tests<a class="headerlink" href="#tests" title="Permalink to this headline"></a></h2>
 <p>We provide tests in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/tests">this directory</a> in our repository.
 You can run them executing:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest --ignore disabled --ignore benchmark
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--ignore<span class="w"> </span>disabled<span class="w"> </span>--ignore<span class="w"> </span>benchmark
 </pre></div>
 </div>
 <p>It will take a few minutes. If all tests pass, you will see something like this</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">===============================</span> <span class="nb">test</span> session <span class="nv">starts</span> <span class="o">================================</span>
-platform linux -- Python <span class="m">3</span>.5.6, pytest-4.6.9, py-1.5.3, pluggy-0.13.1
-plugins: openfiles-0.3.0, doctestplus-0.1.3, arraydiff-0.2
-collected <span class="m">27</span> items
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">===============================</span><span class="w"> </span><span class="nb">test</span><span class="w"> </span>session<span class="w"> </span><span class="nv">starts</span><span class="w"> </span><span class="o">================================</span>
+platform<span class="w"> </span>linux<span class="w"> </span>--<span class="w"> </span>Python<span class="w"> </span><span class="m">3</span>.5.6,<span class="w"> </span>pytest-4.6.9,<span class="w"> </span>py-1.5.3,<span class="w"> </span>pluggy-0.13.1
+plugins:<span class="w"> </span>openfiles-0.3.0,<span class="w"> </span>doctestplus-0.1.3,<span class="w"> </span>arraydiff-0.2
+collected<span class="w"> </span><span class="m">27</span><span class="w"> </span>items
 
-test_binding.py ..                                                           <span class="o">[</span>  <span class="m">7</span>% <span class="o">]</span>
-test_navigate_env.py ..                                                      <span class="o">[</span> <span class="m">14</span>% <span class="o">]</span>
-test_object.py ....                                                          <span class="o">[</span> <span class="m">29</span>% <span class="o">]</span>
-test_render.py ...                                                           <span class="o">[</span> <span class="m">40</span>% <span class="o">]</span>
-test_robot.py ..........                                                     <span class="o">[</span> <span class="m">77</span>% <span class="o">]</span>
-test_scene_importing.py ....                                                 <span class="o">[</span> <span class="m">92</span>% <span class="o">]</span>
-test_simulator.py .                                                          <span class="o">[</span> <span class="m">96</span>% <span class="o">]</span>
+test_binding.py<span class="w"> </span>..<span class="w">                                                           </span><span class="o">[</span><span class="w">  </span><span class="m">7</span>%<span class="w"> </span><span class="o">]</span>
+test_navigate_env.py<span class="w"> </span>..<span class="w">                                                      </span><span class="o">[</span><span class="w"> </span><span class="m">14</span>%<span class="w"> </span><span class="o">]</span>
+test_object.py<span class="w"> </span>....<span class="w">                                                          </span><span class="o">[</span><span class="w"> </span><span class="m">29</span>%<span class="w"> </span><span class="o">]</span>
+test_render.py<span class="w"> </span>...<span class="w">                                                           </span><span class="o">[</span><span class="w"> </span><span class="m">40</span>%<span class="w"> </span><span class="o">]</span>
+test_robot.py<span class="w"> </span>..........<span class="w">                                                     </span><span class="o">[</span><span class="w"> </span><span class="m">77</span>%<span class="w"> </span><span class="o">]</span>
+test_scene_importing.py<span class="w"> </span>....<span class="w">                                                 </span><span class="o">[</span><span class="w"> </span><span class="m">92</span>%<span class="w"> </span><span class="o">]</span>
+test_simulator.py<span class="w"> </span>.<span class="w">                                                          </span><span class="o">[</span><span class="w"> </span><span class="m">96</span>%<span class="w"> </span><span class="o">]</span>
 test_viewer.py
 </pre></div>
 </div>

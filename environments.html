@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Environments &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Environments &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -177,89 +177,89 @@ We provide a few common termination conditions for robotics tasks.</p>
 <h3>Configs<a class="headerlink" href="#configs" title="Permalink to this headline"></a></h3>
 <p>While <strong>Environments</strong> can be instantiated manually, it is easier to use a config file, a YAML file containing the relevant parameters. The config file specifies parameters such as the robot type, action frequency, etc., but also information about the <strong>Sensors</strong> (e.g. sensor types, image resolution, noise rate, etc), the <strong>Task</strong> (e.g. task type, goal distance range, etc), the <strong>Reward Functions</strong> (e.g. reward types, reward scale, etc), and the <strong>Termination Conditions</strong> (e.g. goal convergence threshold, time limit, etc). Many useful examples of config files can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/configs">configs</a>.</p>
 <p>Here is one example: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/turtlebot_nav.yaml">configs/turtlebot_nav.yaml</a></p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># scene</span><span class="w"></span>
-<span class="nt">scene</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">igibson</span><span class="w"></span>
-<span class="nt">scene_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rs_int</span><span class="w"></span>
-<span class="nt">build_graph</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
-<span class="nt">load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
-<span class="nt">pybullet_load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
-<span class="nt">trav_map_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_obj</span><span class="w"></span>
-<span class="nt">trav_map_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w"></span>
-<span class="nt">trav_map_erosion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w"></span>
-<span class="nt">should_open_all_doors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># scene</span>
+<span class="nt">scene</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">igibson</span>
+<span class="nt">scene_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rs_int</span>
+<span class="nt">build_graph</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">pybullet_load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">trav_map_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_obj</span>
+<span class="nt">trav_map_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+<span class="nt">trav_map_erosion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">should_open_all_doors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 
-<span class="c1"># domain randomization</span><span class="w"></span>
-<span class="nt">texture_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
-<span class="nt">object_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
+<span class="c1"># domain randomization</span>
+<span class="nt">texture_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="nt">object_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
 
-<span class="c1"># robot</span><span class="w"></span>
-<span class="nt">robot</span><span class="p">:</span><span class="w"></span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Turtlebot</span><span class="w"></span>
-<span class="w">  </span><span class="nt">action_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">continuous</span><span class="w"></span>
-<span class="w">  </span><span class="nt">action_normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
-<span class="w">  </span><span class="nt">base_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
-<span class="w">  </span><span class="nt">scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
-<span class="w">  </span><span class="nt">self_collision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
-<span class="w">  </span><span class="nt">rendering_params</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
-<span class="w">  </span><span class="nt">controller_config</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">base</span><span class="p">:</span><span class="w"></span>
-<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DifferentialDriveController</span><span class="w"></span>
+<span class="c1"># robot</span>
+<span class="nt">robot</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Turtlebot</span>
+<span class="w">  </span><span class="nt">action_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">continuous</span>
+<span class="w">  </span><span class="nt">action_normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">base_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">  </span><span class="nt">scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">  </span><span class="nt">self_collision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">rendering_params</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">  </span><span class="nt">controller_config</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">base</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DifferentialDriveController</span>
 
-<span class="c1"># task</span><span class="w"></span>
-<span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">point_nav_random</span><span class="w"></span>
-<span class="nt">target_dist_min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
-<span class="nt">target_dist_max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w"></span>
-<span class="nt">goal_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">polar</span><span class="w"></span>
-<span class="nt">task_obs_dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
+<span class="c1"># task</span>
+<span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">point_nav_random</span>
+<span class="nt">target_dist_min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="nt">target_dist_max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+<span class="nt">goal_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">polar</span>
+<span class="nt">task_obs_dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 
-<span class="c1"># reward</span><span class="w"></span>
-<span class="nt">reward_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">geodesic</span><span class="w"></span>
-<span class="nt">success_reward</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w"></span>
-<span class="nt">potential_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
-<span class="nt">collision_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-0.1</span><span class="w"></span>
+<span class="c1"># reward</span>
+<span class="nt">reward_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">geodesic</span>
+<span class="nt">success_reward</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+<span class="nt">potential_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="nt">collision_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-0.1</span>
 
-<span class="c1"># discount factor</span><span class="w"></span>
-<span class="nt">discount_factor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.99</span><span class="w"></span>
+<span class="c1"># discount factor</span>
+<span class="nt">discount_factor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.99</span>
 
-<span class="c1"># termination condition</span><span class="w"></span>
-<span class="nt">dist_tol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.36</span><span class="w">  </span><span class="c1"># body width</span><span class="w"></span>
-<span class="nt">max_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w"></span>
-<span class="nt">max_collisions_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w"></span>
+<span class="c1"># termination condition</span>
+<span class="nt">dist_tol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.36</span><span class="w">  </span><span class="c1"># body width</span>
+<span class="nt">max_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
+<span class="nt">max_collisions_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
 
-<span class="c1"># misc config</span><span class="w"></span>
-<span class="nt">initial_pos_z_offset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w"></span>
-<span class="nt">collision_ignore_link_a_ids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># ignore collisions with these robot links</span><span class="w"></span>
+<span class="c1"># misc config</span>
+<span class="nt">initial_pos_z_offset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+<span class="nt">collision_ignore_link_a_ids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># ignore collisions with these robot links</span>
 
-<span class="c1"># sensor spec</span><span class="w"></span>
-<span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task_obs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rgb</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">depth</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">scan</span><span class="p p-Indicator">]</span><span class="w"></span>
-<span class="c1"># image</span><span class="w"></span>
-<span class="c1"># ASUS Xtion PRO LIVE</span><span class="w"></span>
-<span class="c1"># https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE</span><span class="w"></span>
-<span class="nt">fisheye</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
-<span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">640</span><span class="w"></span>
-<span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">480</span><span class="w"></span>
-<span class="nt">vertical_fov</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">45</span><span class="w"></span>
-<span class="c1"># depth</span><span class="w"></span>
-<span class="nt">depth_low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span><span class="w"></span>
-<span class="nt">depth_high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.5</span><span class="w"></span>
-<span class="c1"># scan</span><span class="w"></span>
-<span class="c1"># Hokuyo URG-04LX-UG01</span><span class="w"></span>
-<span class="c1"># https://www.hokuyo-aut.jp/search/single.php?serial=166</span><span class="w"></span>
-<span class="c1"># n_horizontal_rays is originally 683, sub-sampled 1/3</span><span class="w"></span>
-<span class="nt">n_horizontal_rays</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">228</span><span class="w"></span>
-<span class="nt">n_vertical_beams</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w"></span>
-<span class="nt">laser_linear_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.6</span><span class="w"></span>
-<span class="nt">laser_angular_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">240.0</span><span class="w"></span>
-<span class="nt">min_laser_dist</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span><span class="w"></span>
-<span class="nt">laser_link_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scan_link</span><span class="w"></span>
+<span class="c1"># sensor spec</span>
+<span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task_obs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rgb</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">depth</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">scan</span><span class="p p-Indicator">]</span>
+<span class="c1"># image</span>
+<span class="c1"># ASUS Xtion PRO LIVE</span>
+<span class="c1"># https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE</span>
+<span class="nt">fisheye</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">640</span>
+<span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">480</span>
+<span class="nt">vertical_fov</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">45</span>
+<span class="c1"># depth</span>
+<span class="nt">depth_low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="nt">depth_high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.5</span>
+<span class="c1"># scan</span>
+<span class="c1"># Hokuyo URG-04LX-UG01</span>
+<span class="c1"># https://www.hokuyo-aut.jp/search/single.php?serial=166</span>
+<span class="c1"># n_horizontal_rays is originally 683, sub-sampled 1/3</span>
+<span class="nt">n_horizontal_rays</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">228</span>
+<span class="nt">n_vertical_beams</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">laser_linear_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.6</span>
+<span class="nt">laser_angular_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">240.0</span>
+<span class="nt">min_laser_dist</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="nt">laser_link_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scan_link</span>
 
-<span class="c1"># sensor noise</span><span class="w"></span>
-<span class="nt">depth_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w"></span>
-<span class="nt">scan_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w"></span>
+<span class="c1"># sensor noise</span>
+<span class="nt">depth_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="nt">scan_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
 
-<span class="c1"># visual objects</span><span class="w"></span>
-<span class="nt">visible_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
-<span class="nt">visible_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
+<span class="c1"># visual objects</span>
+<span class="nt">visible_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">visible_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </pre></div>
 </div>
 <p>In the following, we explain th parameters included in this config:</p>
@@ -531,7 +531,7 @@ The code can be found here: <a class="reference external" href="https://github.c
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates an iGibson environment from a config file with a turtlebot in Rs (not interactive).</span>
 <span class="sd">    It steps the environment 100 times with random actions sampled from the action space,</span>
 <span class="sd">    using the Gym interface, resetting it 10 times.</span>
@@ -588,7 +588,7 @@ The code can be found here: <a class="reference external" href="https://github.c
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates an iGibson environment from a config file with a turtlebot in Rs_int (interactive).</span>
 <span class="sd">    It steps the environment 100 times with random actions sampled from the action space,</span>
 <span class="sd">    using the Gym interface, resetting it 10 times.</span>

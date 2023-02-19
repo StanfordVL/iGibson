@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Objects &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Objects &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -129,57 +129,57 @@
 <p>All models in the BEHAVIOR Dataset are organized following the WordNet, associating them to synsets. This structure allows us to define properties for all models of the same categories, but it also facilitates more general sampling of activity instances fulfilling initial conditions such as onTop(fruit, table) that can be achieved using any model within the branch fruit of WordNet.</p>
 <p>Please see below for an updated file structure for BEHAVIOR Dataset</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>OBJECT_NAME
-│   <span class="c1"># Unified Robot Description Format (URDF)</span>
-│   <span class="c1"># http://wiki.ros.org/urdf</span>
-│   <span class="c1"># It defines the object model (parts, articulation, dynamics properties etc.).</span>
-│   OBJECT_NAME.urdf 
+│<span class="w">   </span><span class="c1"># Unified Robot Description Format (URDF)</span>
+│<span class="w">   </span><span class="c1"># http://wiki.ros.org/urdf</span>
+│<span class="w">   </span><span class="c1"># It defines the object model (parts, articulation, dynamics properties etc.).</span>
+│<span class="w">   </span>OBJECT_NAME.urdf<span class="w"> </span>
 │
 └───shape
-│   └───visual 
-│   │    │   <span class="c1"># Directory containing visual meshes (vm) of the object. Used for iGibson&#39;s rendering. Encrypted</span>
-│   │    │   <span class="c1"># All objs are UV mapped onto the same texture, linked by default.mtl. All faces are triangles.</span>
-│   │    │  vm1.encrypted.obj
-│   │    │  vm2.encrypted.obj
-│   │    │  …
-│   │    │  default.mtl <span class="o">(</span>links the geometry to the texture files<span class="o">)</span>
-│   │ 
-│   └───collision
-│   │    │   <span class="c1"># Directory containing collision meshes (cm) of the objects. Used for iGibson&#39;s physics simulation.</span>
-│   │    │   <span class="c1"># Each obj represents a unique link of the object.</span>
-│   │    │   <span class="c1"># For example, link_1_cm.obj represents the collision mesh of link_1. </span>
-│   │    │  cm1.obj
-│   │    │  cm2.obj
-│   │    │  …
+│<span class="w">   </span>└───visual<span class="w"> </span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">   </span><span class="c1"># Directory containing visual meshes (vm) of the object. Used for iGibson&#39;s rendering. Encrypted</span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">   </span><span class="c1"># All objs are UV mapped onto the same texture, linked by default.mtl. All faces are triangles.</span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>vm1.encrypted.obj
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>vm2.encrypted.obj
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>…
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>default.mtl<span class="w"> </span><span class="o">(</span>links<span class="w"> </span>the<span class="w"> </span>geometry<span class="w"> </span>to<span class="w"> </span>the<span class="w"> </span>texture<span class="w"> </span>files<span class="o">)</span>
+│<span class="w">   </span>│<span class="w"> </span>
+│<span class="w">   </span>└───collision
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">   </span><span class="c1"># Directory containing collision meshes (cm) of the objects. Used for iGibson&#39;s physics simulation.</span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">   </span><span class="c1"># Each obj represents a unique link of the object.</span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">   </span><span class="c1"># For example, link_1_cm.obj represents the collision mesh of link_1. </span>
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>cm1.obj
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>cm2.obj
+│<span class="w">   </span>│<span class="w">    </span>│<span class="w">  </span>…
 │
 └───material
-│   │   <span class="c1"># Contains 4 default channels:</span>
-│   │   <span class="c1"># 	DIFFUSE.png (RGB albedo map)</span>
-│   │   <span class="c1"># 	METALLIC.png (metallic map)</span>
-│   │   <span class="c1"># 	NORMAL.png (tangent normal map)</span>
-│   │   <span class="c1"># 	ROUGHNESS.png (roughness map)</span>
-<span class="p">|</span>   <span class="p">|</span>   <span class="c1"># Also contains diffuse texture maps that will be used when some object state changes happen, e.g. cooked, burnt, or soaked.</span>
-│   │   DIFFUSE.encrypted.png
-│   │   METALLIC.encrypted.png	
-│   │   NORMAL.encrypted.png
-│   │   ROUGHNESS.encrypted.png
-│   │   DIFFUSE_Frozen.encrypted.png
-│   │   DIFFUSE_Cooked.encrypted.png
-│   │   DIFFUSE_Burnt.encrypted.png
-│   │   DIFFUSE_Soaked.encrypted.png
-│   │   DIFFUSE_ToggledOn.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># Contains 4 default channels:</span>
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># 	DIFFUSE.png (RGB albedo map)</span>
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># 	METALLIC.png (metallic map)</span>
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># 	NORMAL.png (tangent normal map)</span>
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># 	ROUGHNESS.png (roughness map)</span>
+<span class="p">|</span><span class="w">   </span><span class="p">|</span><span class="w">   </span><span class="c1"># Also contains diffuse texture maps that will be used when some object state changes happen, e.g. cooked, burnt, or soaked.</span>
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>METALLIC.encrypted.png<span class="w">	</span>
+│<span class="w">   </span>│<span class="w">   </span>NORMAL.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>ROUGHNESS.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE_Frozen.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE_Cooked.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE_Burnt.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE_Soaked.encrypted.png
+│<span class="w">   </span>│<span class="w">   </span>DIFFUSE_ToggledOn.encrypted.png
 │
 └───misc
-│   │   <span class="c1"># contains bounding box information of the object, its stable orientations, object state-related link annotation (e.g. toggle button, water/heat/cold source, slicer/cleaning_tool, etc)</span>
-│   │   metadata.json
-│   │   <span class="c1"># contains the object’s material annotation of what kinds of material each link can have.</span>
-│   │   material_groups.json 
-│   │   <span class="c1"># contains info about the minimum volume oriented bounding box that best fits the object</span>
-│   │   mvbb_meta.json 
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># contains bounding box information of the object, its stable orientations, object state-related link annotation (e.g. toggle button, water/heat/cold source, slicer/cleaning_tool, etc)</span>
+│<span class="w">   </span>│<span class="w">   </span>metadata.json
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># contains the object’s material annotation of what kinds of material each link can have.</span>
+│<span class="w">   </span>│<span class="w">   </span>material_groups.json<span class="w"> </span>
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># contains info about the minimum volume oriented bounding box that best fits the object</span>
+│<span class="w">   </span>│<span class="w">   </span>mvbb_meta.json<span class="w"> </span>
 │
 └───visualizations
-│   │   <span class="c1"># An image and a video of the object rendered with iG renderer</span>
-│   │   <span class="m">00</span>.png
-│   │   OBJECT_NAME.mp4
+│<span class="w">   </span>│<span class="w">   </span><span class="c1"># An image and a video of the object rendered with iG renderer</span>
+│<span class="w">   </span>│<span class="w">   </span><span class="m">00</span>.png
+│<span class="w">   </span>│<span class="w">   </span>OBJECT_NAME.mp4
 </pre></div>
 </div>
 </div>
@@ -214,7 +214,7 @@
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This demo shows how to load scaled objects from the iG object model dataset and</span>
 <span class="sd">    additional objects from the YCB dataset in predefined locations</span>
 <span class="sd">    Loads a concrete object model of a table, and a random one of the same category, and 10 cracker boxes</span>

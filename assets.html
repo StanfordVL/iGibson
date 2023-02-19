@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assets &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Assets &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -109,7 +109,7 @@
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h2>
 <p>The iGibson assets includes the necessary files to create simulation scenes and other utilities: robot URDF models, models of some interactive objects and articulated objects for testing, copies of the <a class="reference external" href="https://tu-rbo.github.io/articulated-objects/">RBO</a> and <a class="reference external" href="http://www.ycbbenchmarks.com/object-models/">YCB</a> datasets of objects to include them in the scenes, a copy of the neural network filler developed in Gibson V1, and some mesh files used to perform installation tests. Due to their large size, these files are not distributed as part of our pip/git packages, but as separate packages.</p>
 <p>The assets file can be downloaded and decompressed to the path set in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default to <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data/assets</span></code>) by executing:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_assets
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.utils.assets_utils<span class="w"> </span>--download_assets
 </pre></div>
 </div>
 <p>The folder structure will look like below:</p>

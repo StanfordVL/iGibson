@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; iGibson 2.2.1 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Installation &mdash; iGibson 2.2.2 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.2.1
+                2.2.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -163,17 +163,17 @@
 We suggest to use Conda instead of a standard virtual environment.
 To setup anaconda with the right dependencies, run the following as your user account (<strong>not as root/superuser</strong>):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install miniconda</span>
-curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
-bash Miniconda-latest-Linux-x86_64.sh
-rm Miniconda-latest-Linux-x86_64.sh
+curl<span class="w"> </span>-LO<span class="w"> </span>http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+bash<span class="w"> </span>Miniconda-latest-Linux-x86_64.sh
+rm<span class="w"> </span>Miniconda-latest-Linux-x86_64.sh
 
 <span class="c1"># Add conda to your PATH</span>
-<span class="nb">echo</span> <span class="s2">&quot;export PATH=</span><span class="nv">$HOME</span><span class="s2">/.miniconda/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span> &gt;&gt; .bashrc 
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;export PATH=</span><span class="nv">$HOME</span><span class="s2">/.miniconda/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>.bashrc<span class="w"> </span>
 
 <span class="c1"># Update conda and create a virtual environment for iGibson</span>
-conda update -y conda
-conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
-conda activate igibson
+conda<span class="w"> </span>update<span class="w"> </span>-y<span class="w"> </span>conda
+conda<span class="w"> </span>create<span class="w"> </span>-y<span class="w"> </span>-n<span class="w"> </span>igibson<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda<span class="w"> </span>activate<span class="w"> </span>igibson
 </pre></div>
 </div>
 <div class="admonition important">
@@ -184,26 +184,26 @@ In case your system is a clean Ubuntu 20.04, you can run the following commands 
   <summary>Click to expand the code to install the dependencies including Nvidia drivers in headless mode to use for example in a cluster:</summary>
 <p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add the nvidia ubuntu repositories</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    gnupg2 curl ca-certificates <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub <span class="p">|</span> apt-key add - <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/cuda.list <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/nvidia-ml.list
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>gnupg2<span class="w"> </span>curl<span class="w"> </span>ca-certificates<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub<span class="w"> </span><span class="p">|</span><span class="w"> </span>apt-key<span class="w"> </span>add<span class="w"> </span>-<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/etc/apt/sources.list.d/cuda.list<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/etc/apt/sources.list.d/nvidia-ml.list
 
 <span class="c1"># The following cuda libraries are required to compile igibson</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    nvidia-headless-470 <span class="se">\</span>
-    cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1 <span class="se">\</span>
-    cuda-compat-11-1 <span class="se">\</span>
-    cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
-    cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>nvidia-headless-470<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-compat-11-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1<span class="w"> </span><span class="se">\</span>
 
 <span class="c1"># For building and running igibson</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    cmake <span class="se">\</span>
-    git <span class="se">\</span>
-    g++ <span class="se">\</span>
-    libegl-dev
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cmake<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>git<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>g++<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>libegl-dev
 </pre></div>
 </div>
 </p>
@@ -212,42 +212,42 @@ apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install
   <summary>Click to expand the code to install the dependencies including Nvidia drivers to render on screen for example on a desktop computer:</summary>
 <p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add the nvidia ubuntu repositories</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    gnupg2 curl ca-certificates <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub <span class="p">|</span> apt-key add - <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/cuda.list <span class="o">&amp;&amp;</span> <span class="se">\</span>
-    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/nvidia-ml.list
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>gnupg2<span class="w"> </span>curl<span class="w"> </span>ca-certificates<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub<span class="w"> </span><span class="p">|</span><span class="w"> </span>apt-key<span class="w"> </span>add<span class="w"> </span>-<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/etc/apt/sources.list.d/cuda.list<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/etc/apt/sources.list.d/nvidia-ml.list
 
 <span class="c1"># The following cuda libraries are required to compile igibson</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    xserver-xorg-video-nvidia-470 <span class="se">\</span>
-    cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1 <span class="se">\</span>
-    cuda-compat-11-1 <span class="se">\</span>
-    cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
-    cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>xserver-xorg-video-nvidia-470<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-compat-11-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1<span class="w"> </span><span class="se">\</span>
 
 <span class="c1"># For building and running igibson</span>
-apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
-    cmake <span class="se">\</span>
-    git <span class="se">\</span>
-    g++ <span class="se">\</span>
-    libegl-dev
+apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>--no-install-recommends<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>cmake<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>git<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>g++<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>libegl-dev
 </pre></div>
 </div>
 </p>
 </details>
 </div>
 <p>By default, iGibson builds with CUDA support which requires that <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> is on your path (or CUDA 11 is symlinked to <code class="docutils literal notranslate"><span class="pre">/usr/local/cuda</span></code> from <code class="docutils literal notranslate"><span class="pre">/usr/local/cuda-11.1</span></code>). Cmake uses <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> to find the CUDA libraries and headers when building iGibson. Add the following to your shell rc (<code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>, <code class="docutils literal notranslate"><span class="pre">.zshrc</span></code>, etc.) and re-login to your shell (<code class="docutils literal notranslate"><span class="pre">exec</span> <span class="pre">bash</span></code>, <code class="docutils literal notranslate"><span class="pre">exec</span> <span class="pre">zsh</span></code>, etc.):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda-11.1/bin:<span class="nv">$PATH</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda-11.1/bin:<span class="nv">$PATH</span>
 </pre></div>
 </div>
 <p>Then verify nvcc is on your PATH:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ nvcc --version
-nvcc: NVIDIA <span class="o">(</span>R<span class="o">)</span> Cuda compiler driver
-Copyright <span class="o">(</span>c<span class="o">)</span> <span class="m">2005</span>-2020 NVIDIA Corporation
-Built on Mon_Oct_12_20:09:46_PDT_2020
-Cuda compilation tools, release <span class="m">11</span>.1, V11.1.105
-Build cuda_11.1.TC455_06.29190527_0
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>nvcc<span class="w"> </span>--version
+nvcc:<span class="w"> </span>NVIDIA<span class="w"> </span><span class="o">(</span>R<span class="o">)</span><span class="w"> </span>Cuda<span class="w"> </span>compiler<span class="w"> </span>driver
+Copyright<span class="w"> </span><span class="o">(</span>c<span class="o">)</span><span class="w"> </span><span class="m">2005</span>-2020<span class="w"> </span>NVIDIA<span class="w"> </span>Corporation
+Built<span class="w"> </span>on<span class="w"> </span>Mon_Oct_12_20:09:46_PDT_2020
+Cuda<span class="w"> </span>compilation<span class="w"> </span>tools,<span class="w"> </span>release<span class="w"> </span><span class="m">11</span>.1,<span class="w"> </span>V11.1.105
+Build<span class="w"> </span>cuda_11.1.TC455_06.29190527_0
 </pre></div>
 </div>
 <p>In case you want to build without CUDA support (used for the “rendering to GPU tensor” feature), you will have to set <code class="docutils literal notranslate"><span class="pre">USE_CUDA</span></code> to <code class="docutils literal notranslate"><span class="pre">False</span></code> in <code class="docutils literal notranslate"><span class="pre">iGibson/igibson/render/CMakeLists.txt</span></code>.</p>
@@ -258,23 +258,23 @@ Build cuda_11.1.TC455_06.29190527_0
 <div class="section" id="pip">
 <h4>1. pip<a class="headerlink" href="#pip" title="Permalink to this headline"></a></h4>
 <p>iGibson’s simulator can be installed as a python package using pip:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install igibson  <span class="c1"># This step takes about 4 minutes</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>igibson<span class="w">  </span><span class="c1"># This step takes about 4 minutes</span>
 <span class="c1"># run the demo</span>
-python -m igibson.examples.environments.env_nonint_example
+python<span class="w"> </span>-m<span class="w"> </span>igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
 <div class="section" id="compile-from-source">
 <h4>2. Compile from source<a class="headerlink" href="#compile-from-source" title="Permalink to this headline"></a></h4>
 <p>Alternatively, iGibson can be compiled from source: <a class="reference external" href="https://github.com/StanfordVL/iGibson">iGibson GitHub Repo</a>. First, you need to install anaconda following the guide on <a class="reference external" href="https://www.anaconda.com/">their website</a>. Then:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
-<span class="nb">cd</span> iGibson
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/StanfordVL/iGibson<span class="w"> </span>--recursive
+<span class="nb">cd</span><span class="w"> </span>iGibson
 
 <span class="c1"># if you didn&#39;t create the conda environment before:</span>
-conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
-conda activate igibson
+conda<span class="w"> </span>create<span class="w"> </span>-y<span class="w"> </span>-n<span class="w"> </span>igibson<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda<span class="w"> </span>activate<span class="w"> </span>igibson
 
-pip install -e . <span class="c1"># This step takes about 4 minutes</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w"> </span><span class="c1"># This step takes about 4 minutes</span>
 </pre></div>
 </div>
 <p>We recommend the second method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
@@ -310,8 +310,8 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <div class="section" id="the-svl-pybullet-fork">
 <h3>The SVL pybullet fork<a class="headerlink" href="#the-svl-pybullet-fork" title="Permalink to this headline"></a></h3>
 <p>To optimize and accelerate physics simulation, we use a custom version of pybullet in iGibson. This is installed automatically if you install iGibson in a fresh conda environment, but if you already have a regular pybullet, you should manually remove it and install our fork as follows (otherwise your ‘pip install -e .’ will fail):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip uninstall pybullet
-pip install pybullet-svl
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>uninstall<span class="w"> </span>pybullet
+pip<span class="w"> </span>install<span class="w"> </span>pybullet-svl
 </pre></div>
 </div>
 </div>
@@ -320,19 +320,19 @@ pip install pybullet-svl
 <h2>Downloading the Assets and Datasets of Scenes and Objects<a class="headerlink" href="#downloading-the-assets-and-datasets-of-scenes-and-objects" title="Permalink to this headline"></a></h2>
 <p>Once the environment has been installed, we need to download the assets to enable the simulation including models of the robotic agents, objects, 3D scenes, etc. This process requires three simple steps.</p>
 <p>First, we need to configure where the iGibson’s assets are going to be stored. The desired path should be indicated in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code>. The default place to store the data is:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>assets_path: your_installation_path/igibson/data/assets 
-g_dataset_path: your_installation_path/igibson/data/g_dataset
-ig_dataset_path: your_installation_path/igibson/data/ig_dataset
-threedfront_dataset_path: your_installation_path/igibson/data/threedfront_dataset 
-cubicasa_dataset_path: your_installation_path/igibson/data/assetscubicasa_dataset 
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>assets_path:<span class="w"> </span>your_installation_path/igibson/data/assets<span class="w"> </span>
+g_dataset_path:<span class="w"> </span>your_installation_path/igibson/data/g_dataset
+ig_dataset_path:<span class="w"> </span>your_installation_path/igibson/data/ig_dataset
+threedfront_dataset_path:<span class="w"> </span>your_installation_path/igibson/data/threedfront_dataset<span class="w"> </span>
+cubicasa_dataset_path:<span class="w"> </span>your_installation_path/igibson/data/assetscubicasa_dataset<span class="w"> </span>
 </pre></div>
 </div>
 <p>In case you prefer to store the assets in a different location, you can run the command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --change_data_path
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.utils.assets_utils<span class="w"> </span>--change_data_path
 </pre></div>
 </div>
 <p>Second, we need to download the robot models and some small objects from the assets bundle <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz">here</a> and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_assets
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.utils.assets_utils<span class="w"> </span>--download_assets
 </pre></div>
 </div>
 <p>Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models.
@@ -341,7 +341,7 @@ For navigation tasks, you could use the interactive scenes, but we also provide 
 Follow the detailed instructions <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a> to download the aforementioned datasets.</p>
 <p>Alternatively, to avoid downloading an entire dataset before you can test iGibson’s functionalities, we provide a single <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/Rs.tar.gz">high quality small non-interactive scene (R’s)</a> for demo and testing purposes.
 To download this demo data, run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_demo_data
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.utils.assets_utils<span class="w"> </span>--download_demo_data
 </pre></div>
 </div>
 </div>
@@ -350,7 +350,7 @@ To download this demo data, run:</p>
 <p>We provide a lot of examples to get you started in your research!
 Check the folder <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/examples">igibson/examples</a> and the description <a class="reference internal" href="examples.html"><span class="doc std std-doc">here</span></a>.</p>
 <p>After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
@@ -358,7 +358,7 @@ Check the folder <a class="reference external" href="https://github.com/Stanford
 <h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline"></a></h2>
 <p>To test iGibson installation, you can run</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python
-&gt;&gt; import igibson
+&gt;&gt;<span class="w"> </span>import<span class="w"> </span>igibson
 </pre></div>
 </div>
 <p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.</p>
