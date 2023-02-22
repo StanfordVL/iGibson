@@ -821,6 +821,19 @@ class MeshRenderer(object):
         v0 = h - bottom * fv / znear
         return np.array([[fu, 0, u0], [0, fv, v0], [0, 0, 1]])
 
+    def get_extrinsics(self):
+        """
+        Get camera extrinsics.
+
+        :return: camera extrinsics
+        """
+        extrinsics = np.eye(self.V.shape[0], self.V.shape[1])
+        R_inv = self.V[:3, :3]
+        T_inv = self.V[:3, 3]
+        extrinsics[:3, :3] = R_inv.T
+        extrinsics[:3, 3] = -R_inv.T.dot(T_inv)
+        return extrinsics
+        
     def set_projection_matrix(self, fu, fv, u0, v0, znear, zfar):
         """
         Set projection matrix, given camera intrincs parameters.
