@@ -19,8 +19,8 @@ class YCBObject(StatefulObject):
         self.scale = scale
 
     def _load(self, simulator):
-        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename, meshScale=self.scale)
-        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename, meshScale=self.scale)
+        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=self.collision_filename, meshScale=(self.scale,) * 3)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.visual_filename, meshScale=(self.scale,) * 3)
 
         body_id = p.createMultiBody(
             baseCollisionShapeIndex=collision_id,
