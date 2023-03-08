@@ -60,7 +60,7 @@ class CMakeBuild(build_ext):
                 shutil.copy(os.path.join(release_dir, f), mesh_renderer_dir)
 
             shutil.rmtree(release_dir)
-            vr_dll = os.path.join(here, "igibson", "render", "openvr", "bin", "win64", "openvr_api.dll")
+            vr_dll = os.path.join(here, "igibson", "render", r"_deps\openvr-src\bin\win64\openvr_api.dll")
             sr_ani_dir = os.path.join(here, "igibson", "render", "sranipal", "bin")
             shutil.copy(vr_dll, mesh_renderer_dir)
 
