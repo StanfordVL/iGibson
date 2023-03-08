@@ -227,7 +227,7 @@ def calc_z_dropoff(theta, t_min, t_max):
         # Apply the following quadratic to get faster falloff closer to the poles:
         # y = -1/(min_z - max_z)^2 * x*2 + 2 * max_z / (min_z - max_z) ^2 * x + (min_z^2 - 2 * min_z * max_z) / (min_z - max_z) ^2
         d = (t_min - t_max) ** 2
-        z_mult = -1 / d * theta ** 2 + 2 * t_max / d * theta + (t_min ** 2 - 2 * t_min * t_max) / d
+        z_mult = -1 / d * theta**2 + 2 * t_max / d * theta + (t_min**2 - 2 * t_min * t_max) / d
     elif theta < t_min:
         z_mult = 0.0
 

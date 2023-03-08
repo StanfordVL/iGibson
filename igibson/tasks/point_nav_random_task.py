@@ -63,6 +63,9 @@ class PointNavRandomTask(PointNavFixedTask):
 
         :param env: environment instance
         """
+        # We need to first reset the robot because otherwise we will move the robot in the joint conf. last seen before
+        # the reset
+        env.robots[0].reset()
         reset_success = False
         max_trials = 100
 
@@ -72,14 +75,13 @@ class PointNavRandomTask(PointNavFixedTask):
         for i in range(max_trials):
             initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(env)
             reset_success = env.test_valid_position(
-                env.robots[0], initial_pos, initial_orn
-            ) and env.test_valid_position(env.robots[0], target_pos)
+                env.robots[0], initial_pos, initial_orn, ignore_self_collision=True
+            ) and env.test_valid_position(env.robots[0], target_pos, ignore_self_collision=True)
             restoreState(state_id)
             if reset_success:
                 break
 
-        if not reset_success:
-            log.warning("WARNING: Failed to reset robot without collision")
+        assert reset_success, "WARNING: Failed to reset robot without collision"
 
         p.removeState(state_id)
 

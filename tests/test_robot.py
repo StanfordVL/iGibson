@@ -313,3 +313,15 @@ def test_behavior_robot_stability():
         )
         _, angle = p.getAxisAngleFromQuaternion(rel_orn)
         assert angle < np.deg2rad(5), "Part orientation moved relative to robot."
+
+
+def test_behavior_robot_legacy_proprioception():
+    s = Simulator(physics_timestep=1 / 30, render_timestep=1 / 30, mode="headless")
+    scene = EmptyScene()
+    s.import_scene(scene)
+
+    robot = REGISTERED_ROBOTS["BehaviorRobot"](legacy_proprioception=True)
+    s.import_object(robot)
+
+    proprio_length = robot.get_proprioception().shape
+    assert proprio_length == (22,), f"Proprioception shape should be 22. Instead, it is {proprio_length}"

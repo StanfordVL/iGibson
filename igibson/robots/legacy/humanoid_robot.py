@@ -24,7 +24,7 @@ class Humanoid(LocomotionRobot):
             is_discrete=config.get("is_discrete", False),
             control="torque",
             self_collision=True,
-            **kwargs
+            **kwargs,
         )
 
     def set_up_discrete_action_space(self):

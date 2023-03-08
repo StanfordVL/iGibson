@@ -1318,7 +1318,7 @@ class MeshRenderer(object):
         Optimize vertex and texture for optimized renderer.
         """
         for tex_file in self.texture_files:
-            log.debug("Texture: ", tex_file)
+            log.debug("Texture: %s", tex_file)
         # Set cutoff about 4096, otherwise we end up filling VRAM very quickly
         cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True
@@ -1764,8 +1764,8 @@ class MeshRenderer(object):
         xx = xx.flatten()
         yy = yy.flatten()
 
-        x_samples = (np.tan(xx) / np.cos(yy) * self.height // 2 + self.height // 2).astype(np.int)
-        y_samples = (np.tan(yy) * self.height // 2 + self.height // 2).astype(np.int)
+        x_samples = (np.tan(xx) / np.cos(yy) * self.height // 2 + self.height // 2).astype(int)
+        y_samples = (np.tan(yy) * self.height // 2 + self.height // 2).astype(int)
 
         self.x_samples = x_samples.flatten()
         self.y_samples = y_samples.flatten()

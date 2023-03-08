@@ -13,7 +13,7 @@ class ScanSensor(BaseSensor):
     1D LiDAR scanner sensor and occupancy grid sensor
     """
 
-    def __init__(self, env, modalities):
+    def __init__(self, env, modalities, rear=False):
         super(ScanSensor, self).__init__(env)
         self.modalities = modalities
         self.scan_noise_rate = self.config.get("scan_noise_rate", 0.0)
@@ -23,10 +23,15 @@ class ScanSensor(BaseSensor):
         self.laser_linear_range = self.config.get("laser_linear_range", 10.0)
         self.laser_angular_range = self.config.get("laser_angular_range", 180.0)
         self.min_laser_dist = self.config.get("min_laser_dist", 0.05)
-        self.laser_link_name = self.config.get("laser_link_name", "scan_link")
+        self.laser_link_name = (
+            self.config.get("laser_link_name", "scan_link")
+            if not rear
+            else self.config.get("laser_link_rear_name", "scan_link")
+        )
         self.noise_model = DropoutSensorNoise(env)
         self.noise_model.set_noise_rate(self.scan_noise_rate)
         self.noise_model.set_noise_value(1.0)
+        self.rear = rear
 
         self.laser_position, self.laser_orientation = (
             env.robots[0].links[self.laser_link_name].get_position_orientation()
@@ -132,7 +137,7 @@ class ScanSensor(BaseSensor):
         start_pose = np.tile(laser_position, (self.n_horizontal_rays, 1))
         start_pose += unit_vector_world * self.min_laser_dist
         end_pose = laser_position + unit_vector_world * self.laser_linear_range
-        results = p.rayTestBatch(start_pose, end_pose, 6)  # numThreads = 6
+        results = p.rayTestBatch(start_pose, end_pose, numThreads=6)  # numThreads = 6
 
         # hit fraction = [0.0, 1.0] of self.laser_linear_range
         hit_fraction = np.array([item[2] for item in results])
@@ -140,7 +145,7 @@ class ScanSensor(BaseSensor):
         scan = np.expand_dims(hit_fraction, 1)
 
         state = {}
-        state["scan"] = scan
+        state["scan" if not self.rear else "scan_rear"] = scan.astype(np.float32)
         if "occupancy_grid" in self.modalities:
             state["occupancy_grid"] = self.get_local_occupancy_grid(scan)
         return state

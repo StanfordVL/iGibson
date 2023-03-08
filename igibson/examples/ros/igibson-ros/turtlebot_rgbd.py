@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import logging
 import os
 
@@ -6,6 +6,7 @@ import numpy as np
 import rospkg
 import rospy
 import tf
+import yaml
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
@@ -24,6 +25,7 @@ class SimNode:
         rospack = rospkg.RosPack()
         path = rospack.get_path("igibson-ros")
         config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
+        config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
         self.cmdx = 0.0
         self.cmdy = 0.0
@@ -43,7 +45,7 @@ class SimNode:
         self.br = tf.TransformBroadcaster()
 
         self.env = iGibsonEnv(
-            config_file=config_filename, mode="headless", action_timestep=1 / 30.0
+            config_file=config_data, mode="headless", action_timestep=1 / 30.0
         )  # assume a 30Hz simulation
         self.env.reset()
 
@@ -162,13 +164,12 @@ class SimNode:
                 gt_pose_msg.pose.pose.orientation.w,
             ) = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
 
-            gt_pose_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-            gt_pose_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
-            self.gt_pose_pub.publish(gt_pose_msg)
+            gt_pose_msg.twist.twist.linear.x = self.cmdx
+            gt_pose_msg.twist.twist.angular.z = -self.cmdy
 
     def cmd_callback(self, data):
-        self.cmdx = data.linear.x / 10.0 - data.angular.z / (10 * 8.695652173913043)
-        self.cmdy = data.linear.x / 10.0 + data.angular.z / (10 * 8.695652173913043)
+        self.cmdx = data.linear.x
+        self.cmdy = -data.angular.z
 
     def tp_robot_callback(self, data):
         rospy.loginfo("Teleporting robot")

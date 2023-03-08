@@ -2653,7 +2653,6 @@ def pairwise_collision(body1, body2, **kwargs):
         body1, links1 = expand_links(body1)
         body2, links2 = expand_links(body2)
         return any_link_pair_collision(body1, links1, body2, links2, **kwargs)
-    print("{} {} {}".format(body1, body2, body_collision(body1, body2, **kwargs)))
     return body_collision(body1, body2, **kwargs)
 
 # def single_collision(body, max_distance=1e-3):
@@ -3420,7 +3419,7 @@ def plan_base_motion_2d(body,
                              robot_footprint_radius_in_map * 2 + 1))
             cv2.circle(mask, (robot_footprint_radius_in_map, robot_footprint_radius_in_map), robot_footprint_radius_in_map,
                        1, -1)
-            mask = mask.astype(np.bool)
+            mask = mask.astype(bool)
 
             # Check if all the points where the shifted mask of the robot base overlaps with the occupancy map are
             # marked as FREESPACE, and return false if not

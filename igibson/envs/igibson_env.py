@@ -78,7 +78,7 @@ class iGibsonEnv(BaseEnv):
         """
         self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
-        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
+        drop_distance = 0.5 * 9.8 * (self.action_timestep**2)
         assert drop_distance < self.initial_pos_z_offset, "initial_pos_z_offset is too small for collision checking"
 
         # ignore the agent's collision with these body ids
@@ -206,6 +206,14 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
             )
             scan_modalities.append("scan")
+        if "scan_rear" in self.output:
+            self.n_horizontal_rays = self.config.get("n_horizontal_rays", 128)
+            self.n_vertical_beams = self.config.get("n_vertical_beams", 1)
+            assert self.n_vertical_beams == 1, "scan can only handle one vertical beam for now"
+            observation_space["scan_rear"] = self.build_obs_space(
+                shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
+            )
+            scan_modalities.append("scan_rear")
         if "occupancy_grid" in self.output:
             self.grid_resolution = self.config.get("grid_resolution", 128)
             self.occupancy_grid_space = gym.spaces.Box(
@@ -226,6 +234,9 @@ class iGibsonEnv(BaseEnv):
 
         if len(scan_modalities) > 0:
             sensors["scan_occ"] = ScanSensor(self, scan_modalities)
+
+        if "scan_rear" in scan_modalities:
+            sensors["scan_occ_rear"] = ScanSensor(self, scan_modalities, rear=True)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
@@ -270,6 +281,10 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = vision_obs[modality]
         if "scan_occ" in self.sensors:
             scan_obs = self.sensors["scan_occ"].get_obs(self)
+            for modality in scan_obs:
+                state[modality] = scan_obs[modality]
+        if "scan_occ_rear" in self.sensors:
+            scan_obs = self.sensors["scan_occ_rear"].get_obs(self)
             for modality in scan_obs:
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
@@ -355,15 +370,16 @@ class iGibsonEnv(BaseEnv):
 
         return state, reward, done, info
 
-    def check_collision(self, body_id):
+    def check_collision(self, body_id, ignore_ids=[]):
         """
         Check whether the given body_id has collision after one simulator step
 
         :param body_id: pybullet body id
+        :param ignore_ids: pybullet body ids to ignore collisions with
         :return: whether the given body_id has collision
         """
         self.simulator_step()
-        collisions = list(p.getContactPoints(bodyA=body_id))
+        collisions = [x for x in p.getContactPoints(bodyA=body_id) if x[2] not in ignore_ids]
 
         if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
@@ -396,13 +412,14 @@ class iGibsonEnv(BaseEnv):
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None):
+    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False):
         """
         Test if the robot or the object can be placed with no collision.
 
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
+        :param ignore_self_collision: whether the object's self-collisions should be ignored.
         :return: whether the position is valid
         """
         is_robot = isinstance(obj, BaseRobot)
@@ -413,7 +430,8 @@ class iGibsonEnv(BaseEnv):
             obj.reset()
             obj.keep_still()
 
-        has_collision = any(self.check_collision(body_id) for body_id in obj.get_body_ids())
+        ignore_ids = obj.get_body_ids() if ignore_self_collision else []
+        has_collision = any(self.check_collision(body_id, ignore_ids) for body_id in obj.get_body_ids())
         return not has_collision
 
     def land(self, obj, pos, orn):

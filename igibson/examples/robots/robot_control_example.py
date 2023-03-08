@@ -15,6 +15,7 @@ import pybullet as p
 
 from igibson.robots import REGISTERED_ROBOTS, ManipulationRobot
 from igibson.scenes.empty_scene import EmptyScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
@@ -139,6 +140,7 @@ class KeyboardController:
         # i.e.: if using binary gripper control and when no keypress is active, the gripper action should still the last executed gripper action
         self.last_keypress = None  # Last detected keypress
         self.keypress_mapping = None
+        self.use_omnidirectional_base = robot.model_name in ["Tiago"]  # add other robots with omnidirectional bases
         self.populate_keypress_mapping()
         self.time_last_keyboard_input = time.time()
 
@@ -159,6 +161,13 @@ class KeyboardController:
 
         # Iterate over all controller info and populate mapping
         for component, info in self.controller_info.items():
+            if self.use_omnidirectional_base:
+                self.keypress_mapping["i"] = {"idx": 0, "val": 2.0}
+                self.keypress_mapping["k"] = {"idx": 0, "val": -2.0}
+                self.keypress_mapping["u"] = {"idx": 1, "val": 1.0}
+                self.keypress_mapping["o"] = {"idx": 1, "val": -1.0}
+                self.keypress_mapping["j"] = {"idx": 2, "val": 1.0}
+                self.keypress_mapping["l"] = {"idx": 2, "val": -1.0}
             if info["name"] == "JointController":
                 for i in range(info["command_dim"]):
                     ctrl_idx = info["start_idx"] + i
@@ -311,9 +320,14 @@ class KeyboardController:
         print_command("i, k", "turn left, right")
         print_command("l, j", "move forward, backwards")
         print()
+        print("Omnidirectional Drive Control")
+        print_command("j, l", "turn left, right")
+        print_command("i, k", "move forward, backwards")
+        print_command("u, o", "move left, right")
+        print()
         print("Inverse Kinematics Control")
-        print_command(u"\u2190, \u2192", "translate arm eef along x-axis")
-        print_command(u"\u2191, \u2193", "translate arm eef along y-axis")
+        print_command("\u2190, \u2192", "translate arm eef along x-axis")
+        print_command("\u2191, \u2193", "translate arm eef along y-axis")
         print_command("p, ;", "translate arm eef along z-axis")
         print_command("n, b", "rotate arm eef about x-axis")
         print_command("o, u", "rotate arm eef about y-axis")
@@ -408,7 +422,7 @@ def main(selection="user", headless=False, short_exec=False):
     s.import_object(robot)
 
     # Reset the robot
-    robot.set_position([0, 0, 0])
+    robot.set_position([-0.75, 1.0, 0])
     robot.reset()
     robot.keep_still()
 

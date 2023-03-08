@@ -81,7 +81,7 @@ def get_item_fn(
     for i, item in enumerate(pose_paths):
         f = open(item)
         pose_dict = json.load(f)
-        p = np.concatenate(np.array(pose_dict[1][u"camera_rt_matrix"])).astype(np.float32).reshape((4, 4))
+        p = np.concatenate(np.array(pose_dict[1]["camera_rt_matrix"])).astype(np.float32).reshape((4, 4))
         rotation = np.array([[0, 1, 0, 0], [0, 0, 1, 0], [-1, 0, 0, 0], [0, 0, 0, 1]])
         p = np.dot(p, rotation)
         poses.append(p)

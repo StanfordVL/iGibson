@@ -70,7 +70,7 @@ def compute_adjacencies(obj, axes, max_distance):
     directions[1::2] = -axes
 
     # For now, we keep our result in the dimensionality of (direction, hit_object_order).
-    finalized = np.zeros(directions.shape[0], dtype=np.bool)
+    finalized = np.zeros(directions.shape[0], dtype=bool)
     bodies_by_direction = [[] for _ in directions]
 
     # Prepare this object's info for ray casting.
@@ -104,7 +104,7 @@ def compute_adjacencies(obj, axes, max_distance):
         )
 
         # Get the object IDs per axis and filter out self-hit cases.
-        obj_ids = np.array([result[0] for result in ray_results], dtype=np.int)
+        obj_ids = np.array([result[0] for result in ray_results], dtype=int)
 
         # Add the results to the appropriate lists
         for direction_idx, result in enumerate(obj_ids):
