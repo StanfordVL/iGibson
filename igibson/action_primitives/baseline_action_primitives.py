@@ -31,7 +31,11 @@ from igibson.utils.behavior_robot_motion_planning_utils import (
     plan_base_motion_br,
     plan_hand_motion_br,
 )
-from igibson.utils.grasp_planning_utils import get_grasp_poses_for_object, get_grasp_position_for_open, get_grasp_poses_for_object_sticky
+from igibson.utils.grasp_planning_utils import (
+    get_grasp_poses_for_object,
+    get_grasp_poses_for_object_sticky,
+    get_grasp_position_for_open,
+)
 from igibson.utils.utils import restoreState
 
 MAX_STEPS_FOR_HAND_MOVE = 100
@@ -49,8 +53,8 @@ HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling rang
 PREDICATE_SAMPLING_Z_OFFSET = 0.1
 JOINT_CHECKING_RESOLUTION = np.pi / 18
 
-GRASP_APPROACH_DISTANCE = 0.2
-OPEN_GRASP_APPROACH_DISTANCE = 0.2
+GRASP_APPROACH_DISTANCE = 1.0
+OPEN_GRASP_APPROACH_DISTANCE = 1.0
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
 ACTIVITY_RELEVANT_OBJECTS_ONLY = False
@@ -65,7 +69,7 @@ logger = logging.getLogger(__name__)
 
 
 def indented_print(msg, *args, **kwargs):
-    logger.debug("  " * len(inspect.stack()) + str(msg), *args, **kwargs)
+    print("  " * len(inspect.stack()) + str(msg), *args, **kwargs)
 
 
 def is_close(start_pose, end_pose, angle_threshold, dist_threshold):
@@ -355,9 +359,11 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
             # Allow grasping from suboptimal extents if we've tried enough times.
             force_allow_any_extent = np.random.rand() < 0.5
             if sticky:
-                grasp_poses = get_grasp_poses_for_object_sticky(self.robot, obj, force_allow_any_extent=force_allow_any_extent) 
+                grasp_poses = get_grasp_poses_for_object_sticky(
+                    self.robot, obj, force_allow_any_extent=force_allow_any_extent
+                )
             else:
-                grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent) 
+                grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent)
 
             grasp_pose, object_direction = random.choice(grasp_poses)
             with UndoableContext(self.robot):
@@ -373,7 +379,6 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
             approach_pose = (approach_pos, grasp_pose[1])
 
             # If the grasp pose is too far, navigate.
-            yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos)
             yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
 
             yield from self._move_hand(grasp_pose)
@@ -677,9 +682,9 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
             )
 
             # Check room
-            if self.scene.get_room_instance_by_point(pose_2d[:2]) not in obj_rooms:
-                indented_print("Candidate position is in the wrong room.")
-                continue
+            # if self.scene.get_room_instance_by_point(pose_2d[:2]) not in obj_rooms:
+            #     indented_print("Candidate position is in the wrong room.")
+            #     continue
 
             if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
                 continue
