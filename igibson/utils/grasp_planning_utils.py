@@ -280,6 +280,27 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     )
 
 
+def get_grasp_poses_for_object_sticky(robot, target_obj: URDFObject, force_allow_any_extent=True):
+    print("STICKY GRASPING")
+    bbox_center_in_world, bbox_quat_in_world, bbox_extent_in_base_frame, _ = target_obj.get_base_aligned_bounding_box(
+        visual=False
+    )
+    grasp_center_pos = bbox_center_in_world
+    towards_object_in_world_frame = bbox_center_in_world - grasp_center_pos
+    towards_object_in_world_frame /= np.linalg.norm(towards_object_in_world_frame)
+
+#    bbox_orn_in_world = Rotation.from_quat(bbox_quat_in_world)
+#    unrotated_grasp_orn_in_world_frame = bbox_orn_in_world * flat_grasp_rot
+#    grasp_orn_in_world_frame = unrotated_grasp_orn_in_world_frame * Rotation.from_euler("X", -GRASP_ANGLE)
+#    grasp_quat = grasp_orn_in_world_frame.as_quat()
+    grasp_quat = [0,0,0,1]
+
+    grasp_pose = (grasp_center_pos, grasp_quat)
+    grasp_candidate = [(grasp_pose, towards_object_in_world_frame)]
+
+    return grasp_candidate
+
+
 def get_grasp_poses_for_object(robot, target_obj: URDFObject, force_allow_any_extent=True):
     bbox_center_in_world, bbox_quat_in_world, bbox_extent_in_base_frame, _ = target_obj.get_base_aligned_bounding_box(
         visual=False

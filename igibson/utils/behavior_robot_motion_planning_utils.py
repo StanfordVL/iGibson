@@ -44,6 +44,7 @@ def plan_base_motion_br(
     def slippery_extender(q1, q2):
         aq1 = np.array(q1[:2])
         aq2 = np.array(q2[:2])
+        print(aq1, aq2)
         diff = aq2 - aq1
         start_yaw = q1[2]
         end_yaw = q2[2]
@@ -51,6 +52,7 @@ def plan_base_motion_br(
 
         if np.all(q1 != q2):
             dist = np.linalg.norm(diff)
+            print(dist, resolution, diff_yaw, turn_resolution)
             steps = int(max(ceil(dist / resolution), ceil(abs(diff_yaw) / turn_resolution)))
             for i in range(steps):
                 dist_ratio = (i + 1) / steps
@@ -105,7 +107,10 @@ def plan_base_motion_br(
             [q[0], q[1], DEFAULT_BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2]))
         )
         for body_id in body_ids:
-            close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(body_id)))
+            overlap = p.getOverlappingObjects(*get_aabb(body_id))
+            if overlap is None:
+                overlap = []
+            close_objects = set(x[0] for x in overlap)
             close_obstacles = close_objects & obstacles
             collisions = [
                 (obs, pairwise_collision(body_id, obs, max_distance=max_distance))
@@ -259,7 +264,11 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
     def collision_fn(pose3d):
         # TODO: Generalize
         robot.set_eef_position_orientation(*pose3d, "right_hand")
-        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.eef_links["right_hand"].body_id)))
+        overlap = p.getOverlappingObjects(*get_aabb(robot.eef_links["right_hand"].body_id))            
+        if overlap is None:
+            overlap = []
+
+        close_objects = set(x[0] for x in overlap)
         close_obstacles = close_objects & non_hand_non_oih_obstacles
         collisions = [
             (obs, pairwise_collision(robot.eef_links["right_hand"].body_id, obs, max_distance=max_distance))
