@@ -1439,6 +1439,7 @@ class VirtualJoint(RobotJoint):
         reset_pos_callback,
         lower_limit=None,
         upper_limit=None,
+        delta_magnitude_limit=None,
     ):
         self._joint_name = joint_name
 
@@ -1451,6 +1452,8 @@ class VirtualJoint(RobotJoint):
 
         self._lower_limit = lower_limit if lower_limit is not None else 0
         self._upper_limit = upper_limit if upper_limit is not None else -1
+
+        self.delta_magnitude_limit = delta_magnitude_limit
 
     @property
     def joint_name(self):
@@ -1470,6 +1473,7 @@ class VirtualJoint(RobotJoint):
 
     @property
     def max_velocity(self):
+        # TODO: Support this from max delta limit
         logging.debug("There is no max_velocity for virtual joints. Returning NaN. Do not use!")
         return np.NAN
 
@@ -1498,6 +1502,9 @@ class VirtualJoint(RobotJoint):
         return pos, 0, 0  # Unable to scale velocity and torque, so returning 0.
 
     def set_pos(self, pos):
+        if self.delta_magnitude_limit:
+            cur_pos = self.get_state()[0]
+            pos = np.clip(pos, cur_pos - self.delta_magnitude_limit, cur_pos + self.delta_magnitude_limit)
         self._set_pos_callback(pos)
 
     def set_vel(self, vel):
@@ -1534,6 +1541,8 @@ class Virtual6DOFJoint(object):
         reset_callback,
         lower_limits=None,
         upper_limits=None,
+        linear_velocity_limit=None,
+        angular_velocity_limit=None,
     ):
         self.joint_name = joint_name
         self.parent_link = parent_link
@@ -1550,6 +1559,7 @@ class Virtual6DOFJoint(object):
                 reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
                 lower_limit=lower_limits[i] if lower_limits is not None else None,
                 upper_limit=upper_limits[i] if upper_limits is not None else None,
+                delta_magnitude_limit=linear_velocity_limit if i < 3 else angular_velocity_limit,
             )
             for i, name in enumerate(Virtual6DOFJoint.COMPONENT_SUFFIXES)
         ]
@@ -1647,6 +1657,8 @@ class VirtualPlanarJoint(object):
         reset_callback,
         lower_limits=None,
         upper_limits=None,
+        linear_velocity_limit=None,
+        angular_velocity_limit=None,
     ):
         self.joint_name = joint_name
         self.parent_link = parent_link
@@ -1663,6 +1675,7 @@ class VirtualPlanarJoint(object):
                 reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
                 lower_limit=lower_limits[i] if lower_limits is not None else None,
                 upper_limit=upper_limits[i] if upper_limits is not None else None,
+                delta_magnitude_limit=linear_velocity_limit if i < 3 else angular_velocity_limit,
             )
             for i, name in enumerate(VirtualPlanarJoint.COMPONENT_SUFFIXES)
         ]

@@ -291,9 +291,12 @@ def get_grasp_poses_for_object_sticky(robot, target_obj: URDFObject, force_allow
     towards_object_in_world_frame /= np.linalg.norm(towards_object_in_world_frame)
 
     # The default angle is hand-downwards. We can rotate this later if needed.
-    grasp_quat = behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED[1]
+    uncorrected_grasp_quat = behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED[1]
+    corrected_grasp_quat = (
+        Rotation.from_quat(uncorrected_grasp_quat) * Rotation.from_euler("X", -GRASP_ANGLE)
+    ).as_quat()
 
-    grasp_pose = (grasp_center_pos, grasp_quat)
+    grasp_pose = (grasp_center_pos, corrected_grasp_quat)
     grasp_candidate = [(grasp_pose, towards_object_in_world_frame)]
 
     return grasp_candidate

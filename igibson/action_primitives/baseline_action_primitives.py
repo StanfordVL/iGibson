@@ -88,13 +88,18 @@ def is_close(start_pose, end_pose, angle_threshold, dist_threshold):
     return diff_rot.magnitude() < angle_threshold and np.linalg.norm(diff_pos) < dist_threshold
 
 
-def pose_to_command(robot, joint_link, pose_in_body):
-    shoulder_to_body = robot.links[joint_link].get_local_position_orientation()
+def pose_to_command(robot, link_to_move, shoulder_link, pose_in_body):
+    shoulder_to_body = robot.links[shoulder_link].get_local_position_orientation()
     body_to_shoulder = p.invertTransform(*shoulder_to_body)
     pose_in_shoulder = p.multiplyTransforms(*body_to_shoulder, *pose_in_body)
 
+    cur_pose_in_body = link_to_move.get_local_position_orientation()
+    cur_pose_in_shoulder = p.multiplyTransforms(*body_to_shoulder, *cur_pose_in_body)
+
+    delta_pose = p.multiplyTransforms(*pose_in_shoulder, *p.invertTransform(*cur_pose_in_shoulder))
+
     # Convert pos/quat to [x, y, z, rx, ry, rz]
-    return np.concatenate([pose_in_shoulder[0], p.getEulerFromQuaternion(pose_in_shoulder[1])])
+    return np.concatenate([delta_pose[0], p.getEulerFromQuaternion(delta_pose[1])])
 
 
 def convert_behavior_robot_part_pose_to_action(
@@ -117,7 +122,9 @@ def convert_behavior_robot_part_pose_to_action(
     # Compute the needed body motion
     if body_target_pose is not None:
         part_close["body"] = is_close(([0, 0, 0], [0, 0, 0, 1]), body_target_pose, dist_threshold, angle_threshold)
-        action[robot.controller_action_idx["base"]] = pose_to_command(robot, robot.base_name, body_target_pose)
+        action[robot.controller_action_idx["base"]] = pose_to_command(
+            robot, robot.base_link, robot.base_name, body_target_pose
+        )
 
     # Keep a list of parts we'll move to default positions later. This is in correct order.
     parts_to_move_to_default_pos = [
@@ -136,7 +143,7 @@ def convert_behavior_robot_part_pose_to_action(
             right_hand_pose_in_body_frame, hand_target_pose, dist_threshold, angle_threshold
         )
         action[robot.controller_action_idx["arm_right_hand"]] = pose_to_command(
-            robot, "right_hand_shoulder", hand_target_pose
+            robot, right_hand, "right_hand_shoulder", hand_target_pose
         )
     else:
         # Move it back to the default position in with the below logic.
@@ -144,14 +151,16 @@ def convert_behavior_robot_part_pose_to_action(
             ("right_hand", "arm_right_hand", "right_hand_shoulder", behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED)
         )
 
-    # Move other parts to default positions.
-    if reset_others:
-        for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
-            part = robot.eef_links[part_name] if part_name != "eye" else robot.links["eyes"]
-            part_pose_in_body_frame = p.multiplyTransforms(*world_frame_to_body_frame, *part.get_position_orientation())
+    # Apply control to the other parts - either maintain current position or move to the default based on reset_others.
+    for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
+        part = robot.eef_links[part_name] if part_name != "eye" else robot.links["eyes"]
+        part_pose_in_body_frame = p.multiplyTransforms(*world_frame_to_body_frame, *part.get_position_orientation())
 
-            part_close[part_name] = is_close(part_pose_in_body_frame, target_pose, dist_threshold, angle_threshold)
-            action[robot.controller_action_idx[controller_name]] = pose_to_command(robot, shoulder_name, target_pose)
+        if not reset_others:
+            target_pose = part_pose_in_body_frame
+
+        part_close[part_name] = is_close(part_pose_in_body_frame, target_pose, dist_threshold, angle_threshold)
+        action[robot.controller_action_idx[controller_name]] = pose_to_command(robot, part, shoulder_name, target_pose)
 
     indented_print("Part closeness: %s", part_close)
 
@@ -294,7 +303,6 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
         # If the grasp pose is too far, navigate
         [bid] = obj.get_body_ids()  # TODO: Fix this!
         check_joint = (bid, joint_info)
-        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos, check_joint=check_joint)
         yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0], check_joint=check_joint)
 
         yield from self._move_hand(grasp_pose)
@@ -591,7 +599,6 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
 
         with UndoableContext(self.robot):
             # Note that the plan returned by this planner only contains xy pairs & not yaw.
-            print(pose_2d)
             plan = plan_base_motion_br(
                 robot=self.robot,
                 obj_in_hand=self._get_obj_in_hand(),
@@ -628,12 +635,15 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
             yield action
 
     def _navigate_if_needed(self, obj, pos_on_obj=None, **kwargs):
-        if pos_on_obj is not None:
-            if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
-                # No need to navigate.
-                return
-        elif obj.states[object_states.InReachOfRobot].get_value():
-            return
+        # For now, I have disabled the below code - we always navigate to a new
+        # position near the object even if we are already close. This allows us to
+        # randomize our position and try a new angle.
+        # if pos_on_obj is not None:
+        #     if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
+        #         # No need to navigate.
+        #         return
+        # elif obj.states[object_states.InReachOfRobot].get_value():
+        #     return
 
         yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, **kwargs)
 

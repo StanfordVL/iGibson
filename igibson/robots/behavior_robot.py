@@ -81,8 +81,8 @@ HEAD_ANGULAR_VELOCITY = 1  # angular velocity thresholds in radians/frame
 HEAD_DISTANCE_THRESHOLD = 0.5  # distance threshold in meters
 
 # RL mode action scaling
-LOWER_LIMITS_POSITION_COEFFICIENT = 0.5
-LOWER_LIMITS_VELOCITY_COEFFICIENT = 0.01
+LOWER_LIMITS_POSITION_COEFFICIENT = 1
+LOWER_LIMITS_VELOCITY_COEFFICIENT = 0.1
 
 
 class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
@@ -230,6 +230,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 reset_callback=self._parts["body"].reset_position,
                 lower_limits=[None, None, None, None, None, None],
                 upper_limits=[None, None, None, None, None, None],
+                # linear_velocity_limit=BODY_LINEAR_VELOCITY * self._velocity_limit_coefficient,
+                # angular_velocity_limit=BODY_ANGULAR_VELOCITY * self._velocity_limit_coefficient,
             ).get_joints()
         )
 
@@ -242,6 +244,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 reset_callback=self._parts["eye"].command_position,  # reset and command are the same for eye
                 lower_limits=[-HEAD_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
                 upper_limits=[HEAD_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
+                # linear_velocity_limit=HEAD_LINEAR_VELOCITY * self._velocity_limit_coefficient,
+                # angular_velocity_limit=HEAD_ANGULAR_VELOCITY * self._velocity_limit_coefficient,
             ).get_joints(),
         )
 
@@ -255,6 +259,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                     reset_callback=self._parts[arm_name].reset_position,
                     lower_limits=[-HAND_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
                     upper_limits=[HAND_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
+                    # linear_velocity_limit=HAND_LINEAR_VELOCITY * self._velocity_limit_coefficient,
+                    # angular_velocity_limit=HAND_ANGULAR_VELOCITY * self._velocity_limit_coefficient,
                 ).get_joints(),
             )
             virtual_joints.append(
@@ -512,7 +518,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 "command_input_limits": (
                     np.array([-HAND_LINEAR_VELOCITY] * 3 + [-HAND_ANGULAR_VELOCITY] * 3)
                     * self._velocity_limit_coefficient,
-                    np.array([-HAND_LINEAR_VELOCITY] * 3 + [-HAND_ANGULAR_VELOCITY] * 3)
+                    np.array([HAND_LINEAR_VELOCITY] * 3 + [HAND_ANGULAR_VELOCITY] * 3)
                     * self._velocity_limit_coefficient,
                 ),
                 "command_output_limits": None,

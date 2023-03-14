@@ -17,7 +17,7 @@ robot:
 
   action_normalize: False
   show_visual_head: False
-  higher_limits: True  # This should probably be false.
+  higher_limits: False
   controller_config:
     gripper_right_hand:
       name: MultiFingerGripperController
@@ -25,23 +25,6 @@ robot:
     gripper_left_hand:
       name: MultiFingerGripperController
       mode: ternary
-
-    # These enable absolute position control like in IK.
-    camera:
-      name: JointController
-      use_delta_commands: False
-      command_input_limits: null
-      command_output_limits: default
-    arm_right_hand:
-      name: JointController
-      use_delta_commands: False
-      command_input_limits: null
-      command_output_limits: default
-    arm_left_hand:
-      name: JointController
-      use_delta_commands: False
-      command_input_limits: null
-      command_output_limits: default
 
 # task
 task: cleaning_kitchen_cupboard
