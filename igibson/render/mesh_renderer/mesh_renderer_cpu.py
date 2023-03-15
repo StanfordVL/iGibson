@@ -186,23 +186,23 @@ class MeshRenderer(object):
             exit(1)
         else:
             if self.platform == "Darwin":
-                self.shaderProgram = self.get_shader_program("410", "vert.shader", "frag.shader")
-                self.textShaderProgram = self.get_shader_program("410", "text_vert.shader", "text_frag.shader")
+                self.shaderProgram = self._get_shader_program("410", "vert.shader", "frag.shader")
+                self.textShaderProgram = self._get_shader_program("410", "text_vert.shader", "text_frag.shader")
             else:
                 if self.optimized:
-                    self.shaderProgram = self.get_shader_program(
+                    self.shaderProgram = self._get_shader_program(
                         glsl_version, "optimized_vert.shader", "optimized_frag.shader"
                     )
                 else:
-                    self.shaderProgram = self.get_shader_program(glsl_version, "vert.shader", "frag.shader")
-                self.textShaderProgram = self.get_shader_program(glsl_version, "text_vert.shader", "text_frag.shader")
+                    self.shaderProgram = self._get_shader_program(glsl_version, "vert.shader", "frag.shader")
+                self.textShaderProgram = self._get_shader_program(glsl_version, "text_vert.shader", "text_frag.shader")
 
-            self.skyboxShaderProgram = self.get_shader_program("410", "skybox_vs.glsl", "skybox_fs.glsl")
+            self.skyboxShaderProgram = self._get_shader_program("410", "skybox_vs.glsl", "skybox_fs.glsl")
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
 
-        self.setup_framebuffer()
+        self._setup_framebuffer()
         self.vertical_fov = vertical_fov
         self.horizontal_fov = (
             2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width / self.height) / np.pi * 180.0
@@ -233,14 +233,14 @@ class MeshRenderer(object):
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == "Darwin" and rendering_settings.enable_pbr:
-            self.setup_pbr(glsl_version)
+            self._setup_pbr(glsl_version)
 
         self.setup_lidar_param()
 
         # Set up text FBO
         self.text_manager.gen_text_fbo()
 
-    def get_shader_program(self, glsl_version, vertex_source, fragment_source):
+    def _get_shader_program(self, glsl_version, vertex_source, fragment_source):
         """
         Get shader program.
 
@@ -262,7 +262,7 @@ class MeshRenderer(object):
             ),
         )
 
-    def setup_pbr(self, glsl_version):
+    def _setup_pbr(self, glsl_version):
         """
         Set up physics-based rendering.
 
@@ -296,7 +296,7 @@ class MeshRenderer(object):
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
 
-    def setup_framebuffer(self):
+    def _setup_framebuffer(self):
         """
         Set up framebuffers for the renderer.
         """
@@ -327,7 +327,7 @@ class MeshRenderer(object):
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width, self.height)
 
-    def load_texture_file(self, tex_filename, texture_scale):
+    def _load_texture_file(self, tex_filename, texture_scale):
         """
         Load the texture file into the renderer.
 
@@ -359,20 +359,20 @@ class MeshRenderer(object):
         material.lookup_or_create_transformed_texture()
         has_encrypted_texture = os.path.exists(os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
         suffix = ".encrypted.png" if has_encrypted_texture else ".png"
-        material.texture_id = self.load_texture_file(
+        material.texture_id = self._load_texture_file(
             os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)), texture_scale
         )
-        material.metallic_texture_id = self.load_texture_file(
+        material.metallic_texture_id = self._load_texture_file(
             os.path.join(material.material_folder, "METALLIC{}".format(suffix)), texture_scale
         )
-        material.roughness_texture_id = self.load_texture_file(
+        material.roughness_texture_id = self._load_texture_file(
             os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)), texture_scale
         )
-        material.normal_texture_id = self.load_texture_file(
+        material.normal_texture_id = self._load_texture_file(
             os.path.join(material.material_folder, "NORMAL{}".format(suffix)), texture_scale
         )
         for state in material.states:
-            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state], texture_scale)
+            transformed_diffuse_id = self._load_texture_file(material.texture_filenames[state], texture_scale)
             material.texture_ids[state] = transformed_diffuse_id
         material.default_texture_id = material.texture_id
 
@@ -393,7 +393,7 @@ class MeshRenderer(object):
             for material_instance in material.material_files[material_class]:
                 material_id_instance = {}
                 for key in material_instance:
-                    material_id_instance[key] = self.load_texture_file(material_instance[key], texture_scale)
+                    material_id_instance[key] = self._load_texture_file(material_instance[key], texture_scale)
                 material.material_ids[material_class].append(material_id_instance)
         material.randomize()
 
@@ -483,14 +483,14 @@ class MeshRenderer(object):
                     material = overwrite_material
                 elif item.diffuse_texname != "" and self.rendering_settings.load_textures:
                     obj_dir = os.path.dirname(obj_path)
-                    texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname), texture_scale)
-                    texture_metallic = self.load_texture_file(
+                    texture = self._load_texture_file(os.path.join(obj_dir, item.diffuse_texname), texture_scale)
+                    texture_metallic = self._load_texture_file(
                         os.path.join(obj_dir, item.metallic_texname), texture_scale
                     )
-                    texture_roughness = self.load_texture_file(
+                    texture_roughness = self._load_texture_file(
                         os.path.join(obj_dir, item.roughness_texname), texture_scale
                     )
-                    texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname), texture_scale)
+                    texture_normal = self._load_texture_file(os.path.join(obj_dir, item.bump_texname), texture_scale)
                     material = Material(
                         "texture",
                         texture_id=texture,
@@ -627,7 +627,7 @@ class MeshRenderer(object):
                 self.shape_material_idx.append(material_id + num_existing_mats)
 
             log.debug("shape_material_idx: {}".format(self.shape_material_idx))
-            VAO_ids.append(self.get_num_objects() - 1)
+            VAO_ids.append(len(self.objects) - 1)
 
         new_obj = VisualObject(
             obj_path,
@@ -843,7 +843,7 @@ class MeshRenderer(object):
         P[3, 2] = (2 * zfar * znear) / (znear - zfar)
         self.P = P
 
-    def readbuffer(self, modes=AVAILABLE_MODALITIES):
+    def _readbuffer(self, modes=AVAILABLE_MODALITIES):
         """
         Read framebuffer of rendering.
 
@@ -864,7 +864,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def update_optimized_texture(self):
+    def _update_optimized_texture(self):
         request_update = False
         for material in self.material_idx_to_material_instance_mapping:
             current_material = self.material_idx_to_material_instance_mapping[material]
@@ -893,7 +893,7 @@ class MeshRenderer(object):
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
         if self.optimized:
-            self.update_optimized_texture()
+            self._update_optimized_texture()
 
         # hide the objects that specified in hidden for optimized renderer
         # non-optimized renderer handles hidden objects in a different way
@@ -1030,21 +1030,7 @@ class MeshRenderer(object):
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
         if return_buffer:
-            return self.readbuffer(modes)
-
-    def render_companion_window(self):
-        """
-        Render companion window.
-        The viewer is responsible for calling this to update the window,
-        if cv2 is not being used for window display
-        """
-        self.r.render_companion_window_from_buffer(self.fbo)
-
-    def get_visual_objects(self):
-        """
-        Return visual objects.
-        """
-        return self.visual_objects
+            return self._readbuffer(modes)
 
     def get_instances(self):
         """
@@ -1069,20 +1055,6 @@ class MeshRenderer(object):
         instances_faces = np.concatenate(instances_faces, axis=0)
 
         return instances_vertices, instances_faces
-
-    def set_light_pos(self, light):
-        """
-        Set light position.
-
-        :param light: light position
-        """
-        self.lightpos = light
-
-    def get_num_objects(self):
-        """
-        Return the number of objects.
-        """
-        return len(self.objects)
 
     def set_pose(self, pose, idx):
         """

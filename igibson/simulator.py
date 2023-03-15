@@ -12,6 +12,7 @@ from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from igibson.render.mesh_renderer.mesh_renderer_pyrender import MeshRendererPyRender
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer, ViewerSimple
@@ -176,7 +177,7 @@ class Simulator:
                 simulator=self,
             )
         elif self.mode in [SimulatorMode.GUI_INTERACTIVE, SimulatorMode.GUI_NON_INTERACTIVE, SimulatorMode.HEADLESS]:
-            self.renderer = MeshRenderer(
+            self.renderer = MeshRendererPyRender(
                 width=self.image_width,
                 height=self.image_height,
                 vertical_fov=self.vertical_fov,
@@ -371,14 +372,14 @@ class Simulator:
                 dimensions = [100, 100, 0.01]
 
             # Always load overwrite material
-            if overwrite_material is not None:
+            if False:
                 if isinstance(overwrite_material, RandomizedMaterial):
                     self.renderer.load_randomized_material(overwrite_material, texture_scale)
                 elif isinstance(overwrite_material, ProceduralMaterial):
                     self.renderer.load_procedural_material(overwrite_material, texture_scale)
 
             # Load the visual object if it doesn't already exist.
-            caching_allowed = type == p.GEOM_MESH and overwrite_material is None
+            caching_allowed = False
             cache_key = (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
 
             if caching_allowed and cache_key in self.visual_object_cache:
