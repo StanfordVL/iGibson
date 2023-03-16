@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 #define MAX_ARRAY_SIZE 1024
 
@@ -26,8 +26,6 @@ layout (std140) uniform UVData {
     vec4 uv_transform_param[MAX_ARRAY_SIZE];
 };
 
-
-in int gl_DrawID;
 
 uniform mat4 V;
 uniform mat4 last_V;
