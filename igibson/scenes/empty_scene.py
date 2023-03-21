@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 
 import numpy as np
 import pybullet as p
@@ -20,6 +21,8 @@ class EmptyScene(Scene):
     def __init__(self, render_floor_plane=True, floor_plane_rgba=[1.0, 1.0, 1.0, 1.0]):
         super(EmptyScene, self).__init__()
         self.objects = []
+        self.objects_by_category = defaultdict(list)
+        self.objects_by_id = {}
         self.render_floor_plane = render_floor_plane
         self.floor_plane_rgba = floor_plane_rgba
 
@@ -28,6 +31,14 @@ class EmptyScene(Scene):
 
     def _add_object(self, obj):
         self.objects.append(obj)
+
+        if obj.category not in self.objects_by_category.keys():
+            self.objects_by_category[obj.category] = []
+        self.objects_by_category[obj.category].append(obj)
+        
+        if obj.get_body_ids() is not None:
+            for id in obj.get_body_ids():
+                self.objects_by_id[id] = obj
 
     def _load(self, simulator):
         plane_file = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
