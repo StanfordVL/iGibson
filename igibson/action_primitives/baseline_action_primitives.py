@@ -377,9 +377,10 @@ class BaselineActionPrimitives(BaseActionPrimitiveSet):
             with UndoableContext(self.robot):
                 if hand_collision_fn(grasp_pose):
                     raise ActionPrimitiveError(
+                        # refuse to grasp if the hand is in collision
                         ActionPrimitiveError.Reason.SAMPLING_ERROR,
                         "Rejecting grasp pose candidate due to collision",
-                        {"grasp_pose": grasp_pose},  # TODO: Add more info about collision.
+                        {"grasp_pose": grasp_pose}, 
                     )
 
             # Prepare data for the approach later.
