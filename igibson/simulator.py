@@ -1131,7 +1131,7 @@ class Simulator:
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
 
-    def step(self, print_stats=False):
+    def step(self, print_stats=False, save_video=False):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
@@ -1144,10 +1144,10 @@ class Simulator:
             p.stepSimulation()
 
         self._non_physics_step()
-        self.sync()
+        self.sync(save_video=save_video)
         self.frame_count += 1
 
-    def sync(self, force_sync=False):
+    def sync(self, force_sync=False, save_video=False):
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
@@ -1156,7 +1156,7 @@ class Simulator:
             if instance.dynamic:
                 self.body_links_awake += self.update_position(instance, force_sync=force_sync)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
-            self.viewer.update()
+            self.viewer.update(save_video=save_video)
         if self.first_sync:
             self.first_sync = False
 

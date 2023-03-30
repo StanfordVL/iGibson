@@ -2,6 +2,7 @@ import logging
 import os
 import random
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -22,10 +23,11 @@ class ViewerVR:
         self.frame_counter = 0
         self.frame_save_video_handler = None
 
-    def update(self):
+    def update(self, save_video=False):
         """
         Updates viewer.
         """
+        # import ipdb; ipdb.set_trace()
         if not self.renderer:
             raise RuntimeError("Unable to render without a renderer attached to the ViewerVR!")
         if self.frame_save_path:
@@ -64,18 +66,36 @@ class ViewerSimple:
     ):
         self.renderer = renderer
         self.simulator = simulator
+        self.recording = False
 
         cv2.namedWindow("RobotView")
         cv2.moveWindow("RobotView", 0, 0)
 
-    def update(self):
+    def update(self, save_video=False):
+        if save_video and not self.recording:
+            logging.info("Start recording*****************************")
+            # Current time string to use to save the temporal urdfs
+            timestr = time.strftime("%Y%m%d-%H%M%S") 
+            # Create the subfolder
+            self.video_folder = os.path.join(
+                os.getcwd() + "/tmp", "{}_{}_{}".format(timestr, random.getrandbits(64), os.getpid())
+            )
+            logging.info(self.video_folder)
+            os.makedirs(self.video_folder, exist_ok=True)
+            self.recording = True
+            self.frame_idx = 0
+        
         if not self.renderer is None:
             frames = self.renderer.render_robot_cameras(modes=("rgb"))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow("RobotView", frame)
+                if self.recording:
+                    cv2.imwrite(
+                    os.path.join(self.video_folder, "{:05d}.png".format(self.frame_idx)), (frame * 255).astype(np.uint8)
+                    )
+                    self.frame_idx += 1
         cv2.waitKey(1)
-
 
 class Viewer:
     def __init__(
@@ -624,10 +644,11 @@ class Viewer:
             cv2.putText(frame, help_text, (10, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
         self.show_help -= 1
 
-    def update(self):
+    def update(self, save_video=False):
         """
         Update images of Viewer
         """
+        # import ipdb; ipdb.set_trace()
         camera_pose = np.array([self.px, self.py, self.pz])
         if self.renderer is not None:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
@@ -729,18 +750,21 @@ class Viewer:
             exit()
 
         # Start/Stop recording. Stopping saves frames to files
-        elif q == ord("r"):
+        elif q == ord("r") or save_video:
+            save_video = False
             if self.recording:
                 self.recording = False
                 self.pause_recording = False
             else:
                 logging.info("Start recording*****************************")
+                logging.info("Press 'r' to stop recording and 'p' to pause/resume recording.")
                 # Current time string to use to save the temporal urdfs
                 timestr = time.strftime("%Y%m%d-%H%M%S")
                 # Create the subfolder
                 self.video_folder = os.path.join(
-                    "/tmp", "{}_{}_{}".format(timestr, random.getrandbits(64), os.getpid())
+                    os.getcwd() + "/tmp", "{}_{}_{}".format(timestr, random.getrandbits(64), os.getpid())
                 )
+                logging.info(self.video_folder)
                 os.makedirs(self.video_folder, exist_ok=True)
                 self.recording = True
                 self.frame_idx = 0

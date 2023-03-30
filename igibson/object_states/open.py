@@ -28,7 +28,7 @@ def _get_relevant_joints(obj):
 
     # Get joint IDs and names from metadata annotation. If object doesn't have the openable metadata,
     # we stop here and return Open=False.
-    if _METADATA_FIELD not in obj.metadata:
+    if _METADATA_FIELD not in obj.metadata or obj.metadata[_METADATA_FIELD] == []:
         print("No openable joint metadata found for object %s" % obj.name)
         return None
 

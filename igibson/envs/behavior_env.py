@@ -201,7 +201,7 @@ class BehaviorEnv(iGibsonEnv):
             )
             self.observation_space = gym.spaces.Dict(self.observation_space.spaces)
 
-    def step(self, action):
+    def step(self, action, save_video=False):
         """
         Apply robot's action.
         Returns the next state, reward, done and info,
@@ -251,7 +251,7 @@ class BehaviorEnv(iGibsonEnv):
         self.robots[0].apply_action(new_action)
         if self.log_writer is not None:
             self.log_writer.process_frame()
-        self.simulator.step()
+        self.simulator.step(save_video=save_video)
 
         state = self.get_state()
         info = {}

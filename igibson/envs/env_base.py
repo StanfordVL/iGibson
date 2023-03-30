@@ -61,7 +61,7 @@ class BaseEnv(gym.Env):
 
         # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
         settings = MeshRendererSettings(
-            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=True
+            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=False
         )
 
         self.simulator = Simulator(
