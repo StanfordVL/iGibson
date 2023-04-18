@@ -765,10 +765,6 @@ class Viewer:
                 logging.info("Press 'r' to stop recording and 'p' to pause/resume recording.")
                 # Current time string to use to save the temporal urdfs
                 timestr = time.strftime("%Y%m%d-%H%M%S")
-                # Create the subfolder
-                # self.video_folder = os.path.join(
-                #     os.getcwd() + "/tmp", "{}_{}_{}".format(timestr, random.getrandbits(64), os.getpid())
-                # )
                 self.robotview_folder = os.path.join(
                     os.getcwd() + "/video_frames", "{}_{}_{}".format(timestr, "robotview", task_name)
                 )
