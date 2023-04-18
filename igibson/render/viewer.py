@@ -778,7 +778,6 @@ class Viewer:
                 self.recording = True
                 self.frame_idx = 0
 
-
         # Pause/Resume recording
         elif q == ord("p"):
             if self.pause_recording:
