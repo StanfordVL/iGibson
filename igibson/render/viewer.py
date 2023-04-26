@@ -855,7 +855,6 @@ def convert_frames_to_video(pathIn,pathOut,fps):
         img = cv2.imread(filename)
         height, width, layers = img.shape
         size = (width,height)
-        print(filename)
         #inserting the frames into an image array
         frame_array.append(img)
     out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
