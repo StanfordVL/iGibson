@@ -1,4 +1,4 @@
-NUM_PROCESSES: 3
+NUM_PROCESSES: 1
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
@@ -11,9 +11,12 @@ MODEL_DIR: "data/step1_0602"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 1
 SEED: 0
-VIDEO_OPTION: []
+VIDEO_OPTION: ['disk']
 HAS_DISTRACTOR_SOUND: False
 joint_loss: False
+not_load_object_categories: ['walls', "floors"]
+# not_load_object_categories: ['door', "ceilings"]
+
 
 
 #ppo & DDPPO config
@@ -86,7 +89,7 @@ build_graph: true
 load_texture: true
 pybullet_load_texture: true
 trav_map_type: with_obj
-trav_map_resolution: 0.1
+trav_map_resolution: 0.05
 trav_map_erosion: 3
 should_open_all_doors: true
 
@@ -100,7 +103,7 @@ use_softplus: False
 action_activation: tanh
 
 # task
-task: SAVi
+task: SAViRT
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: "cartesian"
@@ -109,7 +112,7 @@ task_obs_dim: 2
 # robot
 robot:
     name: Turtlebot
-    action_type: discrete
+    action_type: continuous
     action_normalize: true
     base_name: null
     scale: 1.0
@@ -124,13 +127,15 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category]
+output: [depth, rgb, audio, top_down, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category]
 extra_rgb: false
 
 # image
 fisheye: false
-image_width: 160
-image_height: 160
+image_width: 128
+image_height: 128
+image_width_video: 1280
+image_height_video: 1280
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -140,7 +145,7 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # audio
-audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
+audio_dir: "C:/Users/capri28/Documents/iGibson-dev/igibson/audio/semantic_splits"
 
 # visual objects
 visual_object_at_initial_target_pos: true

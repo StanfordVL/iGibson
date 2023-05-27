@@ -1,0 +1,173 @@
+NUM_PROCESSES: 1
+EVAL_NUM_PROCESS: 1
+NUM_UPDATES: 20000
+LOG_INTERVAL: 10
+LOG_FILE: "data/savi_rt_slurm_0813_rt_only/train.log"
+CHECKPOINT_INTERVAL: 50
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0813_rt_only/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0813_rt_only/tb"
+MODEL_DIR: "data/savi_rt_slurm_0813_rt_only/"
+TRAIN_EPISODE_COUNT_PER_SCENE: 100
+TORCH_GPU_ID: 0
+SEED: 0
+VIDEO_OPTION: []
+HAS_DISTRACTOR_SOUND: False
+joint_loss: True
+loss_weight: 1.
+
+
+#ppo & DDPPO config
+hidden_size: 512
+ppo_epoch: 2
+num_mini_batch: 1 
+# 2
+num_steps: 150
+value_loss_coef: 0.5
+entropy_coef: 0.05
+lr: 0.00025
+eps: 0.00001
+max_grad_norm: 0.2
+use_linear_clip_decay: False
+use_linear_lr_decay: False
+clip_param: 0.2
+reward_window_size: 50
+use_gae: True
+gamma: 0.99
+tau: 0.95
+use_normalized_advantage: False
+
+policy_type: 'smt'
+pretrained: False
+pretrained_weights: ""
+reset_critic: True
+use_belief_predictor: True
+use_external_memory: True
+sync_frac: 0.6
+distrib_backend: "GLOO"
+rnn_type: "GRU"
+num_recurrent_layers: 1
+backbone: "custom_resnet18"
+normalize_category_distribution: False
+
+# use_occupancy_map
+# use_roomtype_map
+use_rt_map: True
+enc_in_scale: [32,32]
+
+# smt
+smt_cfg_memory_size: 150
+smt_cfg_hidden_size: 625
+smt_cfg_nhead: 25
+smt_cfg_num_encoder_layers: 1
+smt_cfg_num_decoder_layers: 1
+smt_cfg_dropout: 0.0
+smt_cfg_activation: 'relu'
+smt_cfg_use_pretrained: False
+smt_cfg_pretrained_path: " "
+smt_cfg_pretraining: True
+smt_cfg_freeze_encoders: False
+smt_cfg_freeze_policy_decoders: True
+smt_cfg_use_belief_encoding: False
+
+
+# belief_cfg:
+use_label_belief: True
+use_location_belief: True
+online_training: True
+train_encoder: False
+current_pred_only: False
+weighting_factor: 0.5
+belief_cfg_lr: 0.001
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0501/ckpt.16.pth'
+
+
+## igibson
+# scene
+scene: igibson
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+trav_map_type: with_obj
+trav_map_resolution: 0.1
+trav_map_erosion: 3
+should_open_all_doors: true
+not_load_object_categories: ['door']
+texture_scale: 0.5
+
+is_discrete: True
+min_std: 1e-6
+max_std: 1
+min_log_std: -5
+max_log_std: 2
+use_log_std: False
+use_softplus: False
+action_activation: tanh
+
+# task
+task: SAViRT
+target_dist_min: 1.0
+target_dist_max: 10.0
+goal_format: "cartesian"
+task_obs_dim: 4
+
+# robot
+robot:
+    name: Turtlebot
+    action_type: continuous
+    action_normalize: true
+    base_name: null
+    scale: 1.0
+    self_collision: false
+    rendering_params: null
+    controller_config:
+        base:
+            name: JointController
+            motor_type: velocity
+            command_input_limits: default
+            command_output_limits: default
+            use_delta_commands: false
+
+# sensor spec
+output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, bump]
+extra_rgb: false
+
+# image
+fisheye: false
+image_width: 160
+image_height: 160
+vertical_fov: 45
+# depth
+depth_low: 0.8
+depth_high: 3.5
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# audio
+audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: false
+
+# reward only for point nav fixed task
+reward_type: geodesic
+success_reward: 10.0
+potential_reward_weight: 1.0
+collision_reward_weight: -0.005
+time_reward_weight: -0.01
+
+# termination condition
+dist_tol: 0.36
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
+# discount factor
+discount_factor: 0.99
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null

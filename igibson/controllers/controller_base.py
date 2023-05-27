@@ -130,6 +130,7 @@ class BaseController:
             if command_output_limits == "default"
             else command_output_limits
         )
+
         self.command_input_limits = (
             None
             if command_input_limits is None
@@ -146,6 +147,7 @@ class BaseController:
                 self.nums2array(command_output_limits[1], self.command_dim),
             )
         )
+
         self.inverted = inverted
 
     def _preprocess_command(self, command):

@@ -2,16 +2,16 @@
 SAMPLE_RATE = 44100
 # Determines number of reverb/reflections probes in the scene. Actual number is num_probes ^ 2
 NUM_REVERB_PROBES = 5
-OCCLUSION_MULTIPLIER = 2.0
+OCCLUSION_MULTIPLIER = 0
 SPECTROGRAM_WINDOW_LEN = 0.3
 
 
 # Default Source Configuration - can be overwritten when calling RegisterSource!
 DEFAULT_MIN_FALLOFF_DISTANCE = 0.1
-DEFAULT_MAX_FALLOFF_DISTANCE = 10
-DEFAULT_SOURCE_GAIN = 2.0
-DEFAULT_NEAR_FIELD_GAIN = 1.0
-DEFAULT_ROOM_EFFECTS_GAIN = 2.0
+DEFAULT_MAX_FALLOFF_DISTANCE = 15
+DEFAULT_SOURCE_GAIN = 1.0
+DEFAULT_NEAR_FIELD_GAIN = 1. # near field is somewhat tricky
+DEFAULT_ROOM_EFFECTS_GAIN = 1.
 
 
 # Reverb probe ray-tracing fields

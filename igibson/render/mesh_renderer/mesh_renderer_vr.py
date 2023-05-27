@@ -245,18 +245,19 @@ class MeshRendererVR(MeshRenderer):
         self.vrsys.updateVRData()
 
     def render(
-        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
+        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True, render_normal_cam=False
     ):
         """
         Renders VR scenes.
         """
 
-        if self.vr_settings.use_vr:
+        if self.vr_settings.use_vr and not render_normal_cam:
             left_proj, left_view, left_cam_pos, right_proj, right_view, right_cam_pos = self.vrsys.preRenderVR()
 
             # Render and submit left eye
             self.V = left_view
             self.P = left_proj
+
             # Set camera to be at the camera position of the VR eye
             self.camera = left_cam_pos
             # Set camera once for both VR eyes - use the right eye since this is what we save in data save and replay
@@ -280,7 +281,7 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_hud is not None:
                 self.vr_hud.refresh_text()
         else:
-            return super().render(modes=("rgb"), return_buffer=return_buffer)
+            return super().render(modes=modes, return_buffer=return_buffer)
 
     def vr_compositor_update(self):
         """

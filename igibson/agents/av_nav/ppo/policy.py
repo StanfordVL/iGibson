@@ -203,7 +203,7 @@ class AudioNavBaselineNet(Net):
         if self._task_obs:
             x.append(observations["task_obs"])
         if self._bump:
-            if len(observations["bump"]) == 3:
+            if len([observations["bump"]]) == 3:
                 x.append(torch.squeeze(observations["bump"], 2))
             else:
                 x.append(observations["bump"])

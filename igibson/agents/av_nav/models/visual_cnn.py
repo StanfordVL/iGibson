@@ -145,7 +145,7 @@ class VisualCNN(nn.Module):
         if self._n_input_depth > 0:
             depth_observations = observations["depth"]
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            depth_observations = torch.permute(depth_observations, (0, 3, 1, 2)).contiguous().view(depth_observations.shape[0], self._n_input_depth, 128, 128)
+            depth_observations = depth_observations.permute((0, 3, 1, 2)).contiguous().view(depth_observations.shape[0], self._n_input_depth, 128, 128)
             cnn_input.append(depth_observations)
 
         cnn_input = torch.cat(cnn_input, dim=1).contiguous()

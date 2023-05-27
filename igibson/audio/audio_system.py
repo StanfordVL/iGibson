@@ -14,6 +14,7 @@ import numpy as np
 import pybullet as p
 from scipy.io.wavfile import write
 import scipy.io.wavfile as wavfile
+import transforms3d as tf3d
 
 # Mesh object required to be populated for AudioSystem
 class AcousticMesh:
@@ -38,7 +39,7 @@ class AudioSystem(object):
                  is_Viewer=False,
                  is_VR_Viewer=False,
                  writeToFile="",
-                 SR=config.SAMPLE_RATE,
+                 SR= config.SAMPLE_RATE,
                  num_probes=config.NUM_REVERB_PROBES,
                  occl_multiplier=config.OCCLUSION_MULTIPLIER,
                  spectrogram_window_len=config.SPECTROGRAM_WINDOW_LEN,
@@ -66,7 +67,7 @@ class AudioSystem(object):
         self.occl_multiplier = occl_multiplier
         self.occl_intensity = -1
         self.num_ambisonic_channels = 4
-        _, self.bg_noise = wavfile.read("background_noise.wav")
+        _, self.bg_noise = wavfile.read("new_noise.wav")
         self.bg_noise = (self.bg_noise.reshape((-1,)) * 32768.0).astype(np.int16)
 
         def getViewerOrientation():
@@ -82,15 +83,38 @@ class AudioSystem(object):
             self.get_ori = getViewerOrientation 
         elif is_VR_Viewer:
             self.get_pos = lambda: self.s.get_data_for_vr_device("hmd")[1]
-            self.get_ori = lambda: self.s.get_data_for_vr_device("hmd")[2]
+            def get_ori():
+                get_vr_ori = lambda: self.s.get_data_for_vr_device("hmd")[2]
+                lis_ori = get_vr_ori()
+                start = [lis_ori[3], lis_ori[0],lis_ori[1],lis_ori[2]]
+                delta = tf3d.quaternions.axangle2quat([0, 1, 0], np.pi/2)
+                final = tf3d.quaternions.qmult(start, delta)
+                delta2 = tf3d.quaternions.axangle2quat([0, 0, 1], -np.pi/2)
+                final = tf3d.quaternions.qmult(final, delta2)
+                final = [final[1], final[2],final[3],final[0]]
+                return final
+            self.get_ori = get_ori
         else:
             def get_pos():
                 pose = np.zeros((3,))
                 pose[:2] = self.listener.eyes.get_position()[:2]
                 pose[2] = 0.73
                 return pose
-            self.get_pos =self.listener.eyes.get_position
-            self.get_ori = self.listener.eyes.get_orientation
+            self.get_pos = get_pos #self.listener.eyes.get_position
+
+            def get_ori():
+                lis_ori = self.listener.eyes.get_orientation()
+                # convert to [w,x,y,z]
+                start = [lis_ori[3], lis_ori[0],lis_ori[1],lis_ori[2]]
+                # rotate along y axis
+                delta = tf3d.quaternions.axangle2quat([0, 1, 0], np.pi/2)
+                final = tf3d.quaternions.qmult(start, delta)
+                # rotate along 
+                delta2 = tf3d.quaternions.axangle2quat([0, 0, 1], -np.pi/2)
+                final = tf3d.quaternions.qmult(final, delta2)
+                final = [final[1], final[2],final[3],final[0]]
+                return final
+            self.get_ori = get_ori#self.listener.eyes.get_orientation
 
 
         #TODO: Here we assume an integer number of audio frames per simulator time step. 
@@ -150,16 +174,24 @@ class AudioSystem(object):
         if stream_audio or stream_input:
             import pyaudio
             self.streaming_input = []
+            # self.mic_audio = []
             def pyaudOutputCallback(in_data, frame_count, time_info, status):
                 return (bytes(self.current_output), pyaudio.paContinue)
             def pyaudInputCallback(in_data, frame_count, time_info, status):
+                b = frame_count
+                a = len(in_data)
                 self.streaming_input = in_data
-                return (None, pyaudio.paContinue)
+                return (in_data, pyaudio.paContinue)
             pyaud = pyaudio.PyAudio()
-            out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
+            info = pyaud.get_host_api_info_by_index(0)
+            numdevices = info.get('deviceCount')
+            for i in range(0, numdevices):
+                if (pyaud.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                    print("Input Device id ", i, " - ", pyaud.get_device_info_by_host_api_device_index(0, i).get('name'))
+            self.out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
             if stream_input:
-                in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
-            
+                self.in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, input_device_index = 1,format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
+                # in_stream.start_stream()
     def getClosestReverbProbe(self, pos):
         floor = 0
         for i in range(len(self.scene.floor_heights)):
@@ -189,6 +221,7 @@ class AudioSystem(object):
                        reverb_gain=config.DEFAULT_ROOM_EFFECTS_GAIN,
                     ):
         print("Initializing source object " + str(source_obj_id) + " from file: " + audio_fname)
+        print("near field gain is", near_field_gain)
         if source_obj_id in self.sourceToEnabled:
             raise Exception('Object {} has already been registered with source {}, and we currently only support one audio stream per source.'.format(source_obj_id, audio_fname))
 
@@ -231,6 +264,7 @@ class AudioSystem(object):
         for source, buffer in self.sourceToBuffer.items():
             if self.sourceToEnabled[source]:
                 source_audio = self.readSource(source, self.framesPerBuf)
+                # self.mic_audio.extend(source_audio.tolist())
                 if source_audio.size < self.framesPerBuf:
                     if self.sourceToRepeat[source] and buffer is not None:
                         buffer.rewind()
@@ -261,7 +295,7 @@ class AudioSystem(object):
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
             else:
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, np.zeros(self.framesPerBuf, dtype=np.int16))
-        print(self.get_ori)
+        # print("eye", self.get_ori())
         audio.SetListenerPositionAndRotation(listener_pos, self.get_ori())
         if self.reverb:
             closest_probe_key = self.getClosestReverbProbe(listener_pos)
@@ -275,7 +309,7 @@ class AudioSystem(object):
         # if start_idx % 2 != 0:
         #     start_idx -= 1
         # noise = self.bg_noise[start_idx:(start_idx + len(self.current_output))]
-        # self.current_output = self.current_output + noise * 0.6
+        # self.current_output = self.current_output + noise * 0.855 #
         # self.current_output[self.current_output > 32768] = 32768
         # self.current_output[self.current_output < -32768] = -32768
 
@@ -301,7 +335,9 @@ class AudioSystem(object):
     def save_audio(self):
         if self.writeToFile != "":
             deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
+            # print(deinterleaved_audio)
             write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
+            # write('supp_video_results/test_mic.wav', self.SR , np.array(self.mic_audio, dtype=np.int16))
     
     def get_spectrogram(self):
         def compute_stft(signal):

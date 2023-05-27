@@ -24,7 +24,14 @@ robot:
   rendering_params: null
   controller_config:
     base:
-      name: DifferentialDriveController
+        name: JointController
+        motor_type: velocity
+        command_input_limits: default
+        command_output_limits: default
+        use_delta_commands: false
+  # controller_config:
+  #   base:
+  #     name: DifferentialDriveController
 
 # task
 task: interactive_nav_random

@@ -42,6 +42,7 @@ class BaseEnv(gym.Env):
         vr_settings=None,
         device_idx=0,
         use_pb_gui=False,
+        trail=0
     ):
         """
         :param config_file: config_file path
@@ -55,6 +56,7 @@ class BaseEnv(gym.Env):
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         self.config = parse_config(config_file)
+        self.config["AUDIO_DIR"] =  "result/av_nav/" + str(trail) + "/audio_file"
         if scene_id is not None:
             self.config["scene_id"] = scene_id
 

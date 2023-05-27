@@ -24,7 +24,7 @@ from igibson.utils.utils import parse_config
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
 hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+    igibson.ig_dataset_path, "scenes", "Wainscott_0_int", "layout", "floor_lighttype_0.png"
 )
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
@@ -46,45 +46,45 @@ def main(selection="user", headless=False, short_exec=False):
     s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
     scene = InteractiveIndoorScene(
-        "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+        "Wainscott_0_int", load_object_categories=["walls", "floors", "ceilings", "door"]#, load_room_types=["kitchen"]
     )
     s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    objects = [
-        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107, 0.707107)),
-    ]
+    # objects = [
+    #     ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    #     ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    #     ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    #     ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    #     ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    #     ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    #     ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    #     ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    #     ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    #     ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    # ]
 
-    for item in objects:
-        fpath = item[0]
-        pos = item[1]
-        orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-        s.import_object(item_ob)
-        item_ob.set_position(pos)
-        item_ob.set_orientation(orn)
+    # for item in objects:
+    #     fpath = item[0]
+    #     pos = item[1]
+    #     orn = item[2]
+    #     item_ob = ArticulatedObject(fpath, scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
+    #     s.import_object(item_ob)
+    #     item_ob.set_position(pos)
+    #     item_ob.set_orientation(orn)
 
-    obj = ArticulatedObject(
-        os.path.join(
-            igibson.ig_dataset_path,
-            "objects",
-            "basket",
-            "e3bae8da192ab3d4a17ae19fa77775ff",
-            "e3bae8da192ab3d4a17ae19fa77775ff.urdf",
-        ),
-        scale=2,
-    )
-    s.import_object(obj)
-    obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
+    # obj = ArticulatedObject(
+    #     os.path.join(
+    #         igibson.ig_dataset_path,
+    #         "objects",
+    #         "basket",
+    #         "e3bae8da192ab3d4a17ae19fa77775ff",
+    #         "e3bae8da192ab3d4a17ae19fa77775ff.urdf",
+    #     ),
+    #     scale=2,
+    # )
+    # s.import_object(obj)
+    # obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
     speaker = ArticulatedObject(
         os.path.join(
@@ -97,14 +97,14 @@ def main(selection="user", headless=False, short_exec=False):
         scale=1,
     )
     s.import_object(speaker)
-    speaker.set_position_orientation([1.050000, -0.750000, 0.750000], [0, 0, 0, 1])
+    speaker.set_position_orientation([0.0000, 5.0000, 0.750000], [0, 0, 0, 1])
 
 
     config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"))
 
     bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
+    bvr_robot.set_position_orientation([0., 0, 0.7], [0, 0, 0, 1])
 
     acousticMesh = getIgAcousticMesh(s)
 

@@ -53,6 +53,7 @@ def vr_input_example():
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
     )
+    
     bvr_config = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
     s.import_scene(scene)
 

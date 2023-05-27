@@ -304,6 +304,8 @@ def main(selection="user", headless=False, short_exec=False):
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
+    import os
+    os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
     # Choose type of grasping
     grasping_mode = choose_from_options(options=GRASPING_MODES, name="grasping mode", selection=selection)
 
@@ -446,6 +448,7 @@ def main(selection="user", headless=False, short_exec=False):
     step = 0
     while step != max_steps:
         action = action_generator.get_random_action() if selection != "user" else action_generator.get_teleop_action()
+        print(action)
         robot.apply_action(action)
         for _ in range(10):
             s.step()

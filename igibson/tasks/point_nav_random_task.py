@@ -84,7 +84,7 @@ class PointNavRandomTask(PointNavFixedTask):
         p.removeState(state_id)
 
         self.target_pos = target_pos
-        self.initial_pos = initial_pos
+        self.initial_pos = [-3.0, 1.0, 0.1]#initial_pos
         self.initial_orn = initial_orn
 
         super(PointNavRandomTask, self).reset_agent(env)

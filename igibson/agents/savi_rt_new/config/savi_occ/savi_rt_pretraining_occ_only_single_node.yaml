@@ -1,0 +1,214 @@
+NUM_PROCESSES: 9
+EVAL_NUM_PROCESS: 5
+NUM_UPDATES: 20000
+LOG_INTERVAL: 10
+LOG_NAME: savi_occ_only_pretraining
+CHECKPOINT_INTERVAL: 50
+EVAL_CKPT: ckpt.52.pth
+TRAIN_EPISODE_COUNT_PER_SCENE: 100
+TORCH_GPU_ID: 0
+SEED: 0
+VIDEO_OPTION: []
+HAS_DISTRACTOR_SOUND: False
+joint_loss: True
+loss_weight: 1. # controls whether use occ map
+freeze_occ_map: False
+
+#ppo & DDPPO config
+hidden_size: 512
+ppo_epoch: 4
+num_mini_batch: 1
+num_steps: 150
+value_loss_coef: 0.5
+entropy_coef: 0.03
+lr: 2.5e-4
+eps: 1e-5
+max_grad_norm: 0.5
+use_linear_clip_decay: true
+use_linear_lr_decay: true
+clip_param: 0.1
+reward_window_size: 50
+use_gae: True
+gamma: 0.99
+tau: 0.95
+use_normalized_advantage: False
+not_load_object_categories: ["door", "doors"]
+
+policy_type: 'smt'
+pretrained: False
+pretrained_weights: ""
+reset_critic: False
+use_belief_predictor: True
+use_external_memory: True
+
+sync_frac: 0.6
+distrib_backend: "GLOO"
+rnn_type: "GRU"
+num_recurrent_layers: 1
+backbone: "custom_resnet18"
+normalize_category_distribution: False
+
+# use_occupancy_map
+# use_roomtype_map
+use_rt_map: True
+
+# smt
+smt_cfg_memory_size: 1
+smt_cfg_hidden_size: 128
+smt_cfg_nhead: 8
+smt_cfg_num_encoder_layers: 1
+smt_cfg_num_decoder_layers: 1
+smt_cfg_dropout: 0.0
+smt_cfg_activation: 'relu'
+smt_cfg_use_pretrained: False
+smt_cfg_pretrained_path: " "
+smt_cfg_pretraining: True
+smt_cfg_freeze_encoders: False
+smt_cfg_freeze_policy_decoders: True
+smt_cfg_use_belief_encoding: False
+
+
+# belief_cfg:
+use_label_belief: True
+use_location_belief: True
+online_training: True
+train_encoder: False
+current_pred_only: False
+weighting_factor: 0.5
+belief_cfg_lr: 0.001
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0501/ckpt.16.pth'
+
+
+## igibson
+# scene
+scene: igibson
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+trav_map_type: with_obj_no_door
+trav_map_resolution: 0.05
+trav_map_erosion: 5
+should_open_all_doors: true
+
+texture_scale: 0.5
+
+is_discrete: False
+min_std: 1e-6
+max_std: 1
+min_log_std: -5
+max_log_std: 2
+use_log_std: False
+use_softplus: False
+action_activation: tanh
+
+
+# Sim2Real
+# is_Sim2Real: true
+src_gain_min: 0.75
+src_gain_max: 0.75
+near_field_gain: 9.
+reverb_gain: 3.
+occl_multiplier: 0.1
+
+# task
+task: SAViOcc
+target_dist_min: 1.0
+target_dist_max: 10.0
+goal_format: "cartesian"
+task_obs_dim: 4
+
+# robot
+robot:
+    name: Turtlebot
+    action_type: continuous
+    action_normalize: true
+    base_name: null
+    scale: 1.0
+    self_collision: false
+    rendering_params: null
+    controller_config:
+        base:
+            name: JointController
+            motor_type: velocity
+            command_input_limits: default
+            command_output_limits: default
+            use_delta_commands: false
+
+# sensor spec
+output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, bump]
+extra_rgb: false
+
+# image
+fisheye: false
+image_width: 128
+image_height: 128
+vertical_fov: 45
+# depth
+depth_low: 0.8
+depth_high: 3.5
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# audio
+audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
+
+# visual objects
+# visual_object_at_initial_target_pos: true
+# target_visual_object_visible_to_agent: false
+
+# reward only for point nav fixed task
+reward_type: geodesic
+success_reward: 10.0
+potential_reward_weight: 1.0
+collision_reward_weight: -0.005
+time_reward_weight: -0.01
+
+# termination condition
+dist_tol: 0.36
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
+# discount factor
+discount_factor: 0.99
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+# ====== EGO_PROJECTION specific options =======
+ego_proj: 
+        # Output map to project egocentric depth anticipation
+        local_map_shape: !!python/tuple [2, 100, 100]
+        # Gridcell size for map in meters，set it based on ground truth predicted area
+        map_scale: 0.05
+        # Minimum and maximum depth value used to scale results between 0.0 to 1.0
+        min_depth: 0.0
+        max_depth: 3.5
+        # Used to truncate inputs that are farther than a certain distance away
+        truncate_depth: 3.5
+        # Field of view of expanded image width
+        hfov: 45
+        # Field of view of expanded image height (no expansion in height)
+        vfov: 45
+        # Camera height (in meters)
+        camera_height: 0.287
+        # Height thresholds to determine obstacles, free-space (in meters)
+        height_thresholds: !!python/tuple [0.1, 2.0]
+        # Size of image feature / size of depth values - must be set to 1.0 here
+        K: 1.0
+
+# =========== GP_ANTICIPATION specific options ============
+gp_ant:
+    # Model capacity factor for custom UNet
+    unet_nsf: 16
+    # Freeze image features?
+    freeze_features: False
+    nclasses: 2
+    resnet_type: "resnet18"
+    # OccAnt RGB specific hyperparameters
+    detach_depth_proj: False
+    pretrained_depth_proj_model: ""
+    freeze_depth_proj_model: False
