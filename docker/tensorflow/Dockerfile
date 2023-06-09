@@ -1,17 +1,17 @@
-from nvidia/cudagl:10.0-base-ubuntu18.04
+from nvidia/cudagl:11.4.2-base-ubuntu20.04
 
-ARG CUDA=10.0
-ARG CUDNN=7.6.2.24-1
+ARG CUDA=11.4
+ARG CUDNN=8.2.4.15-1
 
-RUN apt-get update  && apt-get install -y --no-install-recommends \
-	curl build-essential git cmake \
-	cuda-command-line-tools-10-0 \
-    cuda-cublas-10-0 \
-    cuda-cufft-10-0 \
-    cuda-curand-10-0 \
-    cuda-cusolver-10-0 \
-    cuda-cusparse-10-0 \
-    libcudnn7=${CUDNN}+cuda${CUDA} \
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
+    curl build-essential git cmake \
+    cuda-command-line-tools-11-4 \
+    libcublas-11-4 \
+    libcufft-11-4 \
+    libcurand-11-4 \
+    libcusolver-11-4 \
+    libcusparse-11-4 \
+    libcudnn8=${CUDNN}+cuda${CUDA} \
     vim \
     tmux \
     libhdf5-dev \
@@ -31,6 +31,7 @@ RUN conda create -y -n igibson python=3.7
 
 ENV PATH /miniconda/envs/igibson/bin:$PATH
 
+RUN pip install protobuf==3.20.*
 # NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install tensorflow-gpu==1.15.0
 
