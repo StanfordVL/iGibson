@@ -416,7 +416,6 @@ class BaseRobot(StatefulObject):
             limits = controller.command_input_limits
             low.append(np.array([-np.inf] * controller.command_dim) if limits is None else limits[0])
             high.append(np.array([np.inf] * controller.command_dim) if limits is None else limits[1])
-
         return gym.spaces.Box(
             shape=(self.action_dim,), low=np.concatenate(low), high=np.concatenate(high), dtype=np.float32
         )
