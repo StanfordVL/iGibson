@@ -362,28 +362,20 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         cfg["base"] = {"JointController": self._default_base_controller_configs}
 
         for arm in self.arm_names:
-            # Use default IK controller -- also need to override joint idx being controlled to include trunk in default
-            # IK arm controller
-            cfg["arm_{}".format(arm)]["InverseKinematicsController"]["joint_idx"] = np.concatenate(
-                [self.trunk_control_idx, self.arm_control_idx[arm]]
-            )
-            # TODO: is this not assigning the trunk to both arms?
+            for arm_cfg in cfg["arm_{}".format(arm)].values():
 
-            # If using rigid trunk, we also clamp its limits
-            if self.rigid_trunk:
-                cfg["arm_{}".format(arm)]["InverseKinematicsController"]["control_limits"]["position"][0][
-                    self.trunk_control_idx
-                ] = self.untucked_default_joint_pos[self.trunk_control_idx]
-                cfg["arm_{}".format(arm)]["InverseKinematicsController"]["control_limits"]["position"][1][
-                    self.trunk_control_idx
-                ] = self.untucked_default_joint_pos[self.trunk_control_idx]
+                if arm == "left":
+                    # Need to override joint idx being controlled to include trunk in default arm controller configs
+                    arm_cfg["joint_idx"] = np.concatenate([self.trunk_control_idx, self.arm_control_idx[arm]])
 
-            cfg["arm_{}".format(arm)]["InverseKinematicsController"]["ik_joint_idx"] = np.array(
-                [
-                    self.joint_idx_to_ik_joint_idx[x]
-                    for x in cfg["arm_{}".format(arm)]["InverseKinematicsController"]["joint_idx"]
-                ]
-            )
+                # If using rigid trunk, we also clamp its limits
+                # TODO: How to handle for right arm which has a fixed trunk internally even though the trunk is moving
+                # via the left arm??
+                if self.rigid_trunk:
+                    arm_cfg["control_limits"]["position"][0][self.trunk_control_idx] = \
+                        self.untucked_default_joint_pos[self.trunk_control_idx]
+                    arm_cfg["control_limits"]["position"][1][self.trunk_control_idx] = \
+                        self.untucked_default_joint_pos[self.trunk_control_idx]
 
         return cfg
 
