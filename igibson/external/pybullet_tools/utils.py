@@ -72,6 +72,7 @@ R2D2_URDF = "r2d2.urdf"
 MINITAUR_URDF = "quadruped/minitaur.urdf"
 HUMANOID_MJCF = "mjcf/humanoid.xml"
 HUSKY_URDF = "husky/husky.urdf"
+JACKAL_URDF = "jackal/jackal.urdf"
 RACECAR_URDF = 'racecar/racecar.urdf'  # racecar_differential.urdf
 PR2_GRIPPER = 'pr2_gripper.urdf'
 # wsg50_one_motor_gripper | wsg50_one_motor_gripper_new

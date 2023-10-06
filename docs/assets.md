@@ -25,6 +25,7 @@ assets
 │   ├── fire
 │   ├── humanoid
 │   ├── husky
+│   ├── jackal
 │   ├── jr1_urdf
 │   ├── jr2_urdf
 │   ├── kinova

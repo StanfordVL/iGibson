@@ -1,0 +1,22 @@
+# Example Husky config
+robot:
+  name: JackalJaco
+  action_type: continuous
+  action_normalize: true
+  proprio_obs:
+    # - joint_qpos
+    # - joint_qvel
+    - eef_0_pos
+    - eef_0_quat
+    - arm_0_qpos_sin
+    - arm_0_qpos_cos
+  reset_joint_pos: null
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  controller_config:
+    base:
+      name: JointController
+    arm_0:
+      name: InverseKinematicsController
