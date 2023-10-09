@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import logging
 import os
 from typing import Callable
@@ -104,7 +106,7 @@ def main(selection="user", headless=False, short_exec=False):
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_file = "turtlebot_nav.yaml"
     tensorboard_log_dir = "log_dir"
-    num_environments = 8 if not short_exec else 1
+    num_environments = 2 if not short_exec else 1
 
     # Function callback to create environments
     def make_env(rank: int, seed: int = 0) -> Callable:
@@ -114,6 +116,7 @@ def main(selection="user", headless=False, short_exec=False):
                 mode="headless",
                 action_timestep=1 / 10.0,
                 physics_timestep=1 / 120.0,
+                ros_node_id=rank
             )
             env.seed(seed + rank)
             return env
@@ -138,20 +141,29 @@ def main(selection="user", headless=False, short_exec=False):
         features_extractor_class=CustomCombinedExtractor,
     )
     os.makedirs(tensorboard_log_dir, exist_ok=True)
-    model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log=tensorboard_log_dir, policy_kwargs=policy_kwargs)
+    model = PPO("MultiInputPolicy", env, n_steps=512, verbose=1, tensorboard_log=tensorboard_log_dir, policy_kwargs=policy_kwargs)
     print(model.policy)
 
+    '''
+    print("BEFORE evaluate_policy 0")
     # Random Agent, evaluation before training
-    # mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
-    # print(f"Before Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
+    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
+    print(f"Before Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
+    print("AFTER evaluate_policy 0")
+    '''
 
+    print("BEFORE learn")
     # Train the model for the given number of steps
-    total_timesteps = 100 if short_exec else 1000000
-    model.learn(total_timesteps, progress_bar=True)
+    total_timesteps = 100 if short_exec else 24000
+    model.print("BEFORE evaluate_policy 1")(total_timesteps=total_timesteps, progress_bar=True)
+    print("AFTER learn")
 
+    '''
+    print("BEFORE evaluate_policy 1")
     # Evaluate the policy after training
-    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)
+    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=5)
     print(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
+    print("AFTER evaluate_policy 1")
 
     # Save the trained model and delete it
     model.save("ckpt")
@@ -160,10 +172,12 @@ def main(selection="user", headless=False, short_exec=False):
     # Reload the trained model from file
     model = PPO.load("ckpt")
 
+    print("BEFORE evaluate_policy 2")
     # Evaluate the trained model loaded from file
-    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)
+    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=5)
     print(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
-
+    print("AFTER evaluate_policy 2")
+    '''
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

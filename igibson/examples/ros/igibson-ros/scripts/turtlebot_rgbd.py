@@ -45,7 +45,10 @@ class SimNode:
         self.br = tf.TransformBroadcaster()
 
         self.env = iGibsonEnv(
-            config_file=config_data, mode="headless", action_timestep=1 / 30.0
+            config_file=config_data, 
+            mode="headless", 
+            action_timestep=1 / 30.0,
+            ros_node_init=True,
         )  # assume a 30Hz simulation
         self.env.reset()
 

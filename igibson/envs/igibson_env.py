@@ -26,6 +26,20 @@ from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
 
+import yaml
+from cv_bridge import CvBridge
+
+import rospkg
+import rospy
+import tf
+from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry
+from sensor_msgs import point_cloud2 as pc2
+from sensor_msgs.msg import CameraInfo
+from sensor_msgs.msg import Image as ImageMsg
+from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Header
+
 log = logging.getLogger(__name__)
 
 
@@ -46,6 +60,8 @@ class iGibsonEnv(BaseEnv):
         device_idx=0,
         automatic_reset=False,
         use_pb_gui=False,
+        ros_node_init=False,
+        ros_node_id=0,
     ):
         """
         :param config_file: config_file path
@@ -59,6 +75,31 @@ class iGibsonEnv(BaseEnv):
         :param automatic_reset: whether to automatic reset after an episode finishes
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
+
+        if not ros_node_init:
+            rospy.init_node("igibson_ros_" + str(ros_node_id))
+            rospack = rospkg.RosPack()
+            path = rospack.get_path("igibson-ros")
+            config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
+            config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
+
+            self.cmdx = 0.0
+            self.cmdy = 0.0
+
+            self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
+            self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
+            self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points" + "_" + str(ros_node_id), PointCloud2, queue_size=10)
+            self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
+            self.odom_pub = rospy.Publisher("/odom" + "_" + str(ros_node_id), Odometry, queue_size=10)
+            self.gt_pose_pub = rospy.Publisher("/ground_truth_odom" + "_" + str(ros_node_id), Odometry, queue_size=10)
+            self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info" + "_" + str(ros_node_id), CameraInfo, queue_size=10)
+
+            rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
+            rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+
+            self.bridge = CvBridge()
+            self.br = tf.TransformBroadcaster()
+
         super(iGibsonEnv, self).__init__(
             config_file=config_file,
             scene_id=scene_id,
@@ -71,6 +112,26 @@ class iGibsonEnv(BaseEnv):
             use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
+
+        #print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
+        #while 1:
+        #    continue
+        
+    def cmd_callback(self, data):
+        self.cmdx = data.linear.x
+        self.cmdy = -data.angular.z
+
+    def tp_robot_callback(self, data):
+        rospy.loginfo("Teleporting robot")
+        position = [data.pose.position.x, data.pose.position.y, data.pose.position.z]
+        orientation = [
+            data.pose.orientation.x,
+            data.pose.orientation.y,
+            data.pose.orientation.z,
+            data.pose.orientation.w,
+        ]
+        self.env.robots[0].reset_new_pose(position, orientation)
+        self.tp_time = rospy.Time.now()
 
     def load_task_setup(self):
         """
