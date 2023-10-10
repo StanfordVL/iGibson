@@ -77,7 +77,7 @@ class iGibsonEnv(BaseEnv):
         """
 
         if not ros_node_init:
-            rospy.init_node("igibson_ros_" + str(ros_node_id))
+            rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
             rospack = rospkg.RosPack()
             path = rospack.get_path("igibson-ros")
             config_filename = os.path.join(path, "turtlebot_rgbd.yaml")

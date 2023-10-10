@@ -155,7 +155,7 @@ def main(selection="user", headless=False, short_exec=False):
     print("BEFORE learn")
     # Train the model for the given number of steps
     total_timesteps = 100 if short_exec else 24000
-    model.print("BEFORE evaluate_policy 1")(total_timesteps=total_timesteps, progress_bar=True)
+    model.learn(total_timesteps, progress_bar=True)
     print("AFTER learn")
 
     '''

@@ -20,16 +20,32 @@ from igibson.envs.igibson_env import iGibsonEnv
 
 
 class SimNode:
-    def __init__(self):
+    def __init__(self, ns=""):
         rospy.init_node("igibson_sim")
         rospack = rospkg.RosPack()
         path = rospack.get_path("igibson-ros")
         config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
         config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
+        self.ns = ns
+        #if self.ns != "":
+        #    self.ns = "/" + ns
+
         self.cmdx = 0.0
         self.cmdy = 0.0
 
+        self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
+        self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
+        self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
+        self.depth_raw_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
+        self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
+        self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
+        self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
+            
+        rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
+        rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+
+        '''
         self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
         self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
         self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
@@ -40,6 +56,7 @@ class SimNode:
 
         rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
         rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+        '''
 
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
@@ -49,6 +66,7 @@ class SimNode:
             mode="headless", 
             action_timestep=1 / 30.0,
             ros_node_init=True,
+            physics_timestep=1 / 60.0,
         )  # assume a 30Hz simulation
         self.env.reset()
 
@@ -57,6 +75,7 @@ class SimNode:
     def run(self):
         while not rospy.is_shutdown():
             obs, _, _, _ = self.env.step([self.cmdx, self.cmdy])
+
             rgb = (obs["rgb"] * 255).astype(np.uint8)
             normalized_depth = obs["depth"].astype(np.float32)
             depth = normalized_depth * self.env.sensors["vision"].depth_high
@@ -71,9 +90,9 @@ class SimNode:
             image_message.header.stamp = now
             depth_message.header.stamp = now
             depth_raw_message.header.stamp = now
-            image_message.header.frame_id = "camera_depth_optical_frame"
-            depth_message.header.frame_id = "camera_depth_optical_frame"
-            depth_raw_message.header.frame_id = "camera_depth_optical_frame"
+            image_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_raw_message.header.frame_id = self.ns + "camera_depth_optical_frame"
 
             self.image_pub.publish(image_message)
             self.depth_pub.publish(depth_message)
@@ -89,16 +108,14 @@ class SimNode:
                 P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0],
             )
             msg.header.stamp = now
-            msg.header.frame_id = "camera_depth_optical_frame"
+            msg.header.frame_id = self.ns + "camera_depth_optical_frame"
             self.camera_info_pub.publish(msg)
 
-            if (self.tp_time is None) or (
-                (self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)
-            ):
+            if (self.tp_time is None) or ((self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)):
                 scan = obs["scan"]
                 lidar_header = Header()
                 lidar_header.stamp = now
-                lidar_header.frame_id = "scan_link"
+                lidar_header.frame_id = self.ns + "scan_link"
 
                 laser_linear_range = self.env.sensors["scan_occ"].laser_linear_range
                 laser_angular_range = self.env.sensors["scan_occ"].laser_angular_range
@@ -127,13 +144,14 @@ class SimNode:
                 (odom[0][0], odom[0][1], 0),
                 tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
                 rospy.Time.now(),
-                "base_footprint",
-                "odom",
+                self.ns + "base_footprint",
+                self.ns + "odom",
             )
+
             odom_msg = Odometry()
             odom_msg.header.stamp = rospy.Time.now()
-            odom_msg.header.frame_id = "odom"
-            odom_msg.child_frame_id = "base_footprint"
+            odom_msg.header.frame_id = self.ns + "odom"
+            odom_msg.child_frame_id = self.ns + "base_footprint"
 
             odom_msg.pose.pose.position.x = odom[0][0]
             odom_msg.pose.pose.position.y = odom[0][1]
@@ -151,8 +169,8 @@ class SimNode:
             # Ground truth pose
             gt_pose_msg = Odometry()
             gt_pose_msg.header.stamp = rospy.Time.now()
-            gt_pose_msg.header.frame_id = "ground_truth_odom"
-            gt_pose_msg.child_frame_id = "base_footprint"
+            gt_pose_msg.header.frame_id = self.ns + "ground_truth_odom"
+            gt_pose_msg.child_frame_id = self.ns + "base_footprint"
 
             xyz = self.env.robots[0].get_position()
             rpy = self.env.robots[0].get_rpy()
@@ -189,5 +207,13 @@ class SimNode:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    node = SimNode()
+
+    ns = rospy.get_namespace()
+    ns = ns[1:]
+
+    print("============================================")
+    print("[turtlebot_rgbd::__main__] ns: " + str(ns))
+    print("============================================")
+
+    node = SimNode(ns=ns)
     node.run()
