@@ -1,0 +1,12 @@
+<launch>
+<param name="robot_description" command="cat $(find igibson-ros)/turtlebot/turtlebot.urdf"/>
+<node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/robot.rviz" />
+<group ns="robot1">
+    <param name="tf_prefix" value="robot1_tf"/>
+    <include file="$(find igibson-ros)/launch/turtlebot_spawn.launch" >
+      <arg name="init_pose" value="-x 1 -y 1 -z 0" />
+      <arg name="robot_name"  value="Robot1" />
+      <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
+    </include>
+</group>
+</launch>
