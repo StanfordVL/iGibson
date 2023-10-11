@@ -23,7 +23,7 @@ class SimNode:
         rospy.init_node("igibson_sim")
         rospack = rospkg.RosPack()
         path = rospack.get_path("igibson-ros")
-        config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
+        config_filename = os.path.join(path, "config/turtlebot_rgbd.yaml")
         config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
         self.ns = ns
