@@ -40,6 +40,9 @@ from sensor_msgs.msg import Image as ImageMsg
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
 
+import actionlib
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
 log = logging.getLogger(__name__)
 
 
@@ -76,26 +79,46 @@ class iGibsonEnv(BaseEnv):
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
 
-        if not ros_node_init:
+        print("[igibson_env::iGibsonEnv::__init__] START")
+        self.ros_node_init = ros_node_init
+        if not self.ros_node_init:
             rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
             rospack = rospkg.RosPack()
-            path = rospack.get_path("igibson-ros")
+
+            #print("[igibson_env::iGibsonEnv::__init__] START get_path")
+            #path = rospack.get_path("igibson-ros")
+            #print("[igibson_env::iGibsonEnv::__init__] END get_path")
+
+            ### NUA TODO: Set this in config file!
+            path = "/home/akmandor/projects/iGibson/igibson/examples/ros/igibson-ros"
             config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
-            config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
+            config_file = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
+
+            self.ns = ""
+            if ros_node_id == 1:
+                self.ns = "robot2/"
+            else:
+                self.ns = "robot1/"
+
+            print("============================================")
+            print("[igibson_env::iGibsonEnv::__init__] ros_node_id: " + str(ros_node_id))
+            print("[igibson_env::iGibsonEnv::__init__] config_data: " + str(config_file))
+            print("[igibson_env::iGibsonEnv::__init__] self.ns: " + str(self.ns))
+            print("============================================")
 
             self.cmdx = 0.0
             self.cmdy = 0.0
 
-            self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
-            self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
-            self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points" + "_" + str(ros_node_id), PointCloud2, queue_size=10)
-            self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw" + "_" + str(ros_node_id), ImageMsg, queue_size=10)
-            self.odom_pub = rospy.Publisher("/odom" + "_" + str(ros_node_id), Odometry, queue_size=10)
-            self.gt_pose_pub = rospy.Publisher("/ground_truth_odom" + "_" + str(ros_node_id), Odometry, queue_size=10)
-            self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info" + "_" + str(ros_node_id), CameraInfo, queue_size=10)
-
-            rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
-            rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+            self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
+            self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
+            self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
+            self.depth_raw_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
+            self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
+            self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
+            self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
+                
+            #rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
+            #rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
 
             self.bridge = CvBridge()
             self.br = tf.TransformBroadcaster()
@@ -113,10 +136,156 @@ class iGibsonEnv(BaseEnv):
         )
         self.automatic_reset = automatic_reset
 
+        print("[igibson_env::iGibsonEnv::__init__] END")
         #print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
         #while 1:
         #    continue
-        
+    
+    def update_ros_topics(self, state):
+        #print("[igibson_env::iGibsonEnv::update_ros_topics] START")
+
+        if not rospy.is_shutdown():
+            rgb = (state["rgb"] * 255).astype(np.uint8)
+            normalized_depth = state["depth"].astype(np.float32)
+            depth = normalized_depth * self.sensors["vision"].depth_high
+            depth_raw_image = (state["depth"] * 1000).astype(np.uint16)
+
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] rgb shape: " + str(len(rgb)))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] normalized_depth shape: " + str(len(normalized_depth)))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] depth shape: " + str(len(depth)))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] depth_raw_image shape: " + str(len(depth_raw_image)))
+
+            image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
+            depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
+            depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
+
+            now = rospy.Time.now()
+
+            image_message.header.stamp = now
+            depth_message.header.stamp = now
+            depth_raw_message.header.stamp = now
+            image_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_raw_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] START PUB IMAGE")
+            self.image_pub.publish(image_message)
+            self.depth_pub.publish(depth_message)
+            self.depth_raw_pub.publish(depth_raw_message)
+
+            msg = CameraInfo(
+                height=256,
+                width=256,
+                distortion_model="plumb_bob",
+                D=[0.0, 0.0, 0.0, 0.0, 0.0],
+                K=[128, 0.0, 128, 0.0, 128, 128, 0.0, 0.0, 1.0],
+                R=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+                P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0],
+            )
+            msg.header.stamp = now
+            msg.header.frame_id = self.ns + "camera_depth_optical_frame"
+            self.camera_info_pub.publish(msg)
+
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] START LIDAR")
+            #if (self.tp_time is None) or ((self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)):
+            scan = state["scan"]
+            lidar_header = Header()
+            lidar_header.stamp = now
+            lidar_header.frame_id = self.ns + "scan_link"
+
+            laser_linear_range = self.sensors["scan_occ"].laser_linear_range
+            laser_angular_range = self.sensors["scan_occ"].laser_angular_range
+            min_laser_dist = self.sensors["scan_occ"].min_laser_dist
+            n_horizontal_rays = self.sensors["scan_occ"].n_horizontal_rays
+
+            laser_angular_half_range = laser_angular_range / 2.0
+            angle = np.arange(
+                -np.radians(laser_angular_half_range),
+                np.radians(laser_angular_half_range),
+                np.radians(laser_angular_range) / n_horizontal_rays,
+            )
+            unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+            lidar_points = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+
+            lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
+            self.lidar_pub.publish(lidar_message)
+
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] START ODOM")
+            # Odometry
+            odom = [
+                np.array(self.robots[0].get_position()) - np.array(self.task.initial_pos),
+                np.array(self.robots[0].get_rpy()) - np.array(self.task.initial_orn),
+            ]
+
+            self.br.sendTransform(
+                (odom[0][0], odom[0][1], 0),
+                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                rospy.Time.now(),
+                self.ns + "base_footprint",
+                self.ns + "odom",
+            )
+
+            odom_msg = Odometry()
+            odom_msg.header.stamp = rospy.Time.now()
+            odom_msg.header.frame_id = self.ns + "odom"
+            odom_msg.child_frame_id = self.ns + "base_footprint"
+
+            odom_msg.pose.pose.position.x = odom[0][0]
+            odom_msg.pose.pose.position.y = odom[0][1]
+            (
+                odom_msg.pose.pose.orientation.x,
+                odom_msg.pose.pose.orientation.y,
+                odom_msg.pose.pose.orientation.z,
+                odom_msg.pose.pose.orientation.w,
+            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+
+            odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
+            odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+            self.odom_pub.publish(odom_msg)
+
+            #print("[igibson_env::iGibsonEnv::update_ros_topics] START GROUND TRUTH")
+            # Ground truth pose
+            gt_pose_msg = Odometry()
+            gt_pose_msg.header.stamp = rospy.Time.now()
+            gt_pose_msg.header.frame_id = self.ns + "ground_truth_odom"
+            gt_pose_msg.child_frame_id = self.ns + "base_footprint"
+
+            xyz = self.robots[0].get_position()
+            rpy = self.robots[0].get_rpy()
+
+            gt_pose_msg.pose.pose.position.x = xyz[0]
+            gt_pose_msg.pose.pose.position.y = xyz[1]
+            gt_pose_msg.pose.pose.position.z = xyz[2]
+            (
+                gt_pose_msg.pose.pose.orientation.x,
+                gt_pose_msg.pose.pose.orientation.y,
+                gt_pose_msg.pose.pose.orientation.z,
+                gt_pose_msg.pose.pose.orientation.w,
+            ) = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+
+            gt_pose_msg.twist.twist.linear.x = self.cmdx
+            gt_pose_msg.twist.twist.angular.z = -self.cmdy
+
+        #print("[igibson_env::iGibsonEnv::update_ros_topics] END")
+
+    def movebase_client(self):
+        client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
+        client.wait_for_server()
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.Time.now()
+        goal.target_pose.pose.position.x = 0.5
+        goal.target_pose.pose.orientation.w = 1.0
+
+        client.send_goal(goal)
+        wait = client.wait_for_result()
+        if not wait:
+            rospy.logerr("Action server not available!")
+            rospy.signal_shutdown("Action server not available!")
+        else:
+            return client.get_result()
+
     def cmd_callback(self, data):
         self.cmdx = data.linear.x
         self.cmdy = -data.angular.z
@@ -425,6 +594,12 @@ class iGibsonEnv(BaseEnv):
         self.task.step(self)
         self.populate_info(info)
 
+        if not self.ros_node_init:
+            #print("[igibson_env::iGibsonEnv::step] START update_ros_topics")
+            ## UPDATE ROS
+            self.update_ros_topics(state)
+            #print("[igibson_env::iGibsonEnv::step] END update_ros_topics")
+
         if done and self.automatic_reset:
             info["last_observation"] = state
             state = self.reset()
@@ -565,6 +740,9 @@ class iGibsonEnv(BaseEnv):
 
 
 if __name__ == "__main__":
+
+
+
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", help="which config file to use [default: use yaml files in examples/configs]")

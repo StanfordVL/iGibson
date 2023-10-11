@@ -18,7 +18,6 @@ from std_msgs.msg import Header
 
 from igibson.envs.igibson_env import iGibsonEnv
 
-
 class SimNode:
     def __init__(self, ns=""):
         rospy.init_node("igibson_sim")
@@ -28,12 +27,10 @@ class SimNode:
         config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
         self.ns = ns
-        #if self.ns != "":
-        #    self.ns = "/" + ns
 
         self.cmdx = 0.0
         self.cmdy = 0.0
-
+        
         self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
         self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
         self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
@@ -44,19 +41,6 @@ class SimNode:
             
         rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
         rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
-
-        '''
-        self.image_pub = rospy.Publisher("/gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
-        self.depth_pub = rospy.Publisher("/gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
-        self.lidar_pub = rospy.Publisher("/gibson_ros/lidar/points", PointCloud2, queue_size=10)
-        self.depth_raw_pub = rospy.Publisher("/gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
-        self.odom_pub = rospy.Publisher("/odom", Odometry, queue_size=10)
-        self.gt_pose_pub = rospy.Publisher("/ground_truth_odom", Odometry, queue_size=10)
-        self.camera_info_pub = rospy.Publisher("/gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
-
-        rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
-        rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
-        '''
 
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
@@ -203,7 +187,6 @@ class SimNode:
         ]
         self.env.robots[0].reset_new_pose(position, orientation)
         self.tp_time = rospy.Time.now()
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
