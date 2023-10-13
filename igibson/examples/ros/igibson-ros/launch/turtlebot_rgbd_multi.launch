@@ -30,8 +30,8 @@
       <param name="scan_height" value="2"/>
       <param name="output_frame_id" value="$(arg ns1)/camera_depth_frame"/>
       <param name="range_min" value="0.45"/>
-      <remap from="image" to="$(arg ns1)/gibson_ros/camera/depth/image"/>
-      <remap from="scan" to="$(arg ns1)/gibson_ros/laserscan"/>
+      <remap from="image" to="gibson_ros/camera/depth/image"/>
+      <remap from="scan" to="gibson_ros/laserscan"/>
     </node>
 
     <node pkg="nodelet" type="nodelet" args="manager"
@@ -39,10 +39,10 @@
           
     <node pkg="nodelet" type="nodelet" name="cloudify"
           args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
-        <remap from="depth_registered/image_rect" to="$(arg ns1)/gibson_ros/camera/depth/image"/>
-        <remap from="depth_registered/points" to="$(arg ns1)/gibson_ros/camera/depth_registered/points"/>
-        <remap from="rgb/image_rect_color" to="$(arg ns1)/gibson_ros/camera/rgb/image"/>
-        <remap from="rgb/camera_info" to="$(arg ns1)/gibson_ros/camera/depth/camera_info"/>
+        <remap from="depth_registered/image_rect" to="gibson_ros/camera/depth/image"/>
+        <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
+        <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
+        <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
     </node>
   </group>
 
@@ -69,8 +69,8 @@
       <param name="scan_height" value="2"/>
       <param name="output_frame_id" value="$(arg ns2)/camera_depth_frame"/>
       <param name="range_min" value="0.45"/>
-      <remap from="image" to="$(arg ns2)/gibson_ros/camera/depth/image"/>
-      <remap from="scan" to="$(arg ns2)/gibson_ros/laserscan"/>
+      <remap from="image" to="gibson_ros/camera/depth/image"/>
+      <remap from="scan" to="gibson_ros/laserscan"/>
     </node>
 
     <node pkg="nodelet" type="nodelet" args="manager"
@@ -78,10 +78,10 @@
           
     <node pkg="nodelet" type="nodelet" name="cloudify"
           args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
-        <remap from="depth_registered/image_rect" to="$(arg ns2)/gibson_ros/camera/depth/image"/>
-        <remap from="depth_registered/points" to="$(arg ns2)/gibson_ros/camera/depth_registered/points"/>
-        <remap from="rgb/image_rect_color" to="$(arg ns2)/gibson_ros/camera/rgb/image"/>
-        <remap from="rgb/camera_info" to="$(arg ns2)/gibson_ros/camera/depth/camera_info"/>
+        <remap from="depth_registered/image_rect" to="gibson_ros/camera/depth/image"/>
+        <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
+        <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
+        <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
     </node>
   </group>
 

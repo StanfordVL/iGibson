@@ -1,0 +1,100 @@
+controller_frequency: 5.0
+recovery_behaviour_enabled: true
+
+NavfnROS:
+  allow_unknown: true # Specifies whether or not to allow navfn to create plans that traverse unknown space.
+  default_tolerance: 0.25 # A tolerance on the goal point for the planner.
+
+TrajectoryPlannerROS:
+  # Robot Configuration Parameters
+  acc_lim_x: 2.5
+  acc_lim_theta:  3.2
+
+  max_vel_x: 0.5
+  min_vel_x: 0.0
+
+  max_vel_theta: 2.0
+  min_vel_theta: -2.0
+  min_in_place_vel_theta: 0.2
+
+  holonomic_robot: false
+  escape_vel: -0.0
+
+  # Goal Tolerance Parameters
+  yaw_goal_tolerance: 6.28
+  xy_goal_tolerance: 0.25
+  latch_xy_goal_tolerance: false
+
+  # Forward Simulation Parameters
+  sim_time: 5.0
+  sim_granularity: 0.02
+  angular_sim_granularity: 0.02
+  vx_samples: 5
+  vtheta_samples: 21
+  controller_frequency: 20.0
+
+  # Trajectory scoring parameters
+  meter_scoring: true # Whether the gdist_scale and pdist_scale parameters should assume that goal_distance and path_distance are expressed in units of meters or cells. Cells are assumed by default (false).
+  occdist_scale:  0.2 #The weighting for how much the controller should attempt to avoid obstacles. default 0.01
+  pdist_scale: 0.8  #     The weighting for how much the controller should stay close to the path it was given . default 0.6
+  gdist_scale: 1.0 #     The weighting for how much the controller should attempt to reach its local goal, also controls speed  default 0.8
+
+  heading_lookahead: 0.5  #How far to look ahead in meters when scoring different in-place-rotation trajectories
+  heading_scoring: true  #Whether to score based on the robot's heading to the path or its distance from the path. default false
+  heading_scoring_timestep: 2.0   #How far to look ahead in time in seconds along the simulated trajectory when using heading scoring (double, default: 0.8)
+  dwa: true #Whether to use the Dynamic Window Approach (DWA)_ or whether to use Trajectory Rollout
+  simple_attractor: false
+  publish_cost_grid_pc: true  
+
+  # Oscillation Prevention Parameters
+  oscillation_reset_dist: 0.25 #How far the robot must travel in meters before oscillation flags are reset (double, default: 0.05)
+  escape_reset_dist: 0.1
+  escape_reset_theta: 0.1
+
+DWAPlannerROS:
+  # Robot configuration parameters  
+  acc_lim_x: 2.5
+  acc_lim_y: 0
+  acc_lim_th: 3.2
+
+  max_vel_x: 0.5
+  min_vel_x: 0.0
+
+  max_vel_theta: 2.0
+  min_vel_theta: -2.0
+  min_in_place_vel_theta: 0.2
+
+  #max_vel_x: 0.4
+  #min_vel_x: 0.0
+  #max_vel_y: 0
+  #min_vel_y: 0
+
+  #max_trans_vel: 0.4
+  #min_trans_vel: 0.1
+  #max_rot_vel: 2.0
+  #min_rot_vel: 0.2
+
+  # Goal Tolerance Parameters
+  yaw_goal_tolerance: 6.28
+  xy_goal_tolerance: 0.25
+  latch_xy_goal_tolerance: false
+
+  # # Forward Simulation Parameters
+  # sim_time: 2.0
+  # sim_granularity: 0.02
+  # vx_samples: 6
+  # vy_samples: 0
+  # vtheta_samples: 20
+  # penalize_negative_x: true
+
+  # # Trajectory scoring parameters
+  # path_distance_bias: 32.0 # The weighting for how much the controller should stay close to the path it was given
+  # goal_distance_bias: 24.0 # The weighting for how much the controller should attempt to reach its local goal, also controls speed
+  # occdist_scale: 0.01 # The weighting for how much the controller should attempt to avoid obstacles
+  # forward_point_distance: 0.325 # The distance from the center point of the robot to place an additional scoring point, in meters
+  # stop_time_buffer: 0.2  # The amount of time that the robot must stThe absolute value of the veolicty at which to start scaling the robot's footprint, in m/sop before a collision in order for a trajectory to be considered valid in seconds
+  # scaling_speed: 0.25 # The absolute value of the veolicty at which to start scaling the robot's footprint, in m/s
+  # max_scaling_factor: 0.2 # The maximum factor to scale the robot's footprint by
+
+  # # Oscillation Prevention Parameters
+  # oscillation_reset_dist: 0.25 #How far the robot must travel in meters before oscillation flags are reset (double, default: 0.05)

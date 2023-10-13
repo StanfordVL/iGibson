@@ -18,7 +18,7 @@ obstacle_layer:
   observation_sources: points
   points:
     data_type: PointCloud2
-    topic: /gibson_ros/lidar/points
+    topic: robot1/gibson_ros/lidar/points
     marking: true
     clearing: true
     obstacle_range: 1.90
@@ -37,5 +37,5 @@ inflation_layer:
   inflation_radius:     0.4  # max. distance from an obstacle at which costs are incurred for planning paths.
 
 static_layer:
-  enabled:              true
+  enabled:              false
 

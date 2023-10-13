@@ -31,14 +31,15 @@ class SimNode:
         self.cmdx = 0.0
         self.cmdy = 0.0
         
-        self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
-        self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
-        self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
-        self.depth_raw_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
-        self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
-        self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
-        self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
+        self.image_pub = rospy.Publisher("gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
+        self.depth_pub = rospy.Publisher("gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
+        self.lidar_pub = rospy.Publisher("gibson_ros/lidar/points", PointCloud2, queue_size=10)
+        self.depth_raw_pub = rospy.Publisher("gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
+        self.odom_pub = rospy.Publisher("odom", Odometry, queue_size=10)
+        self.gt_pose_pub = rospy.Publisher("ground_truth_odom", Odometry, queue_size=10)
+        self.camera_info_pub = rospy.Publisher("gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
             
+        self.last_update = rospy.Time.now()
         rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
         rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
 
@@ -48,9 +49,11 @@ class SimNode:
         self.env = iGibsonEnv(
             config_file=config_data, 
             mode="headless", 
-            action_timestep=1 / 30.0,
+            action_timestep=1 / 100.0,
             ros_node_init=True,
-            physics_timestep=1 / 60.0,
+            physics_timestep=1 / 200.0,
+            use_pb_gui=True,
+            
         )  # assume a 30Hz simulation
         self.env.reset()
 
@@ -58,7 +61,17 @@ class SimNode:
 
     def run(self):
         while not rospy.is_shutdown():
-            obs, _, _, _ = self.env.step([self.cmdx, self.cmdy])
+
+            now = rospy.Time.now()
+
+            if (now - self.last_update).to_sec() > 2:
+                cmdx = 0.0
+                cmdy = 0.0
+            else:
+                cmdx = self.cmdx
+                cmdy = self.cmdy
+
+            obs, _, _, _ = self.env.step([cmdx, cmdy])
 
             rgb = (obs["rgb"] * 255).astype(np.uint8)
             normalized_depth = obs["depth"].astype(np.float32)
@@ -68,8 +81,6 @@ class SimNode:
             image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
             depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
             depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
-
-            now = rospy.Time.now()
 
             image_message.header.stamp = now
             depth_message.header.stamp = now
@@ -146,8 +157,8 @@ class SimNode:
                 odom_msg.pose.pose.orientation.w,
             ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
 
-            odom_msg.twist.twist.linear.x = (self.cmdx + self.cmdy) * 5
-            odom_msg.twist.twist.angular.z = (self.cmdy - self.cmdx) * 5 * 8.695652173913043
+            odom_msg.twist.twist.linear.x = (cmdx + cmdy) * 5
+            odom_msg.twist.twist.angular.z = (cmdy - cmdx) * 5 * 8.695652173913043
             self.odom_pub.publish(odom_msg)
 
             # Ground truth pose
@@ -169,12 +180,13 @@ class SimNode:
                 gt_pose_msg.pose.pose.orientation.w,
             ) = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
 
-            gt_pose_msg.twist.twist.linear.x = self.cmdx
-            gt_pose_msg.twist.twist.angular.z = -self.cmdy
+            gt_pose_msg.twist.twist.linear.x = cmdx
+            gt_pose_msg.twist.twist.angular.z = -cmdy
 
     def cmd_callback(self, data):
         self.cmdx = data.linear.x
         self.cmdy = -data.angular.z
+        self.last_update = rospy.Time.now()
 
     def tp_robot_callback(self, data):
         rospy.loginfo("Teleporting robot")
