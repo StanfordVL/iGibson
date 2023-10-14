@@ -18,12 +18,15 @@ def main(selection="user", headless=False, short_exec=False):
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # Create empty scene
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
+    # settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
     s = Simulator(
         mode="gui_interactive" if not headless else "headless",
         image_width=512,
         image_height=512,
-        rendering_settings=settings,
+        # rendering_settings=settings,
+        use_pb_gui=True,
+        physics_timestep=1/240,
+        render_timestep=1/40,
     )
     scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
@@ -55,12 +58,14 @@ def main(selection="user", headless=False, short_exec=False):
         
         for _ in range(100):  # keep still for 10 seconds
             s.step()
+            pass
 
         for _ in range(30):
             action = np.random.uniform(-1, 1, robot.action_dim)
             robot.apply_action(action)
-            for _ in range(10):
+            for _ in range(100):
                 s.step()
+                pass
 
         robot.keep_still()
         s.reload()

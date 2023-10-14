@@ -10,13 +10,16 @@ robot:
     - eef_0_quat
     - arm_0_qpos_sin
     - arm_0_qpos_cos
-  reset_joint_pos: null
+  reset_joint_pos: tuck
   base_name: null
   scale: 1.0
-  self_collision: true
+  self_collision: false
   rendering_params: null
+  grasping_mode: physical
   controller_config:
     base:
       name: JointController
     arm_0:
       name: InverseKinematicsController
+    gripper_0:
+      name: NullGripperController

@@ -98,11 +98,11 @@ class JackalJaco(ManipulationRobot, LocomotionRobot):
     @property
     def tucked_default_joint_pos(self):
         # todo: tune values
-        return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.9, 1.3, 4.2, 1.4, 0.0])
+        return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.9, 1.3, 4.2, 1.4, 0.0, 0.0, 0.0])
 
     @property
     def untucked_default_joint_pos(self):
-        return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.9, 1.3, 4.2, 1.4, 0.0])
+        return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.9, 1.3, 4.2, 1.4, 0.0, 0.0, 0.0])
 
     @property
     def default_joint_pos(self):

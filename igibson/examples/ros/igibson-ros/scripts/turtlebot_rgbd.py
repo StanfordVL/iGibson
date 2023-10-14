@@ -48,9 +48,9 @@ class SimNode:
         self.env = iGibsonEnv(
             config_file=config_data, 
             mode="headless", 
-            action_timestep=1 / 30.0,
+            action_timestep=1 / 20.0,
             ros_node_init=True,
-            physics_timestep=1 / 60.0,
+            # physics_timestep=1 / 60.0,
         )  # assume a 30Hz simulation
         self.env.reset()
 
