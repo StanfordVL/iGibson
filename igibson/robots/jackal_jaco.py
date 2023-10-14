@@ -122,7 +122,8 @@ class JackalJaco(ManipulationRobot, LocomotionRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {self.default_arm: np.array([8, 9], dtype=int)}
+        pass
+        return {self.default_arm: np.array([10, 11], dtype=int)}
 
     @property
     def disabled_collision_pairs(self):
