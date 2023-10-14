@@ -1441,6 +1441,7 @@ def set_joint_position(body, joint, value):
 
 
 def set_joint_positions(body, joints, values):
+    print(len(joints), len(values))
     assert len(joints) == len(values)
     for joint, value in zip(joints, values):
         set_joint_position(body, joint, value)
