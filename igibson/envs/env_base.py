@@ -1,7 +1,9 @@
 import logging
+import os
 
 import gym
 
+import igibson
 from igibson.object_states import AABB
 from igibson.object_states.utils import detect_closeness
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
@@ -47,9 +49,22 @@ class BaseEnv(gym.Env):
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
+
+        print("[env_base::__init__] START")
+
         self.config = parse_config(config_file)
         if scene_id is not None:
             self.config["scene_id"] = scene_id
+
+        image_width = self.config["image_width"]
+        image_height = self.config["image_height"]
+
+        print("[env_base::__init__] image_width: " + str(image_width))
+        print("[env_base::__init__] image_height: " + str(image_height))
+        
+        #print("[env_base::__init__] DEBUG INF")
+        #while(1):
+        #    continue
 
         self.mode = mode
         self.action_timestep = action_timestep
@@ -94,6 +109,7 @@ class BaseEnv(gym.Env):
                 use_pb_gui=use_pb_gui,
             )
         else:
+            print("[env_base::__init__] START Simulator")
             self.simulator = Simulator(
                 mode=mode,
                 physics_timestep=physics_timestep,
@@ -105,7 +121,13 @@ class BaseEnv(gym.Env):
                 rendering_settings=self.rendering_settings,
                 use_pb_gui=use_pb_gui,
             )
+            print("[env_base__init__] END Simulator")
+        
+        print("[env_base::__init__] START load")
         self.load()
+        print("[env_base::__init__] END load")
+        print("[env_base::__init__] END")
+
 
     def reload(self, config_file):
         """
@@ -143,8 +165,12 @@ class BaseEnv(gym.Env):
         """
         Load the scene and robot specified in the config file.
         """
+
+        print("[env_base::load] START")
+
         if self.config["scene"] == "empty":
-            scene = EmptyScene()
+            floor_plane_rgba=self.config.get("floor_plane_rgba", [1, 1, 1, 1])
+            scene = EmptyScene(floor_plane_rgba=floor_plane_rgba)
         elif self.config["scene"] == "stadium":
             scene = StadiumScene()
         elif self.config["scene"] == "gibson":
@@ -195,17 +221,52 @@ class BaseEnv(gym.Env):
 
         self.simulator.import_scene(scene)
 
+        print("[env_base::load] START ROBOT")
+
         # Get robot config
-        robot_config = self.config["robot"]
+        robot_name = self.config.get("robot_name", "")
+
+        if robot_name != "":
+            for robot_config_file in os.listdir(os.path.join(igibson.configs_path, "robots")):
+                config = parse_config(os.path.join(igibson.configs_path, "robots", robot_config_file))
+                robot_config = config["robot"]
+                robot_name_tmp = robot_config.pop("name")
+                if robot_name != robot_name_tmp:
+                    continue
+        else:
+            robot_config = self.config["robot"]
+            robot_name = robot_config.pop("name")
+        
+        print("[env_base::load] robot_config: " + str(robot_config))
+
+        #print("[env_base::load] DEBUG_INF")
+        #while 1:
+        #    continue
 
         # If no robot has been imported from the scene
         if len(scene.robots) == 0:
             # Get corresponding robot class
-            robot_name = robot_config.pop("name")
+            #robot_name = robot_config.pop("name")
+
+            print("[env_base::load] robot_name: " + str(robot_name))
+
             assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
+            print("[env_base::load] START import_object")
             self.simulator.import_object(robot)
+            print("[env_base::load] END import_object")
+
+            position = [0, 0, 0]
+            robot.set_position(position)
+            robot.reset()
+            robot.keep_still()
+            #robots[robot_name] = (robot, position[1])
+            print("[env_base::load] Loaded " + robot_name)
+
+            #print("[env_base::load] DEBUG_INF")
+            #while 1:
+            #    continue
 
             # The scene might contain cached agent pose
             # By default, we load the agent pose that matches the robot name (e.g. Fetch, BehaviorRobot)
@@ -220,7 +281,9 @@ class BaseEnv(gym.Env):
                     lower, _ = robot.states[AABB].get_value()
                     pos[2] = -lower[2]
 
+                print("[env_base::load] START set_position_orientation")
                 robot.set_position_orientation(pos, orn)
+                print("[env_base::load] END set_position_orientation")
 
                 if any(
                     detect_closeness(
@@ -232,6 +295,8 @@ class BaseEnv(gym.Env):
 
         self.scene = scene
         self.robots = scene.robots
+
+        print("[env_base::load] END")
 
     def clean(self):
         """

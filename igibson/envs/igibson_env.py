@@ -80,6 +80,7 @@ class iGibsonEnv(BaseEnv):
         """
 
         print("[igibson_env::iGibsonEnv::__init__] START")
+        
         self.ros_node_init = ros_node_init
         if not self.ros_node_init:
             rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
@@ -134,9 +135,9 @@ class iGibsonEnv(BaseEnv):
         self.automatic_reset = automatic_reset
 
         print("[igibson_env::iGibsonEnv::__init__] END")
-        #print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
-        #while 1:
-        #    continue
+        print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
+        while 1:
+            continue
     
     def update_ros_topics(self, state):
         #print("[igibson_env::iGibsonEnv::update_ros_topics] START")
@@ -488,10 +489,10 @@ class iGibsonEnv(BaseEnv):
         Load environment.
         """
         super(iGibsonEnv, self).load()
-        self.load_task_setup()
-        self.load_observation_space()
-        self.load_action_space()
-        self.load_miscellaneous_variables()
+        #self.load_task_setup()
+        #self.load_observation_space()
+        #self.load_action_space()
+        #self.load_miscellaneous_variables()
 
     def get_state(self):
         """
@@ -735,10 +736,12 @@ class iGibsonEnv(BaseEnv):
 
         return state
 
-
 if __name__ == "__main__":
-
-
+    print("[igibson_env::iGibsonEnv::__main__] START")
+    
+    print("[igibson_env::iGibsonEnv::__main__] DEBUG INF")
+    while 1:
+        continue
 
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
