@@ -16,7 +16,7 @@ In a seperate terminal, :
 
 1. In a terminal within the igibson-ros workspace, start ROS:
 ```
-roslaunch igibson-ros igibson-ros stable_baselines_ros_turtlebot_multi.launch
+roslaunch igibson-ros stable_baselines_ros_turtlebot_multi.launch
 ```
 
 2. In a terminal within the scripts folder in the igibson-ros workspace:
