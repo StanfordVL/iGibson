@@ -1,0 +1,24 @@
+footprint: [[-0.2, -0.2], [-0.2, 0.2], [0.2, 0.2], [0.2, -0.2]]
+footprint_padding: 0.01
+
+robot_base_frame: robot1/base_link
+update_frequency: 5.0
+publish_frequency: 5.0
+transform_tolerance: 0.2
+
+resolution: 0.05
+
+obstacle_range: 10.0
+raytrace_range: 10.0
+
+#layer definitions
+static:
+    map_topic: robot1/map
+    subscribe_to_updates: true
+
+obstacles_laser:
+    observation_sources: laser
+    laser: {data_type: LaserScan, clearing: true, marking: true, topic: /robot1/gibson_ros/laserscan, inf_is_valid: false}
+
+inflation:
+    inflation_radius: 0.2

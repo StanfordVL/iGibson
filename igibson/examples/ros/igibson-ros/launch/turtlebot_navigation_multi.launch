@@ -1,0 +1,159 @@
+<launch>
+
+  <!-- Parameters -->
+  <param name="robot/name" value="$(optenv ROBOT turtlebot)"/>
+  <param name="robot/type" value="turtlebot"/>
+  
+  <arg name="ns1" value="robot1"/>
+  <arg name="ns2" value="robot2"/>
+  <arg name="global_frame_id" default="world"/>
+
+  <!-- Launch robot 1 -->
+  <!-- Launch iGibson Python script -->
+  <group ns="$(arg ns1)">
+    <param name="tf_prefix" value="$(arg ns1)"/>
+    <param name="robot_description" command="cat $(find igibson-ros)/turtlebot/turtlebot.urdf"/>
+    
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    </node>
+    
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    </node>
+
+    <node name="turtlebot_gibson_sim" pkg="igibson-ros" type="turtlebot_rgbd.py" output="screen">
+      <remap from="/mobile_base/commands/velocity" to="/$(arg ns1)/cmd_vel"/>
+    </node>
+
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
+      <param name="scan_height" value="2"/>
+      <param name="output_frame_id" value="$(arg ns1)/camera_depth_frame"/>
+      <param name="range_min" value="0.45"/>
+      <remap from="image" to="gibson_ros/camera/depth/image"/>
+      <remap from="scan" to="gibson_ros/laserscan"/>
+    </node>
+
+    <node pkg="nodelet" type="nodelet" args="manager"
+          name="record_player_manager" output="screen"/>
+          
+    <node pkg="nodelet" type="nodelet" name="cloudify"
+          args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
+        <remap from="depth_registered/image_rect" to="gibson_ros/camera/depth/image"/>
+        <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
+        <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
+        <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
+    </node>
+
+
+
+
+
+    <arg name="no_static_map" default="true"/>
+
+    <arg name="base_global_planner" default="navfn/NavfnROS"/>
+    <arg name="base_local_planner" default="dwa_local_planner/DWAPlannerROS"/>
+    <!-- <arg name="base_local_planner" default="base_local_planner/TrajectoryPlannerROS"/> -->
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+
+      <param name="base_global_planner" value="$(arg base_global_planner)"/>
+      <param name="base_local_planner" value="$(arg base_local_planner)"/>  
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_planner.yaml" command="load"/>
+
+      <!-- observation sources located in costmap_common.yaml -->
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_costmap_common.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_costmap_common.yaml" command="load" ns="local_costmap" />
+
+      <!-- local costmap, needs size -->
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_costmap_local.yaml" command="load" ns="local_costmap" />
+      <param name="local_costmap/width" value="10.0"/>
+      <param name="local_costmap/height" value="10.0"/>
+
+      <!-- static global costmap, static map provides size -->
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_costmap_global_static.yaml" command="load" ns="global_costmap" unless="$(arg no_static_map)"/>
+      
+      <!-- global costmap with laser, for odom_navigation_demo -->
+      <rosparam file="$(find igibson-ros)/config/move_base/turtlebot2/turtlebot2_costmap_global_laser.yaml" command="load" ns="global_costmap" if="$(arg no_static_map)"/>
+      <param name="global_costmap/width" value="100.0" if="$(arg no_static_map)"/>
+      <param name="global_costmap/height" value="100.0" if="$(arg no_static_map)"/>
+
+      <!--remap from="cmd_vel" to="/turtlebot0/cmd_vel"/-->
+
+    </node>
+
+
+    <!--arg name="odom_frame_id"   default="$(arg ns1)/odom"/>
+    <arg name="base_frame_id"   default="$(arg ns1)/base_footprint"/>
+    
+    <arg name="odom_topic" default="$(arg ns1)/odom" />
+    <arg name="laser_topic" default="$(arg ns1)/gibson_ros/laserscan" />
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+      <rosparam file="$(find igibson-ros)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find igibson-ros)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find igibson-ros)/param/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find igibson-ros)/param/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find igibson-ros)/param/dwa_local_planner_params.yaml" command="load" />
+      <rosparam file="$(find igibson-ros)/param/move_base_params.yaml" command="load" />
+      <rosparam file="$(find igibson-ros)/param/global_planner_params.yaml" command="load" />
+      <rosparam file="$(find igibson-ros)/param/navfn_global_planner_params.yaml" command="load" />
+
+      <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>
+      <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+      <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
+      <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+      <param name="DWAPlannerROS/global_frame_id" value="$(arg odom_frame_id)"/>
+
+      <remap from="odom" to="$(arg odom_topic)"/>
+      <remap from="scan" to="$(arg laser_topic)"/>
+      <remap from="cmd_vel" to="$(arg ns1)/cmd_vel"/>
+    </node-->
+
+  </group>
+
+  <!-- Launch robot 2 -->
+  <!-- Launch iGibson Python script -->
+  <!--group ns="$(arg ns2)">
+    <param name="tf_prefix" value="$(arg ns2)"/>
+    <param name="robot_description" command="cat $(find igibson-ros)/turtlebot/turtlebot.urdf"/>
+    
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    </node>
+    
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    </node>
+
+    <node name="turtlebot_gibson_sim" pkg="igibson-ros" type="turtlebot_rgbd.py" output="screen">
+      <remap from="/mobile_base/commands/velocity" to="/$(arg ns2)/cmd_vel"/>
+    </node>
+
+    <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
+    </node>
+
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
+      <param name="scan_height" value="2"/>
+      <param name="output_frame_id" value="$(arg ns2)/camera_depth_frame"/>
+      <param name="range_min" value="0.45"/>
+      <remap from="image" to="gibson_ros/camera/depth/image"/>
+      <remap from="scan" to="gibson_ros/laserscan"/>
+    </node>
+
+    <node pkg="nodelet" type="nodelet" args="manager"
+          name="record_player_manager" output="screen"/>
+          
+    <node pkg="nodelet" type="nodelet" name="cloudify"
+          args="load depth_image_proc/point_cloud_xyzrgb record_player_manager - -no-bond" output="screen">
+        <remap from="depth_registered/image_rect" to="gibson_ros/camera/depth/image"/>
+        <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
+        <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
+        <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
+    </node>
+  </group-->
+
+  <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns1)" args="0 0 0 0 0 0 1 $(arg global_frame_id) $(arg ns1)/odom 100" />
+  <!--node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns2)" args="0 0 0 0 0 0 1 $(arg global_frame_id) $(arg ns2)/odom 100" /-->
+
+  <!-- Launch Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/robot.rviz" />
+  <node name="rviz2" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/navigation.rviz" />
+
+</launch>

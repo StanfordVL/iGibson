@@ -1,0 +1,16 @@
+track_unknown_space: true
+global_frame: map
+rolling_window: false
+
+plugins: 
+- {name: external,            type: "costmap_2d::StaticLayer"}
+- {name: explore_boundary,    type: "frontier_exploration::BoundedExploreLayer"}
+#Can disable sensor layer if gmapping is fast enough to update scans
+- {name: obstacles_laser,     type: "costmap_2d::ObstacleLayer"}
+- {name: inflation,           type: "costmap_2d::InflationLayer"}
+
+explore_boundary:
+  resize_to_boundary: false
+  frontier_travel_point: middle
+  #set to false for gmapping, true if re-exploring a known area
+  explore_clear_space: false
