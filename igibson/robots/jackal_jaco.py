@@ -146,6 +146,15 @@ class JackalJaco(ManipulationRobot, LocomotionRobot):
     
     ##### LOCOMOTION #####
     @property
+    def wheel_radius(self):
+        return 0.098
+
+    @property
+    def wheel_axle_length(self):
+        return 0.6
+    
+    
+    @property
     def base_control_idx(self):
         return np.array([0, 1, 2, 3])
 

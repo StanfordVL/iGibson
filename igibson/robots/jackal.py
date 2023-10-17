@@ -29,7 +29,7 @@ class Jackal(FourWheelRobot):
 
     @property
     def wheel_axle_length(self):
-        return 0.23
+        return 0.6
     
 
     @property
