@@ -6,7 +6,7 @@ import numpy as np
 from igibson.robots.locomotion_robot import LocomotionRobot
 
 
-class TwoWheelRobot(LocomotionRobot):
+class FourWheelRobot(LocomotionRobot):
     """
     Robot that is is equipped with locomotive (navigational) capabilities, as defined by two wheels that can be used
     for differential drive (e.g.: Turtlebot).
@@ -23,7 +23,7 @@ class TwoWheelRobot(LocomotionRobot):
 
     def _validate_configuration(self):
         # Make sure base only has two indices (i.e.: two wheels for differential drive)
-        assert len(self.base_control_idx) == 2, "Differential drive can only be used with robot with two base joints!"
+        assert len(self.base_control_idx) == 4, "Differential drive can only be used with robot with two base joints!"
 
         # run super
         super()._validate_configuration()
@@ -33,8 +33,8 @@ class TwoWheelRobot(LocomotionRobot):
 
         # We set straight velocity to be 50% of max velocity for the wheels
         max_wheel_joint_vels = self.control_limits["velocity"][1][self.base_control_idx]
-        assert len(max_wheel_joint_vels) == 2, "TwoWheelRobot must only have two base (wheel) joints!"
-        assert max_wheel_joint_vels[0] == max_wheel_joint_vels[1], "Both wheels must have the same max speed!"
+        assert len(max_wheel_joint_vels) == 4, "FourWheelRobot must only have two base (wheel) joints!"
+        assert max_wheel_joint_vels[0] == max_wheel_joint_vels[1], "All wheels must have the same max speed!"
         wheel_straight_vel = 0.5 * max_wheel_joint_vels[0]
         wheel_rotate_vel = 0.5
         if self.controller_config["base"]["name"] == "JointController":
@@ -68,7 +68,7 @@ class TwoWheelRobot(LocomotionRobot):
         # Grab wheel joint velocity info
         joints = list(self._joints.values())
         wheel_joints = [joints[idx] for idx in self.base_control_idx]
-        l_vel, r_vel = [jnt.get_state()[1] for jnt in wheel_joints]
+        l_vel, r_vel, _, _ = [jnt.get_state()[1] for jnt in wheel_joints]
 
         # Compute linear and angular velocities
         lin_vel = (l_vel + r_vel) / 2.0 * self.wheel_radius

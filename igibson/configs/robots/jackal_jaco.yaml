@@ -18,7 +18,7 @@ robot:
   grasping_mode: physical
   controller_config:
     base:
-      name: JointController
+      name: DifferentialDriveController
     arm_0:
       name: InverseKinematicsController
     gripper_0:

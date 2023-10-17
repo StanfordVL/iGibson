@@ -3,10 +3,10 @@ import os
 import numpy as np
 
 import igibson
-from igibson.robots.locomotion_robot import LocomotionRobot
+from igibson.robots.locomotion_robot import FourWheelRobot
 
 
-class Jackal(LocomotionRobot):
+class Jackal(FourWheelRobot):
     """
     Jackal robot
     Reference: https://clearpathrobotics.com/, http://wiki.ros.org/Robots/Husky
@@ -21,6 +21,16 @@ class Jackal(LocomotionRobot):
 
     def _create_discrete_action_space(self):
         raise ValueError("Jackal does not support discrete actions!")
+
+
+    @property
+    def wheel_radius(self):
+        return 0.098
+
+    @property
+    def wheel_axle_length(self):
+        return 0.23
+    
 
     @property
     def base_control_idx(self):
