@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import igibson
-from igibson.robots.locomotion_robot import FourWheelRobot
+from igibson.robots.four_wheel_robot import FourWheelRobot
 
 
 class Jackal(FourWheelRobot):

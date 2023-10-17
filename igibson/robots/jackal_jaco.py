@@ -5,7 +5,7 @@ import numpy as np
 import igibson
 from igibson.external.pybullet_tools.utils import set_joint_positions
 from igibson.robots.manipulation_robot import ManipulationRobot
-from igibson.robots.locomotion_robot import LocomotionRobot
+from from igibson.robots.four_wheel_robot import FourWheelRobot
 from igibson.utils.constants import SemanticClass
 
 RESET_JOINT_OPTIONS = {
@@ -14,7 +14,7 @@ RESET_JOINT_OPTIONS = {
 }
 
 
-class JackalJaco(ManipulationRobot, LocomotionRobot):
+class JackalJaco(ManipulationRobot, FourWheelRobot):
     """
     Jackal Jaco robot
     """
@@ -153,7 +153,7 @@ class JackalJaco(ManipulationRobot, LocomotionRobot):
     def wheel_axle_length(self):
         return 0.6
     
-    
+
     @property
     def base_control_idx(self):
         return np.array([0, 1, 2, 3])

@@ -38,7 +38,7 @@ def main(selection="user", headless=False, short_exec=False):
         config = parse_config(os.path.join(igibson.configs_path, "robots", robot_config_file))
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
-        if robot_name != "Husky":
+        if robot_name != "JackalJaco":
             continue
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
         s.import_object(robot)
