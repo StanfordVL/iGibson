@@ -173,7 +173,7 @@ class InverseKinematicsController(ManipulationController):
         pose_in_world_mat = T.pose_in_A_to_pose_in_B(pose_A=pose_in_base_mat, pose_A_in_B=base_pose_in_world_mat)
         return T.mat2pose(pose_in_world_mat)
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4 = False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal.
         This processes the command based on self.mode, possibly clips the command based on self.workspace_pose_limiter,

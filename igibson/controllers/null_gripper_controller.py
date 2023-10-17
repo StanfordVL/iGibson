@@ -65,7 +65,7 @@ class NullGripperController(ManipulationController):
         # No action
         return control
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4=False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) gripper
         joint control signal. Since this is a null controller, command should be an empty numpy array

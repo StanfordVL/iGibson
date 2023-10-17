@@ -308,6 +308,7 @@ class BaseRobot(StatefulObject):
             for this robot
         """
         # Grab raw values
+        
         joint_states = np.array([j.get_state() for j in self._joints.values()]).astype(np.float32).flatten()
         joint_states_normalized = (
             np.array([j.get_relative_state() for j in self._joints.values()]).astype(np.float32).flatten()
@@ -428,20 +429,22 @@ class BaseRobot(StatefulObject):
 
         :param action: Array[float], n-DOF length array of actions to convert and deploy on the robot
         """
+        print("**********************")
+        print(action)
+        print("**********************")
         assert len(action) == self.action_dim, "Action does not match robot's action dimension."
 
         self._last_action = action
 
         # Update state
         self.update_state()
-
+        print("************++++++++++++++**************")
         # If we're using discrete action space, we grab the specific action and use that to convert to control
         if self.action_type == "discrete":
             action = np.array(self.action_list[action])
-
+        
         # Run convert actions to controls
         control, control_type = self._actions_to_control(action=action)
-
         # Deploy control signals
         self._deploy_control(control=control, control_type=control_type)
 
@@ -459,8 +462,10 @@ class BaseRobot(StatefulObject):
         control = OrderedDict()
         idx = 0
         for name, controller in self._controllers.items():
+            print("*******", name, controller.command_dim)
             # Compose control_dict
             control_dict = self.get_control_dict()
+            print('+++++++++++++', control_dict)
             # Set command, then take a controller step
             controller.update_command(command=action[idx : idx + controller.command_dim])
             control[name] = {

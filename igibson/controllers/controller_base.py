@@ -193,9 +193,9 @@ class BaseController:
         :param command: Array[float], inputted command to store internally in this controller
         """
         # Sanity check the command
-        assert len(command) == self.command_dim, "Commands must be dimension {}, got dim {} instead.".format(
-            self.command_dim, len(command)
-        )
+        # assert len(command) == self.command_dim, "Commands must be dimension {}, got dim {} instead.".format(
+        #     self.command_dim, len(command)
+        # )
         # Preprocess and store inputted command
         self._command = self._preprocess_command(np.array(command))
 
@@ -228,7 +228,14 @@ class BaseController:
 
         :return Array[float]: numpy array of outputted control signals
         """
-        control = self._command_to_control(command=self._command, control_dict=control_dict)
+        print('$$$$$$$$$$$$$$$$$ in control base $$$$$$$$$$$$$$$')
+        print(self.control_dim)
+        print('dict', control_dict)
+        print('command', self._command)
+        if self.control_dim == 4 and len(self._command) == 2:
+            control = self._command_to_control(command=self._command, control_dict=control_dict, dd_4 = True)
+        else:
+            control = self._command_to_control(command=self._command, control_dict=control_dict)
         self.control = self.clip_control(control=control)
         return self.control
 
@@ -242,6 +249,7 @@ class BaseController:
         """
         :return Any: the state of the object other than what's not included in pybullet state.
         """
+
         return None
 
     def load_state(self, dump):
@@ -252,7 +260,7 @@ class BaseController:
         """
         return
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4=False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) control signal.
         Should be implemented by subclass.

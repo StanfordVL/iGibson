@@ -23,7 +23,7 @@ class FourWheelRobot(LocomotionRobot):
 
     def _validate_configuration(self):
         # Make sure base only has two indices (i.e.: two wheels for differential drive)
-        assert len(self.base_control_idx) == 4, "Differential drive can only be used with robot with two base joints!"
+        assert len(self.base_control_idx) == 4, "Differential drive can only be used with robot with four base joints!"
 
         # run super
         super()._validate_configuration()
@@ -34,27 +34,27 @@ class FourWheelRobot(LocomotionRobot):
         # We set straight velocity to be 50% of max velocity for the wheels
         max_wheel_joint_vels = self.control_limits["velocity"][1][self.base_control_idx]
         assert len(max_wheel_joint_vels) == 4, "FourWheelRobot must only have two base (wheel) joints!"
-        assert max_wheel_joint_vels[0] == max_wheel_joint_vels[1], "All wheels must have the same max speed!"
+        assert max_wheel_joint_vels[0] == max_wheel_joint_vels[1] == max_wheel_joint_vels[2] == max_wheel_joint_vels[3], "All wheels must have the same max speed!"
         wheel_straight_vel = 0.5 * max_wheel_joint_vels[0]
         wheel_rotate_vel = 0.5
         if self.controller_config["base"]["name"] == "JointController":
             action_list = [
-                [wheel_straight_vel, wheel_straight_vel],
-                [-wheel_straight_vel, -wheel_straight_vel],
-                [wheel_rotate_vel, -wheel_rotate_vel],
-                [-wheel_rotate_vel, wheel_rotate_vel],
-                [0, 0],
+                [wheel_straight_vel, wheel_straight_vel, wheel_straight_vel, wheel_straight_vel],
+                [-wheel_straight_vel, -wheel_straight_vel, -wheel_straight_vel, -wheel_straight_vel],
+                [wheel_rotate_vel, -wheel_rotate_vel, wheel_rotate_vel, -wheel_rotate_vel],
+                [-wheel_rotate_vel, wheel_rotate_vel, -wheel_rotate_vel, wheel_rotate_vel],
+                [0, 0, 0, 0],
             ]
         else:
             # DifferentialDriveController
             lin_vel = wheel_straight_vel * self.wheel_radius
             ang_vel = wheel_rotate_vel * self.wheel_radius * 2.0 / self.wheel_axle_length
             action_list = [
-                [lin_vel, 0],
-                [-lin_vel, 0],
-                [0, ang_vel],
-                [0, -ang_vel],
-                [0, 0],
+                [lin_vel, 0, lin_vel, 0],
+                [-lin_vel, 0, -lin_vel, 0],
+                [0, ang_vel, 0, ang_vel],
+                [0, -ang_vel, 0, -ang_vel],
+                [0, 0, 0, 0],
             ]
 
         self.action_list = action_list

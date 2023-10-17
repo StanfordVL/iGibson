@@ -97,7 +97,7 @@ class JointController(LocomotionController, ManipulationController):
         # Nothing to reset.
         pass
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4 = False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal
 

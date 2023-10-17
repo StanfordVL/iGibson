@@ -88,7 +88,7 @@ class MultiFingerGripperController(ManipulationController):
         # No-op
         pass
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4=False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) gripper
         joint control signal

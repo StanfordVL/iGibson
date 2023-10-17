@@ -83,7 +83,7 @@ class DifferentialDriveController(LocomotionController):
         # No-op
         pass
 
-    def _command_to_control(self, command, control_dict):
+    def _command_to_control(self, command, control_dict, dd_4=False):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal.
         This processes converts the desired (lin_vel, ang_vel) command into (left, right) wheel joint velocity control
@@ -97,12 +97,14 @@ class DifferentialDriveController(LocomotionController):
         :return: Array[float], outputted (non-clipped!) velocity control signal to deploy
             to the [left, right] wheel joints
         """
+        print('!!!!!!!!!!! dd4', dd_4)
         lin_vel, ang_vel = command
 
         # Convert to wheel velocities
         left_wheel_joint_vel = (lin_vel - ang_vel * self.wheel_axle_halflength) / self.wheel_radius
         right_wheel_joint_vel = (lin_vel + ang_vel * self.wheel_axle_halflength) / self.wheel_radius
-
+        if dd_4 == True:
+            return np.array([left_wheel_joint_vel, right_wheel_joint_vel, left_wheel_joint_vel, right_wheel_joint_vel])    
         # Return desired velocities
         return np.array([left_wheel_joint_vel, right_wheel_joint_vel])
 
