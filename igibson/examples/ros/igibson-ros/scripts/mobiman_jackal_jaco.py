@@ -51,9 +51,10 @@ class SimNode:
 
         self.ns = ns
 
-        self.cmdx = 0.0
-        self.cmdy = 0.0
-        self.cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.cmd_base = [0.0, 0.0]
+        self.cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        self.cmd = self.cmd_base + self.cmd_arm
         
         self.image_pub = rospy.Publisher("gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
         self.depth_pub = rospy.Publisher("gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
@@ -93,10 +94,16 @@ class SimNode:
         #print(object_states_keys)
 
         print("[SimNode::__init__] END")
-        
+    
     def run(self):
+        last = rospy.Time.now()
         while not rospy.is_shutdown():
             now = rospy.Time.now()
+            
+            dt = (now-last).to_sec()
+            #print(" dt: " + str(dt) + str(" sec"))
+            #print(" freq: " + str(1/dt) + str(" Hz\n"))
+            last = now
 
             if (now - self.last_update).to_sec() > 2:
                 cmdx = 0.0

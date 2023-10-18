@@ -1,8 +1,9 @@
 <launch>
 
   <!-- Parameters -->
+  <arg name="rviz"        default="false" />
   <arg name="robot_name" value="jackalJaco"/>
-  
+
   <arg name="ns0" value="$(arg robot_name)_0"/>
   <arg name="ns1" value="$(arg robot_name)_1"/>
 
@@ -90,6 +91,9 @@
   <!--node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns1)" args="0 0 0 0 0 0 1 world $(arg ns1)/odom 100" /-->
 
   <!-- Launch Rviz -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/jackal_jaco.rviz" />
+  <group if="$(eval arg('rviz') == true)">
+        <!--include file="$(find mobiman_simulation)/launch/examples/rviz_ocs2_$(arg sim).launch" /-->
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/jackal_jaco.rviz" />
+  </group>
 
 </launch>

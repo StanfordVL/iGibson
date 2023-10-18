@@ -4,16 +4,15 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /TF1/Frames1
         - /DepthCloud21/Auto Size1
         - /Registered DepthCloud21/Auto Size1
       Splitter Ratio: 0.5
-    Tree Height: 814
+    Tree Height: 746
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
     Expanded:
-      - /2D Pose Estimate1
+      - /Interact1
       - /2D Nav Goal1
     Name: Tool Properties
     Splitter Ratio: 0.5886790156364441
@@ -266,11 +265,25 @@ Visualization Manager:
           Value: false
         jackalJaco_0/front_fender_link:
           Value: false
+        jackalJaco_0/front_left_wheel_link:
+          Value: false
         jackalJaco_0/front_mount:
+          Value: false
+        jackalJaco_0/front_right_wheel_link:
           Value: false
         jackalJaco_0/imu_link:
           Value: false
         jackalJaco_0/j2n6s300_end_effector:
+          Value: false
+        jackalJaco_0/j2n6s300_link_1:
+          Value: false
+        jackalJaco_0/j2n6s300_link_2:
+          Value: false
+        jackalJaco_0/j2n6s300_link_3:
+          Value: false
+        jackalJaco_0/j2n6s300_link_4:
+          Value: false
+        jackalJaco_0/j2n6s300_link_5:
           Value: false
         jackalJaco_0/j2n6s300_link_6:
           Value: false
@@ -286,7 +299,11 @@ Visualization Manager:
           Value: false
         jackalJaco_0/rear_fender_link:
           Value: false
+        jackalJaco_0/rear_left_wheel_link:
+          Value: false
         jackalJaco_0/rear_mount:
+          Value: false
+        jackalJaco_0/rear_right_wheel_link:
           Value: false
         world:
           Value: true
@@ -297,46 +314,57 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        jackalJaco_0/base_link:
-          jackalJaco_0/chassis_link:
-            jackalJaco_0/front_fender_link:
-              {}
-            jackalJaco_0/imu_link:
-              {}
-            jackalJaco_0/mid_mount:
-              jackalJaco_0/front_mount:
-                {}
-              jackalJaco_0/rear_mount:
-                {}
-            jackalJaco_0/navsat_link:
-              {}
-            jackalJaco_0/rear_fender_link:
-              {}
-          jackalJaco_0/d435_cam1camera_bottom_screw_frame:
-            jackalJaco_0/d435_cam1camera_link:
-              jackalJaco_0/d435_cam1camera_depth_frame:
-                jackalJaco_0/d435_cam1camera_color_frame:
-                  jackalJaco_0/d435_cam1camera_color_optical_frame:
-                    {}
-                jackalJaco_0/d435_cam1camera_depth_optical_frame:
-                  {}
-                jackalJaco_0/d435_cam1camera_left_ir_frame:
-                  jackalJaco_0/d435_cam1camera_left_ir_optical_frame:
-                    {}
-                jackalJaco_0/d435_cam1camera_right_ir_frame:
-                  jackalJaco_0/d435_cam1camera_right_ir_optical_frame:
-                    {}
-              jackalJaco_0/d435_cam1camera_depth_frame_gazebo:
-                {}
-          jackalJaco_0/jaco_base_link:
-            jackalJaco_0/j2n6s300_link_base:
-              {}
-        jackalJaco_0/j2n6s300_link_6:
-          jackalJaco_0/j2n6s300_end_effector:
-            {}
         world:
           jackalJaco_0/odom:
-            {}
+            jackalJaco_0/base_link:
+              jackalJaco_0/chassis_link:
+                jackalJaco_0/front_fender_link:
+                  {}
+                jackalJaco_0/front_left_wheel_link:
+                  {}
+                jackalJaco_0/front_right_wheel_link:
+                  {}
+                jackalJaco_0/imu_link:
+                  {}
+                jackalJaco_0/mid_mount:
+                  jackalJaco_0/front_mount:
+                    {}
+                  jackalJaco_0/rear_mount:
+                    {}
+                jackalJaco_0/navsat_link:
+                  {}
+                jackalJaco_0/rear_fender_link:
+                  {}
+                jackalJaco_0/rear_left_wheel_link:
+                  {}
+                jackalJaco_0/rear_right_wheel_link:
+                  {}
+              jackalJaco_0/d435_cam1camera_bottom_screw_frame:
+                jackalJaco_0/d435_cam1camera_link:
+                  jackalJaco_0/d435_cam1camera_depth_frame:
+                    jackalJaco_0/d435_cam1camera_color_frame:
+                      jackalJaco_0/d435_cam1camera_color_optical_frame:
+                        {}
+                    jackalJaco_0/d435_cam1camera_depth_optical_frame:
+                      {}
+                    jackalJaco_0/d435_cam1camera_left_ir_frame:
+                      jackalJaco_0/d435_cam1camera_left_ir_optical_frame:
+                        {}
+                    jackalJaco_0/d435_cam1camera_right_ir_frame:
+                      jackalJaco_0/d435_cam1camera_right_ir_optical_frame:
+                        {}
+                  jackalJaco_0/d435_cam1camera_depth_frame_gazebo:
+                    {}
+              jackalJaco_0/jaco_base_link:
+                jackalJaco_0/j2n6s300_link_base:
+                  jackalJaco_0/j2n6s300_link_1:
+                    jackalJaco_0/j2n6s300_link_2:
+                      jackalJaco_0/j2n6s300_link_3:
+                        jackalJaco_0/j2n6s300_link_4:
+                          jackalJaco_0/j2n6s300_link_5:
+                            jackalJaco_0/j2n6s300_link_6:
+                              jackalJaco_0/j2n6s300_end_effector:
+                                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -614,7 +642,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /robot2/gibson_ros/camera/depth_registered/points
+      Topic: /pc2_scan_blue_cube
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -699,6 +727,43 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: false
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /target_marker/update
+      Value: true
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /model_mode_marker/update
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /mobile_manipulator/optimizedStateTrajectory
+      Name: MarkerArray
+      Namespaces:
+        Base Trajectory: true
+        EE Trajectory: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /mobile_manipulator_target
+      Name: MarkerArray
+      Namespaces:
+        target_1: true
+        target_2: true
+        target_3: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -707,22 +772,16 @@ Visualization Manager:
     Frame Rate: 30
   Name: root
   Tools:
-    - Class: rviz/MoveCamera
     - Class: rviz/Interact
       Hide Inactive Objects: true
-    - Class: rviz/Select
-    - Class: rviz/SetInitialPose
-      Theta std deviation: 0.2617993950843811
-      Topic: /initialpose
-      X std deviation: 0.5
-      Y std deviation: 0.5
+    - Class: rviz/MoveCamera
     - Class: rviz/SetGoal
-      Topic: robot1/move_base_simple/goal
+      Topic: goal
   Value: true
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.0147716999053955
+      Distance: 3.1427502632141113
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -730,17 +789,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.08117656409740448
-        Y: 0.6387711763381958
-        Z: 0.5670872926712036
+        X: 0.09098347276449203
+        Y: 0.06776964664459229
+        Z: 0.16660045087337494
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7604002952575684
+      Pitch: 0.9454001188278198
       Target Frame: <Fixed Frame>
-      Yaw: 1.8385881185531616
+      Yaw: 4.7267608642578125
     Saved: ~
 Window Geometry:
   Displays:
@@ -752,7 +811,7 @@ Window Geometry:
     collapsed: false
   Image2:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001ad000003b9fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000003b9000000c900fffffffb0000000c0049006d006100670065003100000002ec0000010a0000001600fffffffb0000000c0049006d00610067006500310000000338000000be0000001600fffffffb0000000a0049006d0061006700650100000316000000cc0000000000000000fb0000000c0049006d00610067006500320000000361000000950000001600fffffffb0000000c0049006d0061006700650032000000033e000000b80000001600ffffff000000010000010b000003b9fc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000003d000003b90000005c00fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003300000294000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000780000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a00000041800fffffffb0000000800540069006d00650100000000000004500000000000000000000004bc000003b900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000015600000375fc0200000009fb0000001200530065006c0065006300740069006f006e000000003d0000009b0000005c00fffffffb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000375000000c900fffffffb0000000c0049006d006100670065003100000002ec0000010a0000001600fffffffb0000000c0049006d00610067006500310000000338000000be0000001600fffffffb0000000a0049006d0061006700650100000316000000cc0000000000000000fb0000000c0049006d00610067006500320000000361000000950000001600fffffffb0000000c0049006d0061006700650032000000033e000000b80000001600ffffff000000010000010b000003b9fc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073000000003d000003b90000005c00fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003300000294000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000780000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000003bc00fffffffb0000000800540069006d00650100000000000004500000000000000000000006240000037500000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
