@@ -49,6 +49,8 @@ class DifferentialDriveController(LocomotionController):
             to the maximum linear and angular velocities calculated from @wheel_radius, @wheel_axle_length, and
             @control_limits velocity limits entry
         """
+        print("[dd_controller::DifferentialDriveController::__init__] START")
+
         # Store internal variables
         self.wheel_radius = wheel_radius
         self.wheel_axle_halflength = wheel_axle_length / 2.0
@@ -70,6 +72,15 @@ class DifferentialDriveController(LocomotionController):
             max_ang_vel = max_lin_vel * 2.0 / wheel_axle_length
             command_output_limits = ((-max_lin_vel, -max_ang_vel), (max_lin_vel, max_ang_vel))
 
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+        print("*****************************************************************")
+
         # Run super init
         super().__init__(
             control_freq=control_freq,
@@ -79,11 +90,13 @@ class DifferentialDriveController(LocomotionController):
             command_output_limits=command_output_limits,
         )
 
+        print("[dd_controller::DifferentialDriveController::__init__] END")
+
     def reset(self):
         # No-op
         pass
 
-    def _command_to_control(self, command, control_dict, dd_4=False):
+    def _command_to_control(self, command, control_dict):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal.
         This processes converts the desired (lin_vel, ang_vel) command into (left, right) wheel joint velocity control
@@ -97,13 +110,15 @@ class DifferentialDriveController(LocomotionController):
         :return: Array[float], outputted (non-clipped!) velocity control signal to deploy
             to the [left, right] wheel joints
         """
+        print("[dd_controller::DifferentialDriveController::_command_to_control] START")
         lin_vel, ang_vel = command
 
         # Convert to wheel velocities
         left_wheel_joint_vel = (lin_vel - ang_vel * self.wheel_axle_halflength) / self.wheel_radius
         right_wheel_joint_vel = (lin_vel + ang_vel * self.wheel_axle_halflength) / self.wheel_radius
-        if dd_4 == True:
-            return np.array([left_wheel_joint_vel, right_wheel_joint_vel, left_wheel_joint_vel, right_wheel_joint_vel])    
+
+        print("[dd_controller::DifferentialDriveController::_command_to_control] END")
+
         # Return desired velocities
         return np.array([left_wheel_joint_vel, right_wheel_joint_vel])
 

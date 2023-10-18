@@ -26,7 +26,7 @@ def main(selection="user", headless=False, short_exec=False):
         # rendering_settings=settings,
         use_pb_gui=True,
         physics_timestep=1/240,
-        render_timestep=1/40,
+        render_timestep=1/240,
     )
     scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
@@ -38,7 +38,7 @@ def main(selection="user", headless=False, short_exec=False):
         config = parse_config(os.path.join(igibson.configs_path, "robots", robot_config_file))
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
-        if robot_name != "Turtlebot":
+        if robot_name != "JackalJaco":
             continue
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
         s.import_object(robot)
@@ -63,6 +63,10 @@ def main(selection="user", headless=False, short_exec=False):
         for _ in range(30):
             action = np.random.uniform(-1, 1, robot.action_dim)
             robot.apply_action(action)
+
+            print("[test_robot::main] action_dim: " + str(robot.action_dim))
+            print("[test_robot::main] action: " + str(action))
+
             for _ in range(100):
                 s.step()
                 pass

@@ -7,8 +7,9 @@ render_timestep: 0.02 # 1/48
 
 # scene
 scene: "empty"
+#urdf_file: "/home/akmandor/projects/iGibson/igibson/data/ig_dataset/objects/ball/ball_000/ball_000"
 floor_plane_rgba: [0.6, 0.6, 0.6, 1]
-scene_id: ""
+scene_id: "Ihlen_0_int"
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -25,7 +26,7 @@ object_randomization_freq: null
 robot_name: "JackalJaco"
 
 # task
-task: point_nav_fixed
+task: mobiman_pick
 initial_pos: [0.0, 0.0, 0.0]
 initial_orn: [0.0, 0.0, 0.0]
 goal_format: polar
@@ -51,6 +52,7 @@ collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot 
 
 # sensor spec
 #output: [task_obs, rgb, depth, scan]
+output: [task_obs]
 #enable_pbr: false
 
 # image

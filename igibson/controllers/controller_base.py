@@ -228,10 +228,6 @@ class BaseController:
 
         :return Array[float]: numpy array of outputted control signals
         """
-        print('$$$$$$$$$$$$$$$$$ in control base $$$$$$$$$$$$$$$')
-        print(self.control_dim)
-        print('dict', control_dict)
-        print('command', self._command)
         if self.control_dim == 4 and len(self._command) == 2:
             control = self._command_to_control(command=self._command, control_dict=control_dict, dd_4 = True)
         else:

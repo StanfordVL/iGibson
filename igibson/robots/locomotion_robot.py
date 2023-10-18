@@ -36,6 +36,8 @@ class LocomotionRobot(BaseRobot):
         super()._validate_configuration()
 
     def _get_proprioception_dict(self):
+        print("[locomotion_robot::LocomotionRobot::_get_proprioception_dict] START")
+        
         dic = super()._get_proprioception_dict()
 
         # Add base info
@@ -43,6 +45,8 @@ class LocomotionRobot(BaseRobot):
         dic["base_qpos_sin"] = np.sin(self.joint_positions[self.base_control_idx])
         dic["base_qpos_cos"] = np.cos(self.joint_positions[self.base_control_idx])
         dic["base_qvel"] = self.joint_velocities[self.base_control_idx]
+        
+        print("[locomotion_robot::LocomotionRobot::_get_proprioception_dict] END")
 
         return dic
 
@@ -100,8 +104,11 @@ class LocomotionRobot(BaseRobot):
 
         :param delta: Array[float], (x,y,z) cartesian delta base position
         """
+        print("[locomotion_robot::LocomotionRobot::move_by] START")
         new_pos = np.array(delta) + self.get_position()
         self.robot_body.reset_position(new_pos)
+
+        print("[locomotion_robot::LocomotionRobot::move_by] END")
 
     def move_forward(self, delta=0.05):
         """

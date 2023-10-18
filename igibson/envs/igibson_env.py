@@ -135,9 +135,9 @@ class iGibsonEnv(BaseEnv):
         self.automatic_reset = automatic_reset
 
         print("[igibson_env::iGibsonEnv::__init__] END")
-        print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
-        while 1:
-            continue
+        #print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
+        #while 1:
+        #    continue
     
     def update_ros_topics(self, state):
         #print("[igibson_env::iGibsonEnv::update_ros_topics] START")
@@ -336,6 +336,9 @@ class iGibsonEnv(BaseEnv):
             self.task = ReachingRandomTask(self)
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
+        elif self.config["task"] == "mobiman_pick":
+            ### NUA TODO: SPECIFY NEW TASK ENVIRONMENT!
+            self.task = DynamicNavRandomTask(self) 
         else:
             try:
                 import bddl
@@ -473,7 +476,15 @@ class iGibsonEnv(BaseEnv):
         """
         Load action space.
         """
+        print("[igibson_env::iGibsonEnv::load_action_space] START")
+        
         self.action_space = self.robots[0].action_space
+
+        print("[igibson_env::iGibsonEnv::load_action_space] action_space: " + str(self.action_space))
+        #print("[igibson_env::iGibsonEnv::load_action_space] DEBUG INF")
+        #while 1:
+        #    continue
+        print("[igibson_env::iGibsonEnv::load_action_space] END")
 
     def load_miscellaneous_variables(self):
         """
@@ -488,11 +499,24 @@ class iGibsonEnv(BaseEnv):
         """
         Load environment.
         """
+        print("[igibson_env::iGibsonEnv::load] START")
+
+        print("[igibson_env::iGibsonEnv::load] START super")
         super(iGibsonEnv, self).load()
-        #self.load_task_setup()
-        #self.load_observation_space()
-        #self.load_action_space()
-        #self.load_miscellaneous_variables()
+        
+        print("[igibson_env::iGibsonEnv::load] START load_task_setup")
+        self.load_task_setup()
+        
+        print("[igibson_env::iGibsonEnv::load] START load_observation_space")
+        self.load_observation_space()
+        
+        print("[igibson_env::iGibsonEnv::load] START load_action_space")
+        self.load_action_space()
+        
+        print("[igibson_env::iGibsonEnv::load] START load_miscellaneous_variables")
+        self.load_miscellaneous_variables()
+
+        print("[igibson_env::iGibsonEnv::load] END")
 
     def get_state(self):
         """

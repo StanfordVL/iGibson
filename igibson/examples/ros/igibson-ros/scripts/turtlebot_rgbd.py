@@ -91,7 +91,7 @@ class SimNode:
             self.image_pub.publish(image_message)
             self.depth_pub.publish(depth_message)
             self.depth_raw_pub.publish(depth_raw_message)
-
+            
             msg = CameraInfo(
                 height=256,
                 width=256,

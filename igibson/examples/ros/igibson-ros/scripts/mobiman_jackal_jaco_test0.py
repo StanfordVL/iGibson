@@ -63,7 +63,16 @@ def main(selection="user", headless=False, short_exec=False):
 
         for _ in range(30):
             action = np.random.uniform(-1, 1, robot.action_dim)
+
+            action[0] = 0.1
+            action[1] = 0.3
+            action[2] = 0.1
+            action[3] = 0.3
             robot.apply_action(action)
+            
+            print("[mobiman_jackal_jaco_test0::main] action_dim: " + str(robot.action_dim))
+            print("[mobiman_jackal_jaco_test0::main] action: " + str(action))
+
             for _ in range(100):
                 s.step()
                 pass

@@ -77,7 +77,6 @@ class FourWheelRobot(LocomotionRobot):
         # Add info
         dic["dd_base_lin_vel"] = np.array([lin_vel])
         dic["dd_base_ang_vel"] = np.array([ang_vel])
-        print('***********[two-wheel-robot]***********\n',dic, '\n***********[two-wheel-robot]***********\n')
         return dic
 
     @property
