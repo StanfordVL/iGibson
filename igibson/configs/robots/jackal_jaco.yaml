@@ -20,6 +20,6 @@ robot:
     base:
       name: DifferentialDriveController
     arm_0:
-      name: InverseKinematicsController
+      name: JointController
     gripper_0:
       name: NullGripperController

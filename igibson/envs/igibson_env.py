@@ -338,7 +338,7 @@ class iGibsonEnv(BaseEnv):
             self.task = RoomRearrangementTask(self)
         elif self.config["task"] == "mobiman_pick":
             ### NUA TODO: SPECIFY NEW TASK ENVIRONMENT!
-            self.task = DynamicNavRandomTask(self) 
+            self.task = PointNavFixedTask(self) 
         else:
             try:
                 import bddl

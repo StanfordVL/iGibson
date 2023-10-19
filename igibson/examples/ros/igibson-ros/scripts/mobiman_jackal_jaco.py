@@ -8,6 +8,7 @@ import rospy
 import tf
 import yaml
 from cv_bridge import CvBridge
+from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs import point_cloud2 as pc2
@@ -15,7 +16,7 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image as ImageMsg
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Header
+from trajectory_msgs.msg import JointTrajectory
 
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.utils.utils import parse_config
@@ -40,6 +41,7 @@ class SimNode:
         image_height = self.config["image_height"]
         use_pb_gui = self.config["use_pb_gui"]
 
+        print("[SimNode::__init__] ns: " + str(ns))
         print("[SimNode::__init__] config_data: " + str(config_data))
         print("[SimNode::__init__] mode: " + str(mode))
         print("[SimNode::__init__] action_timestep: " + str(action_timestep))
@@ -51,9 +53,9 @@ class SimNode:
 
         self.ns = ns
 
+        # Set initial command
         self.cmd_base = [0.0, 0.0]
         self.cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
         self.cmd = self.cmd_base + self.cmd_arm
         
         self.image_pub = rospy.Publisher("gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
@@ -65,9 +67,12 @@ class SimNode:
         self.camera_info_pub = rospy.Publisher("gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
         self.joint_states_pub = rospy.Publisher("gibson_ros/joint_states", JointState, queue_size=10)
 
-        self.last_update = rospy.Time.now()
-        rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
-        rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+        self.last_update_base = rospy.Time.now()
+        self.last_update_arm = rospy.Time.now()
+
+        rospy.Subscriber("mobile_base_controller/cmd_vel", Twist, self.cmd_base_callback)
+        rospy.Subscriber("arm_controller/cmd_pos", JointTrajectory, self.cmd_arm_callback)
+        rospy.Subscriber("reset_pose", PoseStamped, self.tp_robot_callback)
 
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
@@ -99,22 +104,28 @@ class SimNode:
         last = rospy.Time.now()
         while not rospy.is_shutdown():
             now = rospy.Time.now()
-            
-            dt = (now-last).to_sec()
+            #dt = (now-last).to_sec()
             #print(" dt: " + str(dt) + str(" sec"))
             #print(" freq: " + str(1/dt) + str(" Hz\n"))
             last = now
 
-            if (now - self.last_update).to_sec() > 2:
-                cmdx = 0.0
-                cmdy = 0.0
-                cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            if (now - self.last_update_base).to_sec() > 2.0:
+                cmd_base = [0.0, 0.0]
             else:
-                cmdx = self.cmdx
-                cmdy = self.cmdy
-                cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                cmd_base = self.cmd_base
 
-            cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            if (now - self.last_update_arm).to_sec() > 2.0:
+                cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            else:
+                cmd_arm = self.cmd_arm
+
+            #cmd = cmd_arm + cmd_base
+            cmd = cmd_base + cmd_arm
+            #print("[mobiman_jackal_jaco::run] commandos2: " + str(len(commandos2)))
+            #print(commandos2)
+            #print("")
+            #cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
             obs, _, _, _ = self.env.step(cmd)
 
             '''
@@ -203,8 +214,12 @@ class SimNode:
                 odom_msg.pose.pose.orientation.w,
             ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
 
-            odom_msg.twist.twist.linear.x = (cmdx + cmdy) * 5
-            odom_msg.twist.twist.angular.z = (cmdy - cmdx) * 5 * 8.695652173913043
+            odom_msg.twist.twist.linear.x = self.env.robots[0].get_linear_velocity()[0]
+            odom_msg.twist.twist.linear.y = self.env.robots[0].get_linear_velocity()[1]
+            odom_msg.twist.twist.linear.z = self.env.robots[0].get_linear_velocity()[2]
+            odom_msg.twist.twist.angular.x = self.env.robots[0].get_angular_velocity()[0]
+            odom_msg.twist.twist.angular.y = self.env.robots[0].get_angular_velocity()[1]
+            odom_msg.twist.twist.angular.z = self.env.robots[0].get_angular_velocity()[2]
             self.odom_pub.publish(odom_msg)
 
             # Joint States
@@ -258,10 +273,31 @@ class SimNode:
             gt_pose_msg.twist.twist.angular.z = -cmdy
             '''
 
-    def cmd_callback(self, data):
-        self.cmdx = data.linear.x
-        self.cmdy = -data.angular.z
-        self.last_update = rospy.Time.now()
+    def cmd_base_callback(self, data):
+        self.cmd_base = [data.linear.x, -data.angular.z]
+        self.last_update_base = rospy.Time.now()
+
+    def cmd_arm_callback(self, data):
+        joint_names = data.joint_names
+        self.cmd_arm = list(data.points[0].positions)
+
+        #print("[mobiman_jackal_jaco::__main__] joint_names len: " + str(len(joint_names)))
+        #print(joint_names)
+
+        #print("[mobiman_jackal_jaco::__main__] points len: " + str(len(data.points)))
+
+        #for i, p in enumerate(data.points):
+        #    print(str(i) + " -> positions len: " + str(len(p.positions)))
+        #    print(str(i) + " -> velocities len: " + str(len(p.velocities)))
+        #    print(str(i) + " -> accelerations len: " + str(len(p.accelerations)))
+        #    print(str(i) + " -> effort len: " + str(len(p.effort)))
+
+        
+        #print("[mobiman_jackal_jaco::__main__] cmd_arm: " + str(len(self.cmd_arm)))
+        #print(self.cmd_arm)
+        #print("")
+
+        self.last_update_arm = rospy.Time.now()
 
     def tp_robot_callback(self, data):
         rospy.loginfo("Teleporting robot")

@@ -2,7 +2,7 @@
 mode: "gui_interactive"
 use_pb_gui: true
 action_timestep: 0.04 # 1/24
-physics_timestep: 0.004 # 1/240
+physics_timestep: 0.04 # 1/240
 render_timestep: 0.02 # 1/48
 
 # scene

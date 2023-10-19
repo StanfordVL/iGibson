@@ -17,9 +17,9 @@
       <remap from="/$(arg ns0)/joint_states" to="gibson_ros/joint_states"/>
     </node>
     
-    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <!--node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
       <remap from="/$(arg ns0)/joint_states" to="/joint_domates"/>
-    </node>
+    </node-->
 
     <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen">
       <!--remap from="/mobile_base/commands/velocity" to="/$(arg ns0)/cmd_vel"/-->
