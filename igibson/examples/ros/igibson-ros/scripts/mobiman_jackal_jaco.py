@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import logging
 import os
-
+import math 
 import numpy as np
 import rospkg
 import rospy
@@ -54,8 +54,18 @@ class SimNode:
         self.ns = ns
 
         # Set initial command
-        self.cmd_base = [0.0, 0.0]
-        self.cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.cmd_init_base = [0.0, 0.0]
+        self.cmd_base = self.cmd_init_base
+
+        self.cmd_init_j1 = 0.0
+        self.cmd_init_j2 = 2.9
+        self.cmd_init_j3 = 1.3
+        self.cmd_init_j4 = 4.2
+        self.cmd_init_j5 = 1.4
+        self.cmd_init_j6 = 0.0
+        self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
+        self.cmd_arm = self.cmd_init_arm
+
         self.cmd = self.cmd_base + self.cmd_arm
         
         self.image_pub = rospy.Publisher("gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
@@ -102,13 +112,29 @@ class SimNode:
     
     def run(self):
         last = rospy.Time.now()
+        '''
+        ctr = 0
+        init_j2n6s300_joint_1 = 0
+        init_j2n6s300_joint_2 = 0
+        init_j2n6s300_joint_3 = 0
+        init_j2n6s300_joint_4 = 0
+        init_j2n6s300_joint_5 = 0
+        init_j2n6s300_joint_6 = 0
+        '''
         while not rospy.is_shutdown():
+            #print("[mobiman_jackal_jaco::run] ctr: " + str(ctr))
+
             now = rospy.Time.now()
             #dt = (now-last).to_sec()
             #print(" dt: " + str(dt) + str(" sec"))
             #print(" freq: " + str(1/dt) + str(" Hz\n"))
-            last = now
+            #last = now
+            
+            #print("[SimNode::__init__] DEBUG INF")
+            #while 1:
+            #    continue
 
+            '''
             if (now - self.last_update_base).to_sec() > 2.0:
                 cmd_base = [0.0, 0.0]
             else:
@@ -118,15 +144,90 @@ class SimNode:
                 cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             else:
                 cmd_arm = self.cmd_arm
+            '''
 
+            cmd_base = self.cmd_base
+            cmd_arm = self.cmd_arm
             #cmd = cmd_arm + cmd_base
             cmd = cmd_base + cmd_arm
-            #print("[mobiman_jackal_jaco::run] commandos2: " + str(len(commandos2)))
-            #print(commandos2)
+            #print("[mobiman_jackal_jaco::run] cmd: " + str(len(cmd)))
+            #print(cmd)
+            
             #print("")
             #cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+            joint_states_before = self.env.robots[0].get_joint_states()
+            #print("[mobiman_jackal_jaco::run] joint_states_before: " + str(len(joint_states_before)))
+            #print(joint_states_before)
+
+            '''
+            if ctr == 0:
+                init_j2n6s300_joint_1 = joint_states_before["j2n6s300_joint_1"][0]
+                init_j2n6s300_joint_2 = joint_states_before["j2n6s300_joint_2"][0]
+                init_j2n6s300_joint_3 = joint_states_before["j2n6s300_joint_3"][0]
+                init_j2n6s300_joint_4 = joint_states_before["j2n6s300_joint_4"][0]
+                init_j2n6s300_joint_5 = joint_states_before["j2n6s300_joint_5"][0]
+                init_j2n6s300_joint_6 = joint_states_before["j2n6s300_joint_6"][0]
+            '''
+
             obs, _, _, _ = self.env.step(cmd)
+
+            joint_states_after = self.env.robots[0].get_joint_states()
+            #print("[mobiman_jackal_jaco::run] joint_states_after: " + str(len(joint_states_after)))
+            #print(joint_states_after)
+
+            '''
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_1: " + str(cmd_arm[0]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_1: " + str(joint_states_before["j2n6s300_joint_1"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_1: " + str(joint_states_after["j2n6s300_joint_1"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (rad):  " + str(abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_2: " + str(cmd_arm[1]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_2: " + str(joint_states_before["j2n6s300_joint_2"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_2: " + str(joint_states_after["j2n6s300_joint_2"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_3: " + str(cmd_arm[2]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_3: " + str(joint_states_before["j2n6s300_joint_3"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_3: " + str(joint_states_after["j2n6s300_joint_3"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_4: " + str(cmd_arm[3]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_4: " + str(joint_states_before["j2n6s300_joint_4"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_4: " + str(joint_states_after["j2n6s300_joint_4"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_5: " + str(cmd_arm[4]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_5: " + str(joint_states_before["j2n6s300_joint_5"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_5: " + str(joint_states_after["j2n6s300_joint_5"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_6: " + str(cmd_arm[5]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_6: " + str(joint_states_before["j2n6s300_joint_6"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_6: " + str(joint_states_after["j2n6s300_joint_6"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0]) / math.pi))
+            print("-------------------")
+            print("")
+            '''
+
+            '''
+            if ctr > 5:
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - init_j2n6s300_joint_1) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - init_j2n6s300_joint_2) / math.pi))          
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - init_j2n6s300_joint_3) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - init_j2n6s300_joint_4) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - init_j2n6s300_joint_5) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - init_j2n6s300_joint_6) / math.pi))            
+                print("[SimNode::__init__] DEBUG INF")
+                while 1:
+                    continue
+            '''
 
             '''
             rgb = (obs["rgb"] * 255).astype(np.uint8)
@@ -272,6 +373,8 @@ class SimNode:
             gt_pose_msg.twist.twist.linear.x = cmdx
             gt_pose_msg.twist.twist.angular.z = -cmdy
             '''
+
+            #ctr += 1
 
     def cmd_base_callback(self, data):
         self.cmd_base = [data.linear.x, -data.angular.z]

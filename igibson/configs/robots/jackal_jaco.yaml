@@ -2,7 +2,7 @@
 robot:
   name: JackalJaco
   action_type: continuous
-  action_normalize: true
+  action_normalize: false
   proprio_obs:
     # - joint_qpos
     # - joint_qvel
@@ -19,7 +19,20 @@ robot:
   controller_config:
     base:
       name: DifferentialDriveController
+      joint_idx: [0,1,2,3]
+      control_limits:
+        velocity: [[-30.6122449, -30.6122449, -30.6122449, -30.6122449], [30.6122449, 30.6122449, 30.6122449, 30.6122449]]
+      command_input_limits: [[-2.0, -3.0], [2.0, 3.0]]
+      command_output_limits: [[-30.6122449, -30.6122449, -30.6122449, -30.6122449], [30.6122449, 30.6122449, 30.6122449, 30.6122449]]
     arm_0:
       name: JointController
+      motor_type: position
+      joint_idx: [4,5,6,7,8,9]
+      control_limits:
+        position: [[-50.0,-50.0,-50.0,-50.0,-50.0,-50.0], [50.0,50.0,50.0,50.0,50.0,50.0]]
+        velocity: [[-50.0,-50.0,-50.0,-50.0,-50.0,-50.0], [50.0,50.0,50.0,50.0,50.0,50.0]]
+      use_delta_commands: false
+      command_input_limits: [-50, 50]
+      command_output_limits: [-50, 50]
     gripper_0:
       name: NullGripperController

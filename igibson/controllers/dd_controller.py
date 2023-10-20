@@ -49,20 +49,31 @@ class DifferentialDriveController(LocomotionController):
             to the maximum linear and angular velocities calculated from @wheel_radius, @wheel_axle_length, and
             @control_limits velocity limits entry
         """
+
+        #print("[dd_controller::DifferentialDriveController::__init__] START")
+
         # Store internal variables
         self.wheel_radius = wheel_radius
         self.wheel_axle_halflength = wheel_axle_length / 2.0
 
         # If we're using default command output limits, map this to maximum linear / angular velocities
-        if command_output_limits == "default":
+        if command_output_limits == "default":            
             min_vels = control_limits["velocity"][0][joint_idx]
+
+            #print("[dd_controller::DifferentialDriveController::__init__] min_vels: " +str(min_vels))
+
             assert (
                 min_vels[0] == min_vels[1]
             ), "Differential drive requires both wheel joints to have same min velocities!"
+            
             max_vels = control_limits["velocity"][1][joint_idx]
+            
+            #print("[dd_controller::DifferentialDriveController::__init__] max_vels: " +str(max_vels))
+
             assert (
                 max_vels[0] == max_vels[1]
             ), "Differential drive requires both wheel joints to have same max velocities!"
+            
             assert abs(min_vels[0]) == abs(
                 max_vels[0]
             ), "Differential drive requires both wheel joints to have same min and max absolute velocities!"
@@ -70,6 +81,11 @@ class DifferentialDriveController(LocomotionController):
             max_ang_vel = max_lin_vel * 2.0 / wheel_axle_length
             command_output_limits = ((-max_lin_vel, -max_ang_vel), (max_lin_vel, max_ang_vel))
 
+        #print("[dd_controller::DifferentialDriveController::__init__] joint_idx: " +str(joint_idx))
+        #print("[dd_controller::DifferentialDriveController::__init__] command_input_limits: " +str(command_input_limits))
+        #print("[dd_controller::DifferentialDriveController::__init__] command_output_limits: " +str(command_output_limits))
+
+        #print("[dd_controller::DifferentialDriveController::__init__] BEFORE super")
         # Run super init
         super().__init__(
             control_freq=control_freq,
@@ -78,6 +94,9 @@ class DifferentialDriveController(LocomotionController):
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
         )
+        #print("[dd_controller::DifferentialDriveController::__init__] AFTER super")
+
+        #print("[dd_controller::DifferentialDriveController::__init__] END")
 
     def reset(self):
         # No-op
@@ -97,13 +116,20 @@ class DifferentialDriveController(LocomotionController):
         :return: Array[float], outputted (non-clipped!) velocity control signal to deploy
             to the [left, right] wheel joints
         """
+        #print("[dd_controller::DifferentialDriveController::_command_to_control] START")
+
         lin_vel, ang_vel = command
 
         # Convert to wheel velocities
         left_wheel_joint_vel = (lin_vel - ang_vel * self.wheel_axle_halflength) / self.wheel_radius
         right_wheel_joint_vel = (lin_vel + ang_vel * self.wheel_axle_halflength) / self.wheel_radius
+        
         if dd_4 == True:
+            #print("[dd_controller::DifferentialDriveController::_command_to_control] END 4")
             return np.array([left_wheel_joint_vel, right_wheel_joint_vel, left_wheel_joint_vel, right_wheel_joint_vel])    
+        
+        #print("[dd_controller::DifferentialDriveController::_command_to_control] END 2")
+        
         # Return desired velocities
         return np.array([left_wheel_joint_vel, right_wheel_joint_vel])
 

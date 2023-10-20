@@ -98,6 +98,9 @@ class BaseController:
         :param inverted: bool, indicating whether the input command should be inverted in the range before being scaled
             to the output range. For example, 0.8 in the (0, 1) range will get mapped to 0.2.
         """
+
+        #print("[controller_base::BaseController::__init__] START")
+
         # Store arguments
         self.control_freq = control_freq
         self.control_limits = {}
@@ -142,11 +145,13 @@ class BaseController:
             None
             if command_output_limits is None
             else (
-                self.nums2array(command_output_limits[0], self.command_dim),
-                self.nums2array(command_output_limits[1], self.command_dim),
+                self.nums2array(command_output_limits[0], self.control_dim),
+                self.nums2array(command_output_limits[1], self.control_dim),
             )
         )
         self.inverted = inverted
+
+        #print("[controller_base::BaseController::__init__] END")
 
     def _preprocess_command(self, command):
         """
@@ -157,8 +162,17 @@ class BaseController:
         :param command: Array[float] or float, Inputted command vector
         :return Array[float]: Processed command vector
         """
+
+        #print("[controller_base::BaseController::_preprocess_command] START")
+
+        #print("[controller_base::BaseController::_preprocess_command] BEFORE command: " + str(command))
+
         # Make sure command is a np.array
         command = np.array([command]) if type(command) in {int, float} else np.array(command)
+        
+        #print("[controller_base::BaseController::_preprocess_command] AFTER command: " + str(command))
+        #print("[controller_base::BaseController::_preprocess_command] command_input_limits: " + str(self.command_input_limits))
+        
         # We only clip and / or scale if self.command_input_limits exists
         if self.command_input_limits is not None:
             # Clip
@@ -168,20 +182,28 @@ class BaseController:
             if self.inverted:
                 command = self.command_input_limits[1] - (command - self.command_input_limits[0])
 
+            ### NUA NOTE: THIS CALCULATION LOOKS WRONG: dimensions of command_input_limits and command_output_limits can be different!
+            '''
             if self.command_output_limits is not None:
                 # If we haven't calculated how to scale the command, do that now (once)
                 if self._command_scale_factor is None:
                     self._command_scale_factor = abs(
                         self.command_output_limits[1] - self.command_output_limits[0]
                     ) / abs(self.command_input_limits[1] - self.command_input_limits[0])
+                    
                     self._command_output_transform = (
                         self.command_output_limits[1] + self.command_output_limits[0]
                     ) / 2.0
+                    
                     self._command_input_transform = (self.command_input_limits[1] + self.command_input_limits[0]) / 2.0
                 # Scale command
                 command = (
                     command - self._command_input_transform
                 ) * self._command_scale_factor + self._command_output_transform
+            '''
+        #print("[controller_base::BaseController::_preprocess_command] command: ")
+        #print(command)
+        #print("[controller_base::BaseController::_preprocess_command] END")
 
         # Return processed command
         return command
@@ -207,16 +229,53 @@ class BaseController:
 
         :return Array[float]: Clipped control signal
         """
+        #print("[controller_base::BaseController::clip_control] START")
+
+        #print("[controller_base::BaseController::clip_control] control: " + str(control))
+
+        #print("[controller_base::BaseController::clip_control] control_type: " + str(self.control_type))
+        #print("[controller_base::BaseController::clip_control] joint_idx: " + str(self.joint_idx))
+        #print("[controller_base::BaseController::clip_control] control_limits: " + str(self.control_limits))
+        #print("[controller_base::BaseController::clip_control] control_limits[self.control_type][1]: " + str(self.control_limits[self.control_type][0]))
+        #print("[controller_base::BaseController::clip_control] control_limits[self.control_type][1][self.joint_idx]: " + str(self.control_limits[self.control_type][0][self.joint_idx]))
+        #print("[controller_base::BaseController::clip_control] control_limits[0]: " + str(self.control_limits[0][1]))
+        #print("[controller_base::BaseController::clip_control] control_limits[0] len: " + str(len(self.control_limits[0][1])))
+        #print("[controller_base::BaseController::clip_control] control_limits[1]: " + str(self.control_limits[1][1]))
+        #print("[controller_base::BaseController::clip_control] control_limits[1] len: " + str(len(self.control_limits[1][1])))
+        #print("[controller_base::BaseController::clip_control] control_limits[2]: " + str(self.control_limits[2][1]))
+        #print("[controller_base::BaseController::clip_control] control_limits[2] len: " + str(len(self.control_limits[2][1])))
+
+        ### NUA NOTE: self.joint_idx seems unnecessary!
+        '''
         clipped_control = control.clip(
             self.control_limits[self.control_type][0][self.joint_idx],
             self.control_limits[self.control_type][1][self.joint_idx],
         )
+        '''
+
+        clipped_control = control.clip(
+            self.control_limits[self.control_type][0],
+            self.control_limits[self.control_type][1],
+        )
+
+        #print("[controller_base::BaseController::clip_control] clipped_control: " + str(clipped_control))
+        #print("[controller_base::BaseController::clip_control] joint_has_limits len: " + str(len(self.joint_has_limits)))
+        #print("[controller_base::BaseController::clip_control] joint_has_limits: " + str(self.joint_has_limits))
+
         idx = (
             self.joint_has_limits[self.joint_idx]
             if self.control_type == ControlType.POSITION
             else [True] * self.control_dim
         )
+
+        #print("[controller_base::BaseController::clip_control] idx: " + str(idx))
+
         control[idx] = clipped_control[idx]
+
+        #print("[controller_base::BaseController::clip_control] control: " + str(control))
+        
+        #print("[controller_base::BaseController::clip_control] END")
+
         return control
 
     def step(self, control_dict):
@@ -228,11 +287,19 @@ class BaseController:
 
         :return Array[float]: numpy array of outputted control signals
         """
+        #print("[controller_base::BaseController::step] START")
+
         if self.control_dim == 4 and len(self._command) == 2:
             control = self._command_to_control(command=self._command, control_dict=control_dict, dd_4 = True)
         else:
             control = self._command_to_control(command=self._command, control_dict=control_dict)
+        
+        #print("[controller_base::BaseController::step] control: " + str(control))
+        
         self.control = self.clip_control(control=control)
+        
+        #print("[controller_base::BaseController::step] END")
+
         return self.control
 
     def reset(self):
@@ -307,6 +374,16 @@ class BaseController:
         """
         :return int: Expected size of outputted controls
         """
+
+        #print("[controller_base::BaseController::control_dim] START")
+        #print("[controller_base::BaseController::control_dim] joint_idx: " + str(self.joint_idx))
+
+        #print("[controller_base::BaseController::control_dim] DEBUG INF")
+        #while 1:
+        #    continue
+
+        #print("[controller_base::BaseController::control_dim] END")
+
         return len(self.joint_idx)
 
     @property

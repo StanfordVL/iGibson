@@ -50,7 +50,7 @@ class BaseEnv(gym.Env):
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
 
-        print("[env_base::__init__] START")
+        #print("[env_base::__init__] START")
 
         self.config = parse_config(config_file)
         if scene_id is not None:
@@ -59,8 +59,8 @@ class BaseEnv(gym.Env):
         image_width = self.config["image_width"]
         image_height = self.config["image_height"]
 
-        print("[env_base::__init__] image_width: " + str(image_width))
-        print("[env_base::__init__] image_height: " + str(image_height))
+        #print("[env_base::__init__] image_width: " + str(image_width))
+        #print("[env_base::__init__] image_height: " + str(image_height))
         
         #print("[env_base::__init__] DEBUG INF")
         #while(1):
@@ -109,7 +109,7 @@ class BaseEnv(gym.Env):
                 use_pb_gui=use_pb_gui,
             )
         else:
-            print("[env_base::__init__] START Simulator")
+            #print("[env_base::__init__] START Simulator")
             self.simulator = Simulator(
                 mode=mode,
                 physics_timestep=physics_timestep,
@@ -121,12 +121,12 @@ class BaseEnv(gym.Env):
                 rendering_settings=self.rendering_settings,
                 use_pb_gui=use_pb_gui,
             )
-            print("[env_base__init__] END Simulator")
+            #print("[env_base__init__] END Simulator")
         
-        print("[env_base::__init__] START load")
+        #print("[env_base::__init__] START load")
         self.load()
-        print("[env_base::__init__] END load")
-        print("[env_base::__init__] END")
+        #print("[env_base::__init__] END load")
+        #print("[env_base::__init__] END")
 
 
     def reload(self, config_file):
@@ -166,7 +166,7 @@ class BaseEnv(gym.Env):
         Load the scene and robot specified in the config file.
         """
 
-        print("[env_base::load] START")
+        #print("[env_base::load] START")
 
         if self.config["scene"] == "empty":
             floor_plane_rgba=self.config.get("floor_plane_rgba", [1, 1, 1, 1])
@@ -221,7 +221,7 @@ class BaseEnv(gym.Env):
 
         self.simulator.import_scene(scene)
 
-        print("[env_base::load] START ROBOT")
+        #print("[env_base::load] START ROBOT")
 
         # Get robot config
         robot_name = self.config.get("robot_name", "")
@@ -237,7 +237,7 @@ class BaseEnv(gym.Env):
             robot_config = self.config["robot"]
             robot_name = robot_config.pop("name")
         
-        print("[env_base::load] robot_config: " + str(robot_config))
+        #print("[env_base::load] robot_config: " + str(robot_config))
 
         #print("[env_base::load] DEBUG_INF")
         #while 1:
@@ -248,21 +248,21 @@ class BaseEnv(gym.Env):
             # Get corresponding robot class
             #robot_name = robot_config.pop("name")
 
-            print("[env_base::load] robot_name: " + str(robot_name))
+            #print("[env_base::load] robot_name: " + str(robot_name))
 
             assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-            print("[env_base::load] START import_object")
+            #print("[env_base::load] START import_object")
             self.simulator.import_object(robot)
-            print("[env_base::load] END import_object")
+            #print("[env_base::load] END import_object")
 
             position = [0, 0, 0]
             robot.set_position(position)
             robot.reset()
             robot.keep_still()
             #robots[robot_name] = (robot, position[1])
-            print("[env_base::load] Loaded " + robot_name)
+            #print("[env_base::load] Loaded " + robot_name)
 
             #print("[env_base::load] DEBUG_INF")
             #while 1:
@@ -281,9 +281,9 @@ class BaseEnv(gym.Env):
                     lower, _ = robot.states[AABB].get_value()
                     pos[2] = -lower[2]
 
-                print("[env_base::load] START set_position_orientation")
+                #print("[env_base::load] START set_position_orientation")
                 robot.set_position_orientation(pos, orn)
-                print("[env_base::load] END set_position_orientation")
+                #print("[env_base::load] END set_position_orientation")
 
                 if any(
                     detect_closeness(
@@ -296,7 +296,7 @@ class BaseEnv(gym.Env):
         self.scene = scene
         self.robots = scene.robots
 
-        print("[env_base::load] END")
+        #print("[env_base::load] END")
 
     def clean(self):
         """

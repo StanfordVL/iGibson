@@ -13,7 +13,6 @@ RESET_JOINT_OPTIONS = {
     "untuck",
 }
 
-
 class JackalJaco(ManipulationRobot, FourWheelRobot):
     """
     Jackal Jaco robot
@@ -27,6 +26,8 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
             instead.
         :param **kwargs: see ManipulationRobot, TwoWheelRobot
         """
+        print("[jackal_jaco::JackalJaco::__init__] START")
+
         # Parse reset joint pos if specifying special string
         if isinstance(reset_joint_pos, str):
             assert (
@@ -36,8 +37,12 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
                 self.tucked_default_joint_pos if reset_joint_pos == "tuck" else self.untucked_default_joint_pos
             )
 
+        print("[jackal_jaco::JackalJaco::__init__] BEFORE super")
         # Run super init
         super().__init__(reset_joint_pos=reset_joint_pos, **kwargs)
+        print("[jackal_jaco::JackalJaco::__init__] AFTER super")
+
+        print("[jackal_jaco::JackalJaco::__init__] END")
 
     @property
     def model_name(self):
@@ -62,12 +67,32 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
         """
         self.set_joint_positions(self.untucked_default_joint_pos)
 
-    def reset(self, j1=0.0, j2=2.9, j3=1.3, j4=4.2, j5=1.4, j6=0.0):
+    def reset(self, j_base=None, j_arm=None):
         # In addition to normal reset, reset the joint configuration to be in default mode
+
+        #print("[jackal_jaco::JackalJaco::reset] START")
+
+        #print("[jackal_jaco::JackalJaco::reset] BEFORE super reset")
         super().reset()
+        #print("[jackal_jaco::JackalJaco::reset] AFTER super reset")
+
         joints = self.default_joint_pos
-        joints[4:] = [j1, j2, j3, j4, j5, j6]
+        if j_base:
+            j_base_len = len(j_base)
+            joints[:j_base_len] = j_base
+
+        if j_arm:
+            joints_len = len(joints)
+            j_arm_len = len(j_arm)
+            j_base_len = joints_len - j_arm_len
+            joints[j_base_len:] = j_arm
+
+        #print("[jackal_jaco::JackalJaco::reset] joints len: " + str(len(joints)))
+        #print(joints)
+
         set_joint_positions(self.get_body_ids()[0], [j.joint_id for j in self.joints.values()], joints)
+
+        #print("[jackal_jaco::JackalJaco::reset] END")
 
     @property
     def controller_order(self):
@@ -98,7 +123,6 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
 
     @property
     def tucked_default_joint_pos(self):
-        # todo: tune values
         return np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.9, 1.3, 4.2, 1.4, 0.0])
 
     @property
@@ -115,7 +139,7 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {self.default_arm: np.array([4, 5, 6, 7, 8, 9])}
+        return {self.default_arm: np.array([2, 3, 4, 5, 6, 7])}
 
     @property
     def gripper_control_idx(self):
@@ -124,7 +148,7 @@ class JackalJaco(ManipulationRobot, FourWheelRobot):
             vector corresponding to gripper joints.
         """
         pass
-        return {self.default_arm: np.array([10, 11], dtype=int)}
+        return {self.default_arm: np.array([8, 9], dtype=int)}
 
     @property
     def disabled_collision_pairs(self):

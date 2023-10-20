@@ -88,12 +88,17 @@ class BaseRobot(StatefulObject):
         :param self_collision: bool, whether to enable self collision
         :param **kwargs: see StatefulObject
         """
+
+        #print("[robot_base::BaseRobot::__init__] START")
+
         if type(name) == dict:
             raise ValueError(
                 "Robot name is a dict. You are probably using the deprecated constructor API which takes in robot_config (a dict) as input. Check the new API in BaseRobot."
             )
 
+        #print("[robot_base::BaseRobot::__init__] BEFORE super")
         super(BaseRobot, self).__init__(name=name, category="agent", abilities={"robot": {}}, **kwargs)
+        #print("[robot_base::BaseRobot::__init__] AFTER super")
 
         self.base_name = base_name
         self.control_freq = control_freq
@@ -130,6 +135,8 @@ class BaseRobot(StatefulObject):
             "at_limits": None,
         }
 
+        #print("[robot_base::BaseRobot::__init__] END")
+
     def _load(self, simulator):
         """
         Loads this pybullet model into the simulation. Should return a list of unique body IDs corresponding
@@ -140,6 +147,8 @@ class BaseRobot(StatefulObject):
         :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
             only be a single value
         """
+        #print("[robot_base::BaseRobot::_load] START")
+
         log.debug("Loading robot model file: {}".format(self.model_file))
 
         # A persistent reference to simulator is needed for AG in ManipulationRobot
@@ -178,10 +187,15 @@ class BaseRobot(StatefulObject):
         for body_id in body_ids:
             simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
+        #print("[robot_base::BaseRobot::_load] END")
+
         return body_ids
 
     def load(self, simulator):
         # Call the load function on the BaseObject through StatefulObject. This sets up the body_ids member.
+        
+        #print("[robot_base::BaseRobot::load] START")
+
         body_ids = super(BaseRobot, self).load(simulator)
 
         # Grab relevant references from the body IDs
@@ -193,9 +207,11 @@ class BaseRobot(StatefulObject):
             link_b = self._links[names[1]]
             p.setCollisionFilterPair(link_a.body_id, link_b.body_id, link_a.link_id, link_b.link_id, 0)
 
+        #print("[robot_base::BaseRobot::load] BEFORE _load_controllers")
         # Load controllers
         self._load_controllers()
 
+        #print("[robot_base::BaseRobot::load] BEFORE _create_continuous_action_space")
         # Setup action space
         self._action_space = (
             self._create_discrete_action_space()
@@ -203,12 +219,18 @@ class BaseRobot(StatefulObject):
             else self._create_continuous_action_space()
         )
 
+        #print("[robot_base::BaseRobot::load] BEFORE _validate_configuration")
         # Validate this robot configuration
         self._validate_configuration()
 
+        #print("[robot_base::BaseRobot::load] BEFORE reset")
         # Reset the robot and keep all joints still after loading
         self.reset()
+
+        #print("[robot_base::BaseRobot::load] BEFORE keep_still")
         self.keep_still()
+
+        #print("[robot_base::BaseRobot::load] END")
 
         # Return the body IDs
         return body_ids
@@ -367,11 +389,20 @@ class BaseRobot(StatefulObject):
 
         By default, sets all joint states (pos, vel) to 0, and resets all controllers.
         """
+        #print("[robot_base::BaseRobot::reset] START")
+
         for joint, joint_pos in zip(self._joints.values(), self.reset_joint_pos):
+            
+            #print("[robot_base::BaseRobot::reset] joint: " + str(joint))
+            #print("[robot_base::BaseRobot::reset] joint_pos: " + str(joint_pos))
+            #print("[robot_base::BaseRobot::reset] joint type: " + str(type(joint)))
             joint.reset_state(joint_pos, 0.0)
 
         for controller in self._controllers.values():
+            #print("[robot_base::BaseRobot::reset] controller type: " + str(type(controller)))
             controller.reset()
+
+        #print("[robot_base::BaseRobot::reset] END")
 
     def _load_controllers(self):
         """
@@ -379,6 +410,8 @@ class BaseRobot(StatefulObject):
         Stores created controllers as dictionary mapping controller names to specific controller
         instances used by this robot.
         """
+        #print("[robot_base::BaseRobot::_load_controllers] START")
+
         # Initialize controllers to create
         self._controllers = OrderedDict()
         # Loop over all controllers, in the order corresponding to @action dim
@@ -389,7 +422,10 @@ class BaseRobot(StatefulObject):
             if self.action_normalize:
                 cfg["command_input_limits"] = "default"  # default is normalized (-1, 1)
             # Create the controller
+            #print("[robot_base::BaseRobot::_load_controllers] name: " + str(name))
             self._controllers[name] = create_controller(**cfg)
+
+        #print("[robot_base::BaseRobot::_load_controllers] END")
 
     @abstractmethod
     def _create_discrete_action_space(self):
@@ -426,6 +462,9 @@ class BaseRobot(StatefulObject):
         Converts inputted actions into low-level control signals and deploys them on the robot
         :param action: Array[float], n-DOF length array of actions to convert and deploy on the robot
         """
+
+        #print("[robot_base::BaseRobot::apply_action] START")
+
         assert len(action) == self.action_dim, "Action does not match robot's action dimension."
 
         self._last_action = action
@@ -438,10 +477,16 @@ class BaseRobot(StatefulObject):
             action = np.array(self.action_list[action])
 
         # Run convert actions to controls
+        #print("[robot_base::BaseRobot::apply_action] BEFORE _actions_to_control action: " + str(action))
         control, control_type = self._actions_to_control(action=action)
+        #print("[robot_base::BaseRobot::apply_action] AFTER _actions_to_control action: " + str(action))
 
         # Deploy control signals
+        #print("[robot_base::BaseRobot::apply_action] BEFORE _deploy_control control: " + str(control))
         self._deploy_control(control=control, control_type=control_type)
+        #print("[robot_base::BaseRobot::apply_action] AFTER _deploy_control control: " + str(control))
+
+        #print("[robot_base::BaseRobot::apply_action] END")
 
     def _actions_to_control(self, action):
         """
@@ -453,14 +498,27 @@ class BaseRobot(StatefulObject):
         :return Tuple[Array[float], Array[ControlType]]: The (1) raw control signals to send to the robot's joints
             and (2) control types for each joint
         """
+
+        #print("[robot_base::BaseRobot::_actions_to_control] START")
+
+        #print("[robot_base::BaseRobot::_actions_to_control] action: " + str(action))
+
         # First, loop over all controllers, and calculate the computed control
         control = OrderedDict()
         idx = 0
         for name, controller in self._controllers.items():
             # Compose control_dict
             control_dict = self.get_control_dict()
+
+            #print("[robot_base::BaseRobot::_actions_to_control] control_dict: " + str(control_dict))
+            #print("[robot_base::BaseRobot::_actions_to_control] command_dim: " + str(controller.command_dim))
+            #print("[robot_base::BaseRobot::_actions_to_control] controller type: " + str(type(controller)))
+
             # Set command, then take a controller step
             controller.update_command(command=action[idx : idx + controller.command_dim])
+            
+            #print("[robot_base::BaseRobot::_actions_to_control] name: " + str(name))
+            
             control[name] = {
                 "value": controller.step(control_dict=control_dict),
                 "type": controller.control_type,
@@ -468,13 +526,34 @@ class BaseRobot(StatefulObject):
             # Update idx
             idx += controller.command_dim
 
+        #print("[robot_base::BaseRobot::_actions_to_control] control: " + str(control))
+
+        #print("[robot_base::BaseRobot::_actions_to_control] DEBUG INF")
+        #while 1:
+        #    continue
+
         # Compose controls
         u_vec = np.zeros(self.n_joints)
         u_type_vec = np.array([ControlType.POSITION] * self.n_joints)
+        
+        #print("[robot_base::BaseRobot::_actions_to_control] n_joints: " + str(self.n_joints))
+        #print("[robot_base::BaseRobot::_actions_to_control] BEFORE u_vec: " + str(u_vec))
+        #print("[robot_base::BaseRobot::_actions_to_control] BEFORE u_type_vec: " + str(u_type_vec))
+
         for group, ctrl in control.items():
             idx = self._controllers[group].joint_idx
+            #print("[robot_base::BaseRobot::_actions_to_control] group: " + str(group))
+            #print("[robot_base::BaseRobot::_actions_to_control] idx: " + str(idx))
             u_vec[idx] = ctrl["value"]
             u_type_vec[idx] = ctrl["type"]
+        
+        #print("[robot_base::BaseRobot::_actions_to_control] AFTER u_vec: " + str(u_vec))
+        #print("[robot_base::BaseRobot::_actions_to_control] AFTER u_type_vec: " + str(u_type_vec))
+        #print("[robot_base::BaseRobot::_actions_to_control] END")
+
+        #print("[robot_base::BaseRobot::_actions_to_control] DEBUG INF")
+        #while 1:
+        #    continue
 
         # Return control
         return u_vec, u_type_vec

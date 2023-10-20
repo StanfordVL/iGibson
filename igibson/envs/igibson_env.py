@@ -476,15 +476,15 @@ class iGibsonEnv(BaseEnv):
         """
         Load action space.
         """
-        print("[igibson_env::iGibsonEnv::load_action_space] START")
+        #print("[igibson_env::iGibsonEnv::load_action_space] START")
         
         self.action_space = self.robots[0].action_space
 
-        print("[igibson_env::iGibsonEnv::load_action_space] action_space: " + str(self.action_space))
+        #print("[igibson_env::iGibsonEnv::load_action_space] action_space: " + str(self.action_space))
         #print("[igibson_env::iGibsonEnv::load_action_space] DEBUG INF")
         #while 1:
         #    continue
-        print("[igibson_env::iGibsonEnv::load_action_space] END")
+        #print("[igibson_env::iGibsonEnv::load_action_space] END")
 
     def load_miscellaneous_variables(self):
         """
@@ -499,24 +499,24 @@ class iGibsonEnv(BaseEnv):
         """
         Load environment.
         """
-        print("[igibson_env::iGibsonEnv::load] START")
+        #print("[igibson_env::iGibsonEnv::load] START")
 
-        print("[igibson_env::iGibsonEnv::load] START super")
+        #print("[igibson_env::iGibsonEnv::load] START super")
         super(iGibsonEnv, self).load()
         
-        print("[igibson_env::iGibsonEnv::load] START load_task_setup")
+        #print("[igibson_env::iGibsonEnv::load] START load_task_setup")
         self.load_task_setup()
         
-        print("[igibson_env::iGibsonEnv::load] START load_observation_space")
+        #print("[igibson_env::iGibsonEnv::load] START load_observation_space")
         self.load_observation_space()
         
-        print("[igibson_env::iGibsonEnv::load] START load_action_space")
+        #print("[igibson_env::iGibsonEnv::load] START load_action_space")
         self.load_action_space()
         
-        print("[igibson_env::iGibsonEnv::load] START load_miscellaneous_variables")
+        #print("[igibson_env::iGibsonEnv::load] START load_miscellaneous_variables")
         self.load_miscellaneous_variables()
 
-        print("[igibson_env::iGibsonEnv::load] END")
+        #print("[igibson_env::iGibsonEnv::load] END")
 
     def get_state(self):
         """
