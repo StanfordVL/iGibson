@@ -1,28 +1,25 @@
 <launch>
-
   <!-- Parameters -->
-  <arg name="rviz"        default="false" />
-  <arg name="robot_name" value="jackalJaco"/>
+  <arg name="rviz"                default="false" />
+  <arg name="robot_ns"            default="robotName_0"/>
+  <arg name="urdf_path"           default="urdf/jackal_fixedWheel_jaco_fixedFinger.urdf" />
 
-  <arg name="ns0" value="$(arg robot_name)_0"/>
-  <arg name="ns1" value="$(arg robot_name)_1"/>
-
-  <!-- Launch robot 1 -->
+  <!-- Launch robot -->
   <!-- Launch iGibson Python script -->
-  <group ns="$(arg ns0)">
-    <param name="tf_prefix" value="$(arg ns0)"/>
-    <param name="robot_description" command="cat $(find mobiman_simulation)/urdf/jackal_jaco.urdf"/>
+  <group ns="$(arg robot_ns)">
+    <param name="tf_prefix" value="$(arg robot_ns)"/>
+    <param name="robot_description" command="cat $(find mobiman_simulation)/$(arg urdf_path)"/>
     
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
-      <remap from="/$(arg ns0)/joint_states" to="gibson_ros/joint_states"/>
+      <remap from="/$(arg robot_ns)/joint_states" to="gibson_ros/joint_states"/>
     </node>
     
     <!--node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-      <remap from="/$(arg ns0)/joint_states" to="/joint_domates"/>
+      <remap from="/$(arg robot_ns)/joint_states" to="/joint_domates"/>
     </node-->
 
     <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen">
-      <!--remap from="/mobile_base/commands/velocity" to="/$(arg ns0)/cmd_vel"/-->
+      <!--remap from="/mobile_base/commands/velocity" to="/$(arg robot_ns)/cmd_vel"/-->
     </node>
 
     <!--node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
@@ -30,7 +27,7 @@
 
     <!--node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
       <param name="scan_height" value="2"/>
-      <param name="output_frame_id" value="$(arg ns0)/camera_depth_frame"/>
+      <param name="output_frame_id" value="$(arg robot_ns)/camera_depth_frame"/>
       <param name="range_min" value="0.45"/>
       <remap from="image" to="gibson_ros/camera/depth/image"/>
       <remap from="scan" to="gibson_ros/laserscan"/>
@@ -46,56 +43,13 @@
         <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
         <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
     </node-->
+
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher" args="0 0 0 0 0 0 1 world $(arg robot_ns)/odom 100" />
+  
+    <!-- Launch Rviz -->
+    <group if="$(eval arg('rviz') == true)">
+          <!--include file="$(find mobiman_simulation)/launch/examples/rviz_ocs2_$(arg sim).launch" /-->
+          <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/jackal_jaco.rviz" />
+    </group>
   </group>
-
-  <!-- Launch robot 2 -->
-  <!-- Launch iGibson Python script -->
-  <group ns="$(arg ns1)">
-    <param name="tf_prefix" value="$(arg ns1)"/>
-    <param name="robot_description" command="cat $(find mobiman_simulation)/urdf/jackal_jaco.urdf"/>
-    
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
-      <remap from="/$(arg ns1)/joint_states" to="gibson_ros/joint_states"/>
-    </node>
-    
-    <!--node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-      <remap from="/$(arg ns1)/joint_states" to="/joint_domates"/>
-    </node-->
-
-    <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen">
-      <!--remap from="/mobile_base/commands/velocity" to="/$(arg ns1)/cmd_vel"/-->
-    </node>
-
-    <!--node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
-    </node-->
-
-    <!--node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
-      <param name="scan_height" value="2"/>
-      <param name="output_frame_id" value="$(arg ns1)/camera_depth_frame"/>
-      <param name="range_min" value="0.45"/>
-      <remap from="image" to="gibson_ros/camera/depth/image"/>
-      <remap from="scan" to="gibson_ros/laserscan"/>
-    </node>
-
-    <node pkg="nodelet" type="nodelet" args="manager"
-          name="record_player_manager" output="screen"/>
-          
-    <node pkg="nodelet" type="nodelet" name="cloudify"
-          args="load depth_image_proc/point_cloud_xyzrgb record_player_manager - -no-bond" output="screen">
-        <remap from="depth_registered/image_rect" to="gibson_ros/camera/depth/image"/>
-        <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
-        <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
-        <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
-    </node-->
-  </group>
-
-  <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns0)" args="0 0 0 0 0 0 1 world $(arg ns0)/odom 100" />
-  <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns1)" args="0 0 0 0 0 0 1 world $(arg ns1)/odom 100" />
-
-  <!-- Launch Rviz -->
-  <group if="$(eval arg('rviz') == true)">
-        <!--include file="$(find mobiman_simulation)/launch/examples/rviz_ocs2_$(arg sim).launch" /-->
-        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/jackal_jaco.rviz" />
-  </group>
-
 </launch>
