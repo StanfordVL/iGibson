@@ -50,24 +50,26 @@
 
   <!-- Launch robot 2 -->
   <!-- Launch iGibson Python script -->
-  <!--group ns="$(arg ns1)">
+  <group ns="$(arg ns1)">
     <param name="tf_prefix" value="$(arg ns1)"/>
-    <param name="robot_description" command="cat $(find igibson-ros)/turtlebot/turtlebot.urdf"/>
+    <param name="robot_description" command="cat $(find mobiman_simulation)/urdf/jackal_jaco.urdf"/>
     
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <remap from="/$(arg ns1)/joint_states" to="gibson_ros/joint_states"/>
     </node>
     
-    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <!--node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <remap from="/$(arg ns1)/joint_states" to="/joint_domates"/>
+    </node-->
+
+    <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen">
+      <!--remap from="/mobile_base/commands/velocity" to="/$(arg ns1)/cmd_vel"/-->
     </node>
 
-    <node name="turtlebot_gibson_sim" pkg="igibson-ros" type="turtlebot_rgbd.py" output="screen">
-      <remap from="/mobile_base/commands/velocity" to="/$(arg ns1)/cmd_vel"/>
-    </node>
+    <!--node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
+    </node-->
 
-    <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
-    </node>
-
-    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
+    <!--node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
       <param name="scan_height" value="2"/>
       <param name="output_frame_id" value="$(arg ns1)/camera_depth_frame"/>
       <param name="range_min" value="0.45"/>
@@ -84,11 +86,11 @@
         <remap from="depth_registered/points" to="gibson_ros/camera/depth_registered/points"/>
         <remap from="rgb/image_rect_color" to="gibson_ros/camera/rgb/image"/>
         <remap from="rgb/camera_info" to="gibson_ros/camera/depth/camera_info"/>
-    </node>
-  </group-->
+    </node-->
+  </group>
 
   <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns0)" args="0 0 0 0 0 0 1 world $(arg ns0)/odom 100" />
-  <!--node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns1)" args="0 0 0 0 0 0 1 world $(arg ns1)/odom 100" /-->
+  <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher_$(arg ns1)" args="0 0 0 0 0 0 1 world $(arg ns1)/odom 100" />
 
   <!-- Launch Rviz -->
   <group if="$(eval arg('rviz') == true)">
