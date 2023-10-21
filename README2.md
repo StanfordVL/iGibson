@@ -1,6 +1,41 @@
 # mobiman-igibson
 <hr>
 
+## iGibson Installation:
+
+1. Install python library:
+```
+pip install igibson
+```
+
+2. Clone the igibson repository into a folder, such as "projects":
+```
+cd
+mkdir projects
+cd projects
+git clone https://github.com/StanfordVL/iGibson --recursive
+cd iGibson
+pip install -e .
+```
+
+3. Clone the igibson repo into the src folder of a catkin workspace, such as "catkin_ws":
+```
+cd ~/catkin_ws/src
+ln -s ~/projects/iGibson/igibson/examples/ros/igibson-ros/ .
+cd ..
+```
+
+4. Install ROS dependencies:
+```
+rosdep install --from-paths src --ignore-src -r -y
+```
+
+5. Build and source:
+```
+catkin build
+source devel/setup.bash
+```
+
 ## Example 1: Multi-Turtlebot simulation in iGibson and observations are published in ROS:
 
 In a terminal, within igibson-ros workspace:
