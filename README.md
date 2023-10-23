@@ -59,7 +59,7 @@ The documentation for iGibson can be found here: [iGibson Documentation](http://
 
 If you want to know more about iGibson, you can also check out [our webpage](http://svl.stanford.edu/igibson),  [iGibson 2.0 arxiv preprint](https://arxiv.org/abs/2108.03272) and [iGibson 1.0 arxiv preprint](https://arxiv.org/abs/2012.02924).
 
-### Dowloading the Dataset of 3D Scenes
+### Downloading the Dataset of 3D Scenes
 
 For instructions to install iGibson and download dataset, you can visit [installation guide](http://svl.stanford.edu/igibson/docs/installation.html) and [dataset download guide](http://svl.stanford.edu/igibson/docs/dataset.html).
 
