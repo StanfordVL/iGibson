@@ -13,8 +13,9 @@ pip install igibson
 cd
 mkdir projects
 cd projects
-git clone https://github.com/StanfordVL/iGibson --recursive
+git clone git@github.com:RIVeR-Lab/iGibson.git --recursive
 cd iGibson
+git checkout mobiman-devel-v0
 pip install -e .
 ```
 
