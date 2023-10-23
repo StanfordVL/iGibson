@@ -1,6 +1,9 @@
 # mobiman-igibson
 <hr>
 
+## References:
+- [iGibson (master)](https://github.com/StanfordVL/iGibson)
+
 ## iGibson Installation:
 
 1. Install python library:
