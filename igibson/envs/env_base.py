@@ -233,6 +233,8 @@ class BaseEnv(gym.Env):
                 robot_name_tmp = robot_config.pop("name")
                 if robot_name != robot_name_tmp:
                     continue
+                else:
+                    break
         else:
             robot_config = self.config["robot"]
             robot_name = robot_config.pop("name")
