@@ -1,6 +1,9 @@
 # igibson simulator
-mode: "gui_interactive"
-use_pb_gui: true
+
+# headless
+# gui_interactive
+mode: "headless"
+use_pb_gui: false
 action_timestep: 0.04 # 1/24
 physics_timestep: 0.04 # 1/240
 render_timestep: 0.02 # 1/48
