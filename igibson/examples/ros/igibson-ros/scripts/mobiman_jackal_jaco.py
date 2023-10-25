@@ -135,7 +135,7 @@ class SimNode:
             #    continue
 
             
-            if (now - self.last_update_base).to_sec() > 0.5:
+            if (now - self.last_update_base).to_sec() > 0.1:
                 cmd_base = [0.0, 0.0]
             else:
                 cmd_base = self.cmd_base
@@ -147,7 +147,7 @@ class SimNode:
                 cmd_arm = self.cmd_arm
             '''
 
-            cmd_base = self.cmd_base
+            #cmd_base = self.cmd_base
             cmd_arm = self.cmd_arm
             #cmd = cmd_arm + cmd_base
             cmd = cmd_base + cmd_arm
