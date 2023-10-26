@@ -9,6 +9,8 @@ import numpy as np
 import pybullet as p
 from transforms3d.euler import euler2quat
 
+from igibson import ros_path
+from igibson.utils.utils import parse_config
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
 from igibson.robots.robot_base import BaseRobot
@@ -39,6 +41,8 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image as ImageMsg
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
+from sensor_msgs.msg import JointState
+from trajectory_msgs.msg import JointTrajectory
 
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
@@ -84,29 +88,46 @@ class iGibsonEnv(BaseEnv):
         self.ros_node_init = ros_node_init
         if not self.ros_node_init:
             rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
-            
-            ### NUA TODO: Set this in config file!
-            rospack = rospkg.RosPack()
-            #path = rospack.get_path("igibson-ros")
-            path = "/home/akmandor/projects/iGibson/igibson/examples/ros/igibson-ros/config"
-            config_filename = os.path.join(path, "turtlebot_rgbd.yaml")
-            config_file = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
-            self.ns = ""
-            if ros_node_id == 1:
-                self.ns = "robot2/"
-            else:
-                self.ns = "robot1/"
+            config_data = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
+            config = parse_config(config_data)
+
+            robot_ns = config["robot_ns"]
+            self.ns = robot_ns + "_" + str(ros_node_id) + "/"
 
             print("============================================")
+            print("[igibson_env::iGibsonEnv::__init__] config_file: " + str(config_file))
+            print("[igibson_env::iGibsonEnv::__init__] scene_id: " + str(scene_id))
+            print("[igibson_env::iGibsonEnv::__init__] mode: " + str(mode))
+            print("[igibson_env::iGibsonEnv::__init__] action_timestep: " + str(action_timestep))
+            print("[igibson_env::iGibsonEnv::__init__] physics_timestep: " + str(physics_timestep))
+            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
+            print("[igibson_env::iGibsonEnv::__init__] use_pb_gui: " + str(use_pb_gui))
+            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
+            print("[igibson_env::iGibsonEnv::__init__] ros_node_init: " + str(ros_node_init))
             print("[igibson_env::iGibsonEnv::__init__] ros_node_id: " + str(ros_node_id))
-            print("[igibson_env::iGibsonEnv::__init__] config_data: " + str(config_file))
-            print("[igibson_env::iGibsonEnv::__init__] self.ns: " + str(self.ns))
+            print("[igibson_env::iGibsonEnv::__init__] robot_ns: " + str(robot_ns))
+            print("[igibson_env::iGibsonEnv::__init__] ns: " + str(self.ns))
             print("============================================")
 
-            self.cmdx = 0.0
-            self.cmdy = 0.0
+            # Set initial command
+            self.cmd_init_base = [0.0, 0.0]
+            self.cmd_base = self.cmd_init_base
 
+            self.cmd_init_j1 = 0.0
+            self.cmd_init_j2 = 2.9
+            self.cmd_init_j3 = 1.3
+            self.cmd_init_j4 = 4.2
+            self.cmd_init_j5 = 1.4
+            self.cmd_init_j6 = 0.0
+            self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
+            self.cmd_arm = self.cmd_init_arm
+            self.cmd = self.cmd_base + self.cmd_arm
+
+            self.last_update_base = rospy.Time.now()
+            self.last_update_arm = rospy.Time.now()
+            
+            # Set Publishers
             self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
             self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
             self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
@@ -114,33 +135,320 @@ class iGibsonEnv(BaseEnv):
             self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
             self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
             self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
-                
-            #rospy.Subscriber("/mobile_base/commands/velocity", Twist, self.cmd_callback)
-            #rospy.Subscriber("/reset_pose", PoseStamped, self.tp_robot_callback)
+            self.joint_states_pub = rospy.Publisher(self.ns + "gibson_ros/joint_states", JointState, queue_size=10)
+            
+            # Set Subscribers
+            rospy.Subscriber(self.ns + "mobile_base_controller/cmd_vel", Twist, self.cmd_base_callback)
+            rospy.Subscriber(self.ns + "arm_controller/cmd_pos", JointTrajectory, self.cmd_arm_callback)
 
             self.bridge = CvBridge()
             self.br = tf.TransformBroadcaster()
 
+            #print("[igibson_env::iGibsonEnv::__init__] DEBUG_INF")
+            #while 1:
+            #    continue
+
         super(iGibsonEnv, self).__init__(
-            config_file=config_file,
-            scene_id=scene_id,
-            mode=mode,
-            action_timestep=action_timestep,
-            physics_timestep=physics_timestep,
-            rendering_settings=rendering_settings,
-            vr_settings=vr_settings,
-            device_idx=device_idx,
-            use_pb_gui=use_pb_gui,
+              config_file=config_file,
+              scene_id=scene_id,
+              mode=mode,
+              action_timestep=action_timestep,
+              physics_timestep=physics_timestep,
+              rendering_settings=rendering_settings,
+              vr_settings=vr_settings,
+              device_idx=device_idx,
+              use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
 
         print("[igibson_env::iGibsonEnv::__init__] END")
+        
         #print("[igibson_env::iGibsonEnv::__init__] DEBUG INF")
         #while 1:
         #    continue
-    
+
+    def cmd_base_callback(self, data):
+        self.cmd_base = [data.linear.x, -data.angular.z]
+        self.last_update_base = rospy.Time.now()
+
+    def cmd_arm_callback(self, data):
+        joint_names = data.joint_names
+        self.cmd_arm = list(data.points[0].positions)
+
+    def update_ros_topics2(self, state):
+        #print("[igibson_env::iGibsonEnv::update_ros_topics2] START")
+
+        last = rospy.Time.now()
+        '''
+        ctr = 0
+        init_j2n6s300_joint_1 = 0
+        init_j2n6s300_joint_2 = 0
+        init_j2n6s300_joint_3 = 0
+        init_j2n6s300_joint_4 = 0
+        init_j2n6s300_joint_5 = 0
+        init_j2n6s300_joint_6 = 0
+        '''
+        if not rospy.is_shutdown():
+            #print("[mobiman_jackal_jaco::run] ctr: " + str(ctr))
+
+            now = rospy.Time.now()
+            #dt = (now-last).to_sec()
+            #print(" dt: " + str(dt) + str(" sec"))
+            #print(" freq: " + str(1/dt) + str(" Hz\n"))
+            #last = now
+            
+            #print("[SimNode::__init__] DEBUG INF")
+            #while 1:
+            #    continue
+
+            
+            if (now - self.last_update_base).to_sec() > 0.1:
+                cmd_base = [0.0, 0.0]
+            else:
+                cmd_base = self.cmd_base
+
+            '''
+            if (now - self.last_update_arm).to_sec() > 2.0:
+                cmd_arm = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            else:
+                cmd_arm = self.cmd_arm
+            '''
+
+            #cmd_base = self.cmd_base
+            cmd_arm = self.cmd_arm
+            #cmd = cmd_arm + cmd_base
+            cmd = cmd_base + cmd_arm
+            #print("[mobiman_jackal_jaco::run] cmd: " + str(len(cmd)))
+            #print(cmd)
+            
+            #print("")
+            #cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+            joint_states_before = self.robots[0].get_joint_states()
+            #print("[mobiman_jackal_jaco::run] joint_states_before: " + str(len(joint_states_before)))
+            #print(joint_states_before)
+
+            '''
+            if ctr == 0:
+                init_j2n6s300_joint_1 = joint_states_before["j2n6s300_joint_1"][0]
+                init_j2n6s300_joint_2 = joint_states_before["j2n6s300_joint_2"][0]
+                init_j2n6s300_joint_3 = joint_states_before["j2n6s300_joint_3"][0]
+                init_j2n6s300_joint_4 = joint_states_before["j2n6s300_joint_4"][0]
+                init_j2n6s300_joint_5 = joint_states_before["j2n6s300_joint_5"][0]
+                init_j2n6s300_joint_6 = joint_states_before["j2n6s300_joint_6"][0]
+            '''
+
+            #obs, _, _, _ = self.env.step(cmd)
+
+            joint_states_after = self.robots[0].get_joint_states()
+            #print("[mobiman_jackal_jaco::run] joint_states_after: " + str(len(joint_states_after)))
+            #print(joint_states_after)
+
+            '''
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_1: " + str(cmd_arm[0]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_1: " + str(joint_states_before["j2n6s300_joint_1"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_1: " + str(joint_states_after["j2n6s300_joint_1"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (rad):  " + str(abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_2: " + str(cmd_arm[1]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_2: " + str(joint_states_before["j2n6s300_joint_2"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_2: " + str(joint_states_after["j2n6s300_joint_2"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_3: " + str(cmd_arm[2]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_3: " + str(joint_states_before["j2n6s300_joint_3"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_3: " + str(joint_states_after["j2n6s300_joint_3"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_4: " + str(cmd_arm[3]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_4: " + str(joint_states_before["j2n6s300_joint_4"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_4: " + str(joint_states_after["j2n6s300_joint_4"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_5: " + str(cmd_arm[4]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_5: " + str(joint_states_before["j2n6s300_joint_5"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_5: " + str(joint_states_after["j2n6s300_joint_5"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0]) / math.pi))
+            print("")
+            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_6: " + str(cmd_arm[5]))
+            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_6: " + str(joint_states_before["j2n6s300_joint_6"][0]))
+            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_6: " + str(joint_states_after["j2n6s300_joint_6"][0]))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0])))
+            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0]) / math.pi))
+            print("-------------------")
+            print("")
+            '''
+
+            '''
+            if ctr > 5:
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - init_j2n6s300_joint_1) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - init_j2n6s300_joint_2) / math.pi))          
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - init_j2n6s300_joint_3) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - init_j2n6s300_joint_4) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - init_j2n6s300_joint_5) / math.pi))            
+                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - init_j2n6s300_joint_6) / math.pi))            
+                print("[SimNode::__init__] DEBUG INF")
+                while 1:
+                    continue
+            '''
+
+            '''
+            rgb = (obs["rgb"] * 255).astype(np.uint8)
+            normalized_depth = obs["depth"].astype(np.float32)
+            depth = normalized_depth * self.env.sensors["vision"].depth_high
+            depth_raw_image = (obs["depth"] * 1000).astype(np.uint16)
+
+            image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
+            depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
+            depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
+
+            image_message.header.stamp = now
+            depth_message.header.stamp = now
+            depth_raw_message.header.stamp = now
+            image_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+            depth_raw_message.header.frame_id = self.ns + "camera_depth_optical_frame"
+
+            self.image_pub.publish(image_message)
+            self.depth_pub.publish(depth_message)
+            self.depth_raw_pub.publish(depth_raw_message)
+
+            msg = CameraInfo(
+                height=256,
+                width=256,
+                distortion_model="plumb_bob",
+                D=[0.0, 0.0, 0.0, 0.0, 0.0],
+                K=[128, 0.0, 128, 0.0, 128, 128, 0.0, 0.0, 1.0],
+                R=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+                P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0],
+            )
+            msg.header.stamp = now
+            msg.header.frame_id = self.ns + "camera_depth_optical_frame"
+            self.camera_info_pub.publish(msg)
+
+            if (self.tp_time is None) or ((self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)):
+                scan = obs["scan"]
+                lidar_header = Header()
+                lidar_header.stamp = now
+                lidar_header.frame_id = self.ns + "scan_link"
+
+                laser_linear_range = self.env.sensors["scan_occ"].laser_linear_range
+                laser_angular_range = self.env.sensors["scan_occ"].laser_angular_range
+                min_laser_dist = self.env.sensors["scan_occ"].min_laser_dist
+                n_horizontal_rays = self.env.sensors["scan_occ"].n_horizontal_rays
+
+                laser_angular_half_range = laser_angular_range / 2.0
+                angle = np.arange(
+                    -np.radians(laser_angular_half_range),
+                    np.radians(laser_angular_half_range),
+                    np.radians(laser_angular_range) / n_horizontal_rays,
+                )
+                unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
+                lidar_points = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
+
+                lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
+                self.lidar_pub.publish(lidar_message)
+            '''
+
+            # Odometry
+            odom = [
+                np.array(self.robots[0].get_position()) - np.array(self.task.initial_pos),
+                np.array(self.robots[0].get_rpy()) - np.array(self.task.initial_orn),
+            ]
+
+            self.br.sendTransform(
+                (odom[0][0], odom[0][1], 0),
+                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                rospy.Time.now(),
+                self.ns + "base_link",
+                self.ns + "odom",
+            )
+
+            odom_msg = Odometry()
+            odom_msg.header.stamp = rospy.Time.now()
+            odom_msg.header.frame_id = self.ns + "odom"
+            odom_msg.child_frame_id = self.ns + "base_link"
+
+            odom_msg.pose.pose.position.x = odom[0][0]
+            odom_msg.pose.pose.position.y = odom[0][1]
+            (
+                odom_msg.pose.pose.orientation.x,
+                odom_msg.pose.pose.orientation.y,
+                odom_msg.pose.pose.orientation.z,
+                odom_msg.pose.pose.orientation.w,
+            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+
+            odom_msg.twist.twist.linear.x = self.robots[0].get_linear_velocity()[0]
+            odom_msg.twist.twist.linear.y = self.robots[0].get_linear_velocity()[1]
+            odom_msg.twist.twist.linear.z = self.robots[0].get_linear_velocity()[2]
+            odom_msg.twist.twist.angular.x = self.robots[0].get_angular_velocity()[0]
+            odom_msg.twist.twist.angular.y = self.robots[0].get_angular_velocity()[1]
+            odom_msg.twist.twist.angular.z = self.robots[0].get_angular_velocity()[2]
+            self.odom_pub.publish(odom_msg)
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] odom_msg: " + str(odom_msg))
+
+            # Joint States
+            joint_state_msg = JointState()
+            joint_state_msg.header.stamp = rospy.Time.now()
+            joint_state_msg.header.frame_id = ""
+            #joint_state_msg.header.frame_id = self.ns + "odom"
+
+            joint_names = self.robots[0].get_joint_names()
+
+            joint_state_msg.name = joint_names
+            joint_states_igibson = self.robots[0].get_joint_states()
+
+            joint_state_msg.position = []
+            joint_state_msg.velocity = []
+            for jn in joint_names:
+                jp = joint_states_igibson[jn][0]
+                jv = joint_states_igibson[jn][1]
+                #print(jn + ": " + str(jp) + ", " + str(jv))
+
+                joint_state_msg.position.append(jp)
+                joint_state_msg.velocity.append(jv)
+
+            self.joint_states_pub.publish(joint_state_msg)
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] joint_state_msg: " + str(joint_state_msg))
+
+            #print("[SimNode::__init__] DEBUG INF")
+            #while 1:
+            #    continue
+
+            '''
+            # Ground truth pose
+            gt_pose_msg = Odometry()
+            gt_pose_msg.header.stamp = rospy.Time.now()
+            gt_pose_msg.header.frame_id = self.ns + "odom"
+            gt_pose_msg.child_frame_id = self.ns + "base_link"
+
+            xyz = self.env.robots[0].get_position()
+            rpy = self.env.robots[0].get_rpy()
+
+            gt_pose_msg.pose.pose.position.x = xyz[0]
+            gt_pose_msg.pose.pose.position.y = xyz[1]
+            gt_pose_msg.pose.pose.position.z = xyz[2]
+            (
+                gt_pose_msg.pose.pose.orientation.x,
+                gt_pose_msg.pose.pose.orientation.y,
+                gt_pose_msg.pose.pose.orientation.z,
+                gt_pose_msg.pose.pose.orientation.w,
+            ) = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+
+            gt_pose_msg.twist.twist.linear.x = cmdx
+            gt_pose_msg.twist.twist.angular.z = -cmdy
+            '''
+
+            #ctr += 1
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] END")
+
     def update_ros_topics(self, state):
-        #print("[igibson_env::iGibsonEnv::update_ros_topics] START")
+        print("[igibson_env::iGibsonEnv::update_ros_topics] START")
 
         if not rospy.is_shutdown():
             rgb = (state["rgb"] * 255).astype(np.uint8)
@@ -602,6 +910,13 @@ class iGibsonEnv(BaseEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
+        print("[igibson_env::iGibsonEnv::step] START")
+
+        print("[igibson_env::iGibsonEnv::step] BEFORE INIT action: " + str(action))
+        action = self.cmd_init_base + self.cmd_init_arm
+        print("[igibson_env::iGibsonEnv::step] AFTER INIT action: " + str(action))
+        print("")
+        
         self.current_step += 1
         if action is not None:
             self.robots[0].apply_action(action)
@@ -617,10 +932,11 @@ class iGibsonEnv(BaseEnv):
         self.populate_info(info)
 
         if not self.ros_node_init:
-            #print("[igibson_env::iGibsonEnv::step] START update_ros_topics")
+            #print("[igibson_env::iGibsonEnv::step] START update_ros_topics2")
             ## UPDATE ROS
-            self.update_ros_topics(state)
-            #print("[igibson_env::iGibsonEnv::step] END update_ros_topics")
+            self.update_ros_topics2(state)
+            #self.update_ros_topics(state)
+            #print("[igibson_env::iGibsonEnv::step] END update_ros_topics2")
 
         if done and self.automatic_reset:
             info["last_observation"] = state

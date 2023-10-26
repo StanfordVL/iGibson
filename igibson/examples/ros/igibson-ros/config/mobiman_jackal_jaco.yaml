@@ -1,5 +1,8 @@
 # igibson simulator
 
+n_robot: 2
+robot_ns: "jackalJaco"
+
 # headless
 # gui_interactive
 mode: "headless"

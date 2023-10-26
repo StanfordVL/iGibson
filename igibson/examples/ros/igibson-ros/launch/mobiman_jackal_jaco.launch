@@ -1,8 +1,11 @@
 <launch>
   <!-- Parameters -->
-  <arg name="rviz"                default="false" />
-  <arg name="robot_ns"            default="robotName_0"/>
-  <arg name="urdf_path"           default="urdf/jackal_fixedWheel_jaco_fixedFinger.urdf" />
+  <arg name="flag_rviz"                default="false" />
+  <arg name="flag_drl"                 default="false" />
+
+  <arg name="robot_ns"                 default="robotName_0"/>
+  <arg name="urdf_path"                default="urdf/jackal_fixedWheel_jaco_fixedFinger.urdf" />
+  
 
   <!-- Launch robot -->
   <!-- Launch iGibson Python script -->
@@ -18,9 +21,10 @@
       <remap from="/$(arg robot_ns)/joint_states" to="/joint_domates"/>
     </node-->
 
-    <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen">
-      <!--remap from="/mobile_base/commands/velocity" to="/$(arg robot_ns)/cmd_vel"/-->
-    </node>
+    
+    <group if="$(eval arg('flag_drl') == false)">
+      <node name="mobiman_jackal_jaco" pkg="igibson-ros" type="mobiman_jackal_jaco.py" output="screen" />
+    </group>
 
     <!--node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
     </node-->
@@ -47,7 +51,7 @@
     <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher" args="0 0 0 0 0 0 1 world $(arg robot_ns)/odom 100" />
   
     <!-- Launch Rviz -->
-    <group if="$(eval arg('rviz') == true)">
+    <group if="$(eval arg('flag_rviz') == true)">
           <!--include file="$(find mobiman_simulation)/launch/examples/rviz_ocs2_$(arg sim).launch" /-->
           <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/jackal_jaco.rviz" />
     </group>

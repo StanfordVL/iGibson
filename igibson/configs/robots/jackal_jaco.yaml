@@ -1,4 +1,4 @@
-# Example Husky config
+# Example Clearpath Jackal + Kinova Jaco config
 robot:
   name: JackalJaco
   action_type: continuous

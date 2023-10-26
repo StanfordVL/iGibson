@@ -65,9 +65,12 @@ class SimNode:
         self.cmd_init_j6 = 0.0
         self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
         self.cmd_arm = self.cmd_init_arm
-
         self.cmd = self.cmd_base + self.cmd_arm
+
+        self.last_update_base = rospy.Time.now()
+        self.last_update_arm = rospy.Time.now()
         
+        # Set Publishers
         self.image_pub = rospy.Publisher("gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
         self.depth_pub = rospy.Publisher("gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
         self.lidar_pub = rospy.Publisher("gibson_ros/lidar/points", PointCloud2, queue_size=10)
@@ -77,9 +80,7 @@ class SimNode:
         self.camera_info_pub = rospy.Publisher("gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
         self.joint_states_pub = rospy.Publisher("gibson_ros/joint_states", JointState, queue_size=10)
 
-        self.last_update_base = rospy.Time.now()
-        self.last_update_arm = rospy.Time.now()
-
+        # Set Subscribers
         rospy.Subscriber("mobile_base_controller/cmd_vel", Twist, self.cmd_base_callback)
         rospy.Subscriber("arm_controller/cmd_pos", JointTrajectory, self.cmd_arm_callback)
         rospy.Subscriber("reset_pose", PoseStamped, self.tp_robot_callback)

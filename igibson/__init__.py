@@ -131,9 +131,11 @@ if os.path.exists(ig_dataset_path):
 
 examples_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 configs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+ros_path = examples_path + "/ros/igibson-ros"
 
 log.debug("Example path: {}".format(examples_path))
 log.debug("Example config path: {}".format(configs_path))
+log.debug("Example ros path: {}".format(ros_path))
 
 # whether to enable debugging mode for object sampling
 debug_sampling = False
