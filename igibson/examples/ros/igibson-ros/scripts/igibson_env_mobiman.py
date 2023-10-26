@@ -44,8 +44,8 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory
 
-#from ocs2_msgs.msg import collision_info
-#from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse
+from ocs2_msgs.msg import collision_info
+from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse
 
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal

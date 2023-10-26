@@ -291,13 +291,13 @@ class SimNode:
 
             # Odometry
             odom = [
-                np.array(self.env.robots[0].get_position()) - np.array(self.env.task.initial_pos),
-                np.array(self.env.robots[0].get_rpy()) - np.array(self.env.task.initial_orn),
+                np.array(self.env.robots[0].get_position()) - np.array(self.env.task.initial_pos), # type: ignore
+                np.array(self.env.robots[0].get_rpy()) - np.array(self.env.task.initial_orn), # type: ignore
             ]
 
             self.br.sendTransform(
                 (odom[0][0], odom[0][1], 0),
-                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]), # type: ignore
                 rospy.Time.now(),
                 self.ns + "base_link",
                 self.ns + "odom",
@@ -315,7 +315,7 @@ class SimNode:
                 odom_msg.pose.pose.orientation.y,
                 odom_msg.pose.pose.orientation.z,
                 odom_msg.pose.pose.orientation.w,
-            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]) # type: ignore
 
             odom_msg.twist.twist.linear.x = self.env.robots[0].get_linear_velocity()[0]
             odom_msg.twist.twist.linear.y = self.env.robots[0].get_linear_velocity()[1]

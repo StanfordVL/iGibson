@@ -30,7 +30,7 @@ Example training code using stable-baselines3 PPO for PointNav task.
 """
 
 class CustomCombinedExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space: gym.spaces.Dict):
+    def __init__(self, observation_space: gym.spaces.Dict): # type: ignore
         # We do not know features-dim here before going over all the items,
         # so put something dummy for now. PyTorch requires calling
         # nn.Module.__init__ before adding modules
@@ -104,7 +104,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads a scene and starts the training process for a navigation task with images using PPO
     Saves the checkpoint and loads it again
     """
-    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80) # type: ignore
 
     config_file = "mobiman_jackal_jaco.yaml"
     config_path = igibson.ros_path + "/config/" + config_file
@@ -151,7 +151,7 @@ def main(selection="user", headless=False, short_exec=False):
                 ros_node_id=rank,
                 use_pb_gui=use_pb_gui
             )
-            env.seed(seed + rank)
+            env.seed(seed + rank) # type: ignore
             return env
 
         set_random_seed(seed)
