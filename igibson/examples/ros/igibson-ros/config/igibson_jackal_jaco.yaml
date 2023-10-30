@@ -3,6 +3,9 @@
 n_robot: 2
 robot_ns: "jackalJaco"
 
+### NUA TODO: DEPRECATE THIS OR CURRENT YAML!
+mobiman_config_path: "config/drl/config_mobiman_drl.yaml"
+
 # headless
 # gui_interactive
 mode: "headless"
@@ -58,16 +61,16 @@ collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot 
 
 # sensor spec
 #output: [task_obs, rgb, depth, scan]
-output: [task_obs]
+#output: [task_obs]
 #enable_pbr: false
 
 # image
 # Simulated camera with 90 degree field of view
 # If this is changed, also need to change the CameraInfo message
-fisheye: false
-image_width: 512
-image_height: 512
-vertical_fov: 90
+#fisheye: false
+#image_width: 512
+#image_height: 512
+#vertical_fov: 90
 
 # depth
 #depth_low: 0.8
@@ -90,4 +93,3 @@ vertical_fov: 90
 
 # visual objects
 #visible_target: true
-

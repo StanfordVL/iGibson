@@ -2,14 +2,16 @@ import argparse
 import logging
 import os
 import time
-from collections import OrderedDict
-
+import math
+import yaml
 import gym
 import numpy as np
 import pybullet as p
+from cv_bridge import CvBridge
 from transforms3d.euler import euler2quat
+from collections import OrderedDict
 
-from igibson import ros_path
+#from igibson import ros_path
 from igibson.utils.utils import parse_config
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
@@ -28,35 +30,31 @@ from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
 
-import yaml
-from cv_bridge import CvBridge
-
 import rospkg
 import rospy
 import tf
-from geometry_msgs.msg import PoseStamped, Twist
-from nav_msgs.msg import Odometry
-from sensor_msgs import point_cloud2 as pc2
-from sensor_msgs.msg import CameraInfo
-from sensor_msgs.msg import Image as ImageMsg
-from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
-from sensor_msgs.msg import JointState
+from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs import point_cloud2 as pc2
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2, JointState
 from trajectory_msgs.msg import JointTrajectory
+from visualization_msgs.msg import MarkerArray
 
-from ocs2_msgs.msg import collision_info
-from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse
+from ocs2_msgs.msg import collision_info # type: ignore 
+from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse # type: ignore
+
+from drl.mobiman_drl_config import * # type: ignore 
 
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 log = logging.getLogger(__name__)
 
-
+'''
+DESCRIPTION: iGibson Environment (OpenAI Gym interface).
+'''
 class iGibsonEnv(BaseEnv):
-    """
-    iGibson Environment (OpenAI Gym interface).
-    """
 
     def __init__(
         self,
@@ -72,8 +70,10 @@ class iGibsonEnv(BaseEnv):
         use_pb_gui=False,
         ros_node_init=False,
         ros_node_id=0,
+        data_folder_path=""
     ):
         """
+        ### NUA TODO: UPDATE!
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
         :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive, vr
@@ -87,65 +87,117 @@ class iGibsonEnv(BaseEnv):
         """
 
         print("[igibson_env::iGibsonEnv::__init__] START")
+
+        ### NUA TODO: DEPRECATE ONE OF THE TWO CONFIG FILES!!!
+        ### Initialize Config Parameters
+        igibson_config_data = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
+        igibson_config = parse_config(igibson_config_data)
         
+        self.config_mobiman = Config(data_folder_path=data_folder_path) # type: ignore
+
+        ### Initialize Variables
+        self.init_flag = False
+        self.init_goal_flag = False
+        self.step_num = 1
+        self.total_step_num = 1
+        self.total_collisions = 0
+        self.total_rollover = 0
+        self.total_goal = 0
+        self.total_max_step = 0
+        self.total_mpc_exit = 0
+        self.total_target = 0
+        self.total_time_horizon = 0
+        self.step_reward = 0.0
+        self.episode_reward = 0.0
+        self.step_action = None
+        self.total_mean_episode_reward = 0.0
+        #self.goal_status = Bool()
+        #self.goal_status.data = False
+        self.action_counter = 0
+        self.observation_counter = 0
+        self.mrt_ready = False
+        self.mpc_action_result = 0
+        self.mpc_action_complete = False
+
+        # Variables for saving OARS data
+        self.data = None
+        self.oars_data = {'Index':[], 'Observation':[], 'Action':[], 'Reward':[]}
+        self.idx = 1
+        self.termination_reason = ''
+        self.model_mode = -1
+        
+        self.init_robot_pose = {}
+        self.robot_data = {}
+        self.goal_data = {}
+        self.target_data = {}
+        self.arm_data = {}
+        self.obs_data = {}
+        self.target_msg = None
+
+        self.training_data = []
+        self.training_data.append(["episode_reward"])
+        self.oar_data = []
+        self.episode_oar_data = dict(obs=[], acts=[], infos=None, terminal=[], rews=[])
+
+        # Set initial command
+        self.cmd_init_base = [0.0, 0.0]
+        self.cmd_base = self.cmd_init_base
+        self.cmd_init_j1 = 0.0
+        self.cmd_init_j2 = 2.9
+        self.cmd_init_j3 = 1.3
+        self.cmd_init_j4 = 4.2
+        self.cmd_init_j5 = 1.4
+        self.cmd_init_j6 = 0.0
+        self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
+        self.cmd_arm = self.cmd_init_arm
+        self.cmd = self.cmd_base + self.cmd_arm
+
+        ## Set Observation-Action-Reward data filename
+        self.oar_data_file = data_folder_path + "oar_data.csv"
+
+        #print("[igibson_env::iGibsonEnv::__init__] DEBUG_INF")
+        #while 1:
+        #    continue
+        
+        ### Initialize ROS node
+        robot_ns = igibson_config["robot_ns"]
+        self.ns = robot_ns + "_" + str(ros_node_id) + "/"
         self.ros_node_init = ros_node_init
         if not self.ros_node_init:
             rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
 
-            config_data = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
-            config = parse_config(config_data)
-
-            robot_ns = config["robot_ns"]
-            self.ns = robot_ns + "_" + str(ros_node_id) + "/"
-
-            print("============================================")
-            print("[igibson_env::iGibsonEnv::__init__] config_file: " + str(config_file))
-            print("[igibson_env::iGibsonEnv::__init__] scene_id: " + str(scene_id))
-            print("[igibson_env::iGibsonEnv::__init__] mode: " + str(mode))
-            print("[igibson_env::iGibsonEnv::__init__] action_timestep: " + str(action_timestep))
-            print("[igibson_env::iGibsonEnv::__init__] physics_timestep: " + str(physics_timestep))
-            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
-            print("[igibson_env::iGibsonEnv::__init__] use_pb_gui: " + str(use_pb_gui))
-            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
-            print("[igibson_env::iGibsonEnv::__init__] ros_node_init: " + str(ros_node_init))
-            print("[igibson_env::iGibsonEnv::__init__] ros_node_id: " + str(ros_node_id))
-            print("[igibson_env::iGibsonEnv::__init__] robot_ns: " + str(robot_ns))
-            print("[igibson_env::iGibsonEnv::__init__] ns: " + str(self.ns))
-            print("============================================")
-
-            # Set initial command
-            self.cmd_init_base = [0.0, 0.0]
-            self.cmd_base = self.cmd_init_base
-
-            self.cmd_init_j1 = 0.0
-            self.cmd_init_j2 = 2.9
-            self.cmd_init_j3 = 1.3
-            self.cmd_init_j4 = 4.2
-            self.cmd_init_j5 = 1.4
-            self.cmd_init_j6 = 0.0
-            self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
-            self.cmd_arm = self.cmd_init_arm
-            self.cmd = self.cmd_base + self.cmd_arm
-
+            # ROS variables
             self.last_update_base = rospy.Time.now()
             self.last_update_arm = rospy.Time.now()
-            
-            # Set Publishers
-            self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
-            self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
-            self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
-            self.depth_raw_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
-            self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
-            self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
-            self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
-            self.joint_states_pub = rospy.Publisher(self.ns + "gibson_ros/joint_states", JointState, queue_size=10)
-            
-            # Set Subscribers
-            rospy.Subscriber(self.ns + "mobile_base_controller/cmd_vel", Twist, self.cmd_base_callback)
-            rospy.Subscriber(self.ns + "arm_controller/cmd_pos", JointTrajectory, self.cmd_arm_callback)
-
             self.bridge = CvBridge()
             self.br = tf.TransformBroadcaster()
+
+            # Subscribers
+            rospy.Subscriber(self.ns + self.config_mobiman.base_control_msg_name, Twist, self.cmd_base_callback)
+            rospy.Subscriber(self.ns + self.config_mobiman.arm_control_msg_name, JointTrajectory, self.cmd_arm_callback)
+            rospy.Subscriber(self.ns + self.config_mobiman.target_msg_name, MarkerArray, self.callback_target)
+            rospy.Subscriber(self.ns + self.config_mobiman.occgrid_msg_name, OccupancyGrid, self.callback_occgrid)
+            rospy.Subscriber(self.ns + self.config_mobiman.selfcoldistance_msg_name, collision_info, self.callback_selfcoldistance)
+            rospy.Subscriber(self.ns + self.config_mobiman.extcoldistance_base_msg_name, collision_info, self.callback_extcoldistance_base)
+            rospy.Subscriber(self.ns + self.config_mobiman.extcoldistance_arm_msg_name, collision_info, self.callback_extcoldistance_arm) # type: ignore
+            rospy.Subscriber(self.ns + self.config_mobiman.pointsonrobot_msg_name, MarkerArray, self.callback_pointsonrobot)
+
+            # Publishers
+            self.image_pub = rospy.Publisher(self.ns + self.config_mobiman.rgb_image_msg_name, Image, queue_size=10)
+            self.depth_pub = rospy.Publisher(self.ns + self.config_mobiman.depth_image_msg_name, Image, queue_size=10)
+            self.depth_raw_pub = rospy.Publisher(self.ns + self.config_mobiman.depth_image_raw_msg_name, Image, queue_size=10)
+            self.camera_info_pub = rospy.Publisher(self.ns + self.config_mobiman.camera_info_msg_name, CameraInfo, queue_size=10)
+            self.lidar_pub = rospy.Publisher(self.ns + self.config_mobiman.lidar_msg_name, PointCloud2, queue_size=10)
+            self.odom_pub = rospy.Publisher(self.ns + self.config_mobiman.odom_msg_name, Odometry, queue_size=10)
+            self.odom_gt_pub = rospy.Publisher(self.ns + self.config_mobiman.odom_msg_name, Odometry, queue_size=10)
+            self.joint_states_pub = rospy.Publisher(self.ns + self.config_mobiman.arm_state_msg_name, JointState, queue_size=10)
+            #self.goal_status_pub = rospy.Publisher(self.config.goal_status_msg_name, Bool, queue_size=1)
+            #self.filtered_laser_pub = rospy.Publisher(self.robot_namespace + '/laser/scan_filtered', LaserScan, queue_size=1)
+            self.debug_visu_pub = rospy.Publisher(self.ns + '/debug_visu', MarkerArray, queue_size=1)
+
+            # Services
+            rospy.Service(self.ns + 'set_mrt_ready', setBool, self.service_set_mrt_ready)
+            rospy.Service(self.ns + 'set_mpc_action_result', setMPCActionResult, self.service_set_mpc_action_result)
 
             #print("[igibson_env::iGibsonEnv::__init__] DEBUG_INF")
             #while 1:
@@ -170,29 +222,132 @@ class iGibsonEnv(BaseEnv):
         #while 1:
         #    continue
 
+    '''
+    DESCRIPTION: TODO...
+    '''
     def cmd_base_callback(self, data):
         self.cmd_base = [data.linear.x, -data.angular.z]
         self.last_update_base = rospy.Time.now()
 
+    '''
+    DESCRIPTION: TODO...
+    '''
     def cmd_arm_callback(self, data):
         joint_names = data.joint_names
         self.cmd_arm = list(data.points[0].positions)
 
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_target(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_target] INCOMING")
+        self.target_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_occgrid(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_occgrid] INCOMING")
+        self.occgrid_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_selfcoldistance(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_selfcoldistance] INCOMING")
+        self.selfcoldistance_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_extcoldistance_base(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_extcoldistance_base] INCOMING")
+        self.extcoldistance_base_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_extcoldistance_arm(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_extcoldistance_arm] INCOMING")
+        self.extcoldistance_arm_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_pointsonrobot(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_pointsonrobot] INCOMING")
+        self.pointsonrobot_msg = msg
+
+    def service_set_mrt_ready(self, req):
+        self.mrt_ready = req.val
+        return setBoolResponse(True)
+
+    def service_set_mpc_action_result(self, req):
+        # 0: MPC/MRT Failure
+        # 1: Collision
+        # 2: Rollover
+        # 3: Goal reached
+        # 4: Target reached
+        # 5: Time-horizon reached
+        self.mpc_action_result = req.action_result
+            
+        if self.mpc_action_result == 0:
+            self.termination_reason = 'mpc_exit'
+            self.total_mpc_exit += 1
+        elif self.mpc_action_result == 1:
+            self.termination_reason = 'collision'
+            self.total_collisions += 1
+            self._episode_done = True
+        elif self.mpc_action_result == 2:
+            self.termination_reason = 'rollover'
+            self.total_rollover += 1
+            self._episode_done = True
+        elif self.mpc_action_result == 3:
+            self.termination_reason = 'goal'
+            self.total_goal += 1
+            self._reached_goal = True
+            self._episode_done = True
+        elif self.mpc_action_result == 4:
+            self.termination_reason = 'target'
+            self.total_target += 1
+        elif self.mpc_action_result == 5:
+            self.termination_reason = 'time_horizon'
+            self.total_time_horizon += 1
+        
+        self.model_mode = req.model_mode
+        self.mpc_action_complete = True
+        return setMPCActionResultResponse(True)
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def initialize_selfcoldistance_config(self):
+        n_selfcoldistance = int(len(self.selfcoldistance_msg.distance))
+        self.config.set_selfcoldistance_config(n_selfcoldistance)
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def initialize_extcoldistance_base_config(self):
+        n_extcoldistance_base = int(len(self.extcoldistance_base_msg.distance))
+        self.config.set_extcoldistance_base_config(n_extcoldistance_base)
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def initialize_extcoldistance_arm_config(self):
+        n_extcoldistance_arm = int(len(self.extcoldistance_arm_msg.distance))
+        self.config.set_extcoldistance_arm_config(n_extcoldistance_arm)
+
+    '''
+    DESCRIPTION: TODO...
+    '''
     def update_ros_topics2(self, state):
         #print("[igibson_env::iGibsonEnv::update_ros_topics2] START")
 
-        last = rospy.Time.now()
-        '''
-        ctr = 0
-        init_j2n6s300_joint_1 = 0
-        init_j2n6s300_joint_2 = 0
-        init_j2n6s300_joint_3 = 0
-        init_j2n6s300_joint_4 = 0
-        init_j2n6s300_joint_5 = 0
-        init_j2n6s300_joint_6 = 0
-        '''
+        #last = rospy.Time.now()
         if not rospy.is_shutdown():
-            #print("[mobiman_jackal_jaco::run] ctr: " + str(ctr))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] ctr: " + str(ctr))
 
             now = rospy.Time.now()
             #dt = (now-last).to_sec()
@@ -203,7 +358,6 @@ class iGibsonEnv(BaseEnv):
             #print("[SimNode::__init__] DEBUG INF")
             #while 1:
             #    continue
-
             
             if (now - self.last_update_base).to_sec() > 0.1:
                 cmd_base = [0.0, 0.0]
@@ -221,152 +375,31 @@ class iGibsonEnv(BaseEnv):
             cmd_arm = self.cmd_arm
             #cmd = cmd_arm + cmd_base
             cmd = cmd_base + cmd_arm
-            #print("[mobiman_jackal_jaco::run] cmd: " + str(len(cmd)))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] cmd: " + str(len(cmd)))
             #print(cmd)
             
             #print("")
             #cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-            joint_states_before = self.robots[0].get_joint_states()
-            #print("[mobiman_jackal_jaco::run] joint_states_before: " + str(len(joint_states_before)))
-            #print(joint_states_before)
-
-            '''
-            if ctr == 0:
-                init_j2n6s300_joint_1 = joint_states_before["j2n6s300_joint_1"][0]
-                init_j2n6s300_joint_2 = joint_states_before["j2n6s300_joint_2"][0]
-                init_j2n6s300_joint_3 = joint_states_before["j2n6s300_joint_3"][0]
-                init_j2n6s300_joint_4 = joint_states_before["j2n6s300_joint_4"][0]
-                init_j2n6s300_joint_5 = joint_states_before["j2n6s300_joint_5"][0]
-                init_j2n6s300_joint_6 = joint_states_before["j2n6s300_joint_6"][0]
-            '''
-
+            ### NUA NOTE: THE FOLLOWING SHOULD BE INCLUDED FOR NON-TRAINING EXAMPLES!
             #obs, _, _, _ = self.env.step(cmd)
 
-            joint_states_after = self.robots[0].get_joint_states()
-            #print("[mobiman_jackal_jaco::run] joint_states_after: " + str(len(joint_states_after)))
-            #print(joint_states_after)
-
+            # Odometry (Ground truth)
             '''
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_1: " + str(cmd_arm[0]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_1: " + str(joint_states_before["j2n6s300_joint_1"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_1: " + str(joint_states_after["j2n6s300_joint_1"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (rad):  " + str(abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_2: " + str(cmd_arm[1]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_2: " + str(joint_states_before["j2n6s300_joint_2"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_2: " + str(joint_states_after["j2n6s300_joint_2"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_3: " + str(cmd_arm[2]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_3: " + str(joint_states_before["j2n6s300_joint_3"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_3: " + str(joint_states_after["j2n6s300_joint_3"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_4: " + str(cmd_arm[3]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_4: " + str(joint_states_before["j2n6s300_joint_4"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_4: " + str(joint_states_after["j2n6s300_joint_4"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_5: " + str(cmd_arm[4]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_5: " + str(joint_states_before["j2n6s300_joint_5"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_5: " + str(joint_states_after["j2n6s300_joint_5"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_6: " + str(cmd_arm[5]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_6: " + str(joint_states_before["j2n6s300_joint_6"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_6: " + str(joint_states_after["j2n6s300_joint_6"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0]) / math.pi))
-            print("-------------------")
-            print("")
-            '''
-
-            '''
-            if ctr > 5:
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - init_j2n6s300_joint_1) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - init_j2n6s300_joint_2) / math.pi))          
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - init_j2n6s300_joint_3) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - init_j2n6s300_joint_4) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - init_j2n6s300_joint_5) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - init_j2n6s300_joint_6) / math.pi))            
-                print("[SimNode::__init__] DEBUG INF")
-                while 1:
-                    continue
-            '''
-
-            '''
-            rgb = (obs["rgb"] * 255).astype(np.uint8)
-            normalized_depth = obs["depth"].astype(np.float32)
-            depth = normalized_depth * self.env.sensors["vision"].depth_high
-            depth_raw_image = (obs["depth"] * 1000).astype(np.uint16)
-
-            image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
-            depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
-            depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
-
-            image_message.header.stamp = now
-            depth_message.header.stamp = now
-            depth_raw_message.header.stamp = now
-            image_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-            depth_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-            depth_raw_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-
-            self.image_pub.publish(image_message)
-            self.depth_pub.publish(depth_message)
-            self.depth_raw_pub.publish(depth_raw_message)
-
-            msg = CameraInfo(
-                height=256,
-                width=256,
-                distortion_model="plumb_bob",
-                D=[0.0, 0.0, 0.0, 0.0, 0.0],
-                K=[128, 0.0, 128, 0.0, 128, 128, 0.0, 0.0, 1.0],
-                R=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-                P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0],
-            )
-            msg.header.stamp = now
-            msg.header.frame_id = self.ns + "camera_depth_optical_frame"
-            self.camera_info_pub.publish(msg)
-
-            if (self.tp_time is None) or ((self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)):
-                scan = obs["scan"]
-                lidar_header = Header()
-                lidar_header.stamp = now
-                lidar_header.frame_id = self.ns + "scan_link"
-
-                laser_linear_range = self.env.sensors["scan_occ"].laser_linear_range
-                laser_angular_range = self.env.sensors["scan_occ"].laser_angular_range
-                min_laser_dist = self.env.sensors["scan_occ"].min_laser_dist
-                n_horizontal_rays = self.env.sensors["scan_occ"].n_horizontal_rays
-
-                laser_angular_half_range = laser_angular_range / 2.0
-                angle = np.arange(
-                    -np.radians(laser_angular_half_range),
-                    np.radians(laser_angular_half_range),
-                    np.radians(laser_angular_range) / n_horizontal_rays,
-                )
-                unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-                lidar_points = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
-
-                lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
-                self.lidar_pub.publish(lidar_message)
-            '''
-
-            # Odometry
             odom = [
                 np.array(self.robots[0].get_position()) - np.array(self.task.initial_pos),
                 np.array(self.robots[0].get_rpy()) - np.array(self.task.initial_orn),
             ]
+            '''
+
+            odom = [
+                np.array(self.robots[0].get_position()),
+                np.array(self.robots[0].get_rpy()),
+            ]
 
             self.br.sendTransform(
                 (odom[0][0], odom[0][1], 0),
-                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]), # type: ignore
                 rospy.Time.now(),
                 self.ns + "base_link",
                 self.ns + "odom",
@@ -384,7 +417,7 @@ class iGibsonEnv(BaseEnv):
                 odom_msg.pose.pose.orientation.y,
                 odom_msg.pose.pose.orientation.z,
                 odom_msg.pose.pose.orientation.w,
-            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]) # type: ignore
 
             odom_msg.twist.twist.linear.x = self.robots[0].get_linear_velocity()[0]
             odom_msg.twist.twist.linear.y = self.robots[0].get_linear_velocity()[1]
@@ -450,8 +483,15 @@ class iGibsonEnv(BaseEnv):
             #ctr += 1
             #print("[igibson_env::iGibsonEnv::update_ros_topics2] END")
 
+    '''
+    DESCRIPTION: TODO...
+    '''
     def update_ros_topics(self, state):
         print("[igibson_env::iGibsonEnv::update_ros_topics] START")
+
+        print("[igibson_env::iGibsonEnv::load_observation_space] DEPRECATED DEBUG_INF")
+        while 1:
+            continue
 
         if not rospy.is_shutdown():
             rgb = (state["rgb"] * 255).astype(np.uint8)
@@ -595,26 +635,12 @@ class iGibsonEnv(BaseEnv):
         else:
             return client.get_result()
 
-    def cmd_callback(self, data):
-        self.cmdx = data.linear.x
-        self.cmdy = -data.angular.z
-
-    def tp_robot_callback(self, data):
-        rospy.loginfo("Teleporting robot")
-        position = [data.pose.position.x, data.pose.position.y, data.pose.position.z]
-        orientation = [
-            data.pose.orientation.x,
-            data.pose.orientation.y,
-            data.pose.orientation.z,
-            data.pose.orientation.w,
-        ]
-        self.env.robots[0].reset_new_pose(position, orientation)
-        self.tp_time = rospy.Time.now()
-
     def load_task_setup(self):
         """
         Load task setup.
         """
+        print("[igibson_env::iGibsonEnv::load_task_setup] START")
+
         self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
         drop_distance = 0.5 * 9.8 * (self.action_timestep**2)
@@ -649,7 +675,7 @@ class iGibsonEnv(BaseEnv):
             self.task = RoomRearrangementTask(self)
         elif self.config["task"] == "mobiman_pick":
             ### NUA TODO: SPECIFY NEW TASK ENVIRONMENT!
-            self.task = PointNavFixedTask(self) 
+            self.task = DummyTask(self)
         else:
             try:
                 import bddl
@@ -663,7 +689,12 @@ class iGibsonEnv(BaseEnv):
                     raise Exception("Invalid task: {}".format(self.config["task"]))
             except ImportError:
                 raise Exception("bddl is not available.")
-
+            
+        print("[igibson_env::iGibsonEnv::load_task_setup] END")
+    
+    '''
+    DESCRIPTION: TODO...
+    '''
     def build_obs_space(self, shape, low, high):
         """
         Helper function that builds individual observation spaces.
@@ -674,13 +705,250 @@ class iGibsonEnv(BaseEnv):
         """
         return gym.spaces.Box(low=low, high=high, shape=shape, dtype=np.float32)
 
+    '''
+    DESCRIPTION: Load observation space.
+    '''
+    def load_observation_space2(self):
+        print("[igibson_env::iGibsonEnv::load_observation_space2] START")
+        self.initialize_selfcoldistance_config()
+        self.initialize_extcoldistance_base_config()
+        self.initialize_extcoldistance_arm_config()
+
+        print("[igibson_env::iGibsonEnv::load_observation_space2] DEBUG INF")
+        while 1:
+            continue
+
+        self.episode_oar_data = dict(obs=[], acts=[], infos=None, terminal=[], rews=[])
+
+        if self.config.observation_space_type == "mobiman_FC":
+            
+            '''
+            self.initialize_occgrid_config()
+            # Occupancy (OccupancyGrid data)
+            if self.config.occgrid_normalize_flag:   
+                obs_occgrid_min = np.full((1, self.config.occgrid_data_size), 0.0).reshape(self.config.fc_obs_shape)
+                obs_occgrid_max = np.full((1, self.config.occgrid_data_size), 1.0).reshape(self.config.fc_obs_shape)
+            else:
+                obs_occgrid_min = np.full((1, self.config.occgrid_data_size), self.config.occgrid_occ_min).reshape(self.config.fc_obs_shape)
+                obs_occgrid_max = np.full((1, self.config.occgrid_data_size), self.config.occgrid_occ_max).reshape(self.config.fc_obs_shape)
+            '''
+
+            # Self collision distances
+            obs_selfcoldistance_min = np.full((1, self.config.n_selfcoldistance), self.config.self_collision_range_min).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_selfcoldistance_max = np.full((1, self.config.n_selfcoldistance), self.config.self_collision_range_max).reshape(self.config.fc_obs_shape) # type: ignore
+
+            '''
+            # External collision distances (base to nearest objects)
+            obs_extcoldistance_base_min = np.full((1, self.config.n_extcoldistance_base), self.config.ext_collision_range_base_min).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_extcoldistance_base_max = np.full((1, self.config.n_extcoldistance_base), self.config.ext_collision_range_max).reshape(self.config.fc_obs_shape) # type: ignore
+
+            # External collision distances (from spheres on robot arm to nearest objects)
+            obs_extcoldistance_arm_min = np.full((1, self.config.n_extcoldistance_arm), self.config.ext_collision_range_arm_min).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_extcoldistance_arm_max = np.full((1, self.config.n_extcoldistance_arm), self.config.ext_collision_range_max).reshape(self.config.fc_obs_shape) # type: ignore
+            '''
+
+            # Collision object positions (wrt. robot base)
+            obs_collision_base_min_single = np.array([[self.world_range_x_min,
+                                                       self.world_range_y_min,
+                                                       self.world_range_z_min]])
+            obs_collision_base_min = np.repeat(obs_collision_base_min_single, self.config.n_extcoldistance_base, axis=0).reshape(self.config.fc_obs_shape) # type: ignore
+            
+            obs_collision_base_max_single = np.array([[self.world_range_x_max,
+                                                       self.world_range_y_max,
+                                                       self.world_range_z_max]])
+            obs_collision_base_max = np.repeat(obs_collision_base_max_single, self.config.n_extcoldistance_base, axis=0).reshape(self.config.fc_obs_shape) # type: ignore
+
+            # Collision object positions (wrt. robot base)
+            obs_collision_arm_min_single = np.array([[self.world_range_x_min,
+                                                      self.world_range_y_min,
+                                                      self.world_range_z_min]])
+            obs_collision_arm_min = np.repeat(obs_collision_arm_min_single, self.config.n_extcoldistance_arm, axis=0).reshape(self.config.fc_obs_shape) # type: ignore
+            
+            obs_collision_arm_max_single = np.array([[self.world_range_x_max,
+                                                      self.world_range_y_max,
+                                                      self.world_range_z_max]])
+            obs_collision_arm_max = np.repeat(obs_collision_arm_max_single, self.config.n_extcoldistance_arm, axis=0).reshape(self.config.fc_obs_shape) # type: ignore
+
+            # Goal (wrt. robot)
+            # base x,y,z
+            # ee x,y,z,roll,pitch,yaw
+            obs_goal_min = np.array([[self.world_range_x_min, # type: ignore
+                                      self.world_range_y_min, # type: ignore
+                                      self.world_range_z_min, 
+                                      self.world_range_x_min, # type: ignore
+                                      self.world_range_y_min, # type: ignore   
+                                      self.world_range_z_min, 
+                                      -math.pi, 
+                                      -math.pi, 
+                                      -math.pi]]).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_goal_max = np.array([[self.world_range_x_max, 
+                                      self.world_range_y_max, 
+                                      self.world_range_z_max, 
+                                      self.world_range_x_max, 
+                                      self.world_range_y_max, 
+                                      self.world_range_z_max, 
+                                      math.pi, 
+                                      math.pi, 
+                                      math.pi]]).reshape(self.config.fc_obs_shape) # type: ignore
+
+            # Arm joint states
+            obs_armstate_min = np.full((1, self.config.n_armstate), -math.pi).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_armstate_max = np.full((1, self.config.n_armstate), math.pi).reshape(self.config.fc_obs_shape) # type: ignore
+
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_occgrid_min shape: " + str(obs_occgrid_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_selfcoldistance_min shape: " + str(obs_selfcoldistance_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_collision_base_min shape: " + str(obs_collision_base_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_collision_arm_min shape: " + str(obs_collision_arm_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_goal_min shape: " + str(obs_goal_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_armstate_min shape: " + str(obs_armstate_min.shape))
+
+            '''
+            self.obs_data = {   "occgrid": np.vstack([obs_occgrid_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "selfcoldistance": np.vstack([obs_selfcoldistance_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "extcoldistance_base": np.vstack([obs_collision_base_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "extcoldistance_arm": np.vstack([obs_collision_arm_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "goal": np.vstack([obs_goal_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "armstate": np.vstack([obs_armstate_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack))} # type: ignore
+            '''
+            
+            self.obs_data = {   "selfcoldistance": np.vstack([obs_selfcoldistance_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "extcoldistance_base": np.vstack([obs_collision_base_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "extcoldistance_arm": np.vstack([obs_collision_arm_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "goal": np.vstack([obs_goal_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "armstate": np.vstack([obs_armstate_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack))} # type: ignore
+
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data occgrid shape: " + str(self.obs_data["occgrid"].shape))
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data selfcoldistance shape: " + str(self.obs_data["selfcoldistance"].shape))
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data extcoldistance_base shape: " + str(self.obs_data["extcoldistance_base"].shape))
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data extcoldistance_arm shape: " + str(self.obs_data["extcoldistance_arm"].shape))
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data goal shape: " + str(self.obs_data["goal"].shape))
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_data armstate shape: " + str(self.obs_data["armstate"].shape))
+
+            #obs_stacked_occgrid_min = np.hstack([obs_occgrid_min] * self.config.n_obs_stack) # type: ignore
+            #obs_stacked_occgrid_max = np.hstack([obs_occgrid_max] * self.config.n_obs_stack) # type: ignore
+
+            #obs_space_min = np.concatenate((obs_stacked_occgrid_min, obs_extcoldistancedist_min, obs_goal_min), axis=0)
+            #obs_space_max = np.concatenate((obs_stacked_occgrid_max, obs_extcoldistancedist_max, obs_goal_max), axis=0)
+
+            obs_space_min = np.concatenate((obs_selfcoldistance_min, obs_collision_base_min, obs_collision_arm_min, obs_goal_min, obs_armstate_min), axis=0)
+            obs_space_max = np.concatenate((obs_selfcoldistance_max, obs_collision_base_max, obs_collision_arm_max, obs_goal_max, obs_armstate_max), axis=0)
+
+            #print("[igibson_env::iGibsonEnv::load_observation_space2] obs_stacked_laser_low shape: " + str(obs_stacked_laser_low.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_space_min shape: " + str(obs_space_min.shape))
+
+            self.obs = obs_space_min
+            self.observation_space = spaces.Box(obs_space_min, obs_space_max)
+
+        elif self.config.observation_space_type == "mobiman_2DCNN_FC":
+
+            print("[igibson_env::iGibsonEnv::load_observation_space2] NEEDS REVIEW: DEBUG INF")
+            while 1:
+                continue
+
+            self.initialize_occgrid_config()
+
+            # Occupancy (OccupancyGrid image)
+            obs_occgrid_image_min = np.full((1, self.config.occgrid_width), 0.0)
+            obs_occgrid_image_min = np.vstack([obs_occgrid_image_min] * self.config.occgrid_height)
+            obs_occgrid_image_min = np.expand_dims(obs_occgrid_image_min, axis=0)
+
+            obs_occgrid_image_max = np.full((1, self.config.occgrid_width), 1.0)
+            obs_occgrid_image_max = np.vstack([obs_occgrid_image_max] * self.config.occgrid_height)
+            obs_occgrid_image_max = np.expand_dims(obs_occgrid_image_max, axis=0)
+
+            # Nearest collision distances (from spheres on robot body)
+            obs_extcoldistancedist_min = np.full((1, self.config.n_extcoldistance), self.config.ext_collision_range_min).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_extcoldistancedist_max = np.full((1, self.config.n_extcoldistance), self.config.ext_collision_range_max).reshape(self.config.fc_obs_shape) # type: ignore
+
+            # Goal (wrt. robot)
+            obs_goal_min = np.array([[self.config.goal_range_min_x, # type: ignore
+                                      self.config.goal_range_min_y, # type: ignore
+                                      self.config.goal_range_min_z, 
+                                      self.config.goal_range_min_x, # type: ignore
+                                      self.config.goal_range_min_y, # type: ignore
+                                      self.config.goal_range_min_z, 
+                                      -math.pi, 
+                                      -math.pi, 
+                                      -math.pi]]).reshape(self.config.fc_obs_shape) # type: ignore
+            obs_goal_max = np.array([[self.config.goal_range_max_x, 
+                                      self.config.goal_range_max_y, 
+                                      self.config.goal_range_max_z, 
+                                      self.config.goal_range_max_x, 
+                                      self.config.goal_range_max_y, 
+                                      self.config.goal_range_max_z, 
+                                      math.pi, 
+                                      math.pi, 
+                                      math.pi]]).reshape(self.config.fc_obs_shape) # type: ignore
+
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_occgrid_image_min shape: " + str(obs_occgrid_image_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_extcoldistancedist_min shape: " + str(obs_extcoldistancedist_min.shape))
+            print("[igibson_env::iGibsonEnv::load_observation_space2] obs_goal_min shape: " + str(obs_goal_min.shape))
+
+            self.obs_data = {   "occgrid_image": np.vstack([obs_occgrid_image_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "extcoldistancedist": np.vstack([obs_extcoldistancedist_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack)), # type: ignore
+                                "goal": np.vstack([obs_goal_min] * (self.config.n_obs_stack * self.config.n_skip_obs_stack))} # type: ignore
+
+            obs_space_occgrid_image_min = np.vstack([obs_occgrid_image_min] * self.config.n_obs_stack) # type: ignore
+            obs_space_occgrid_image_max = np.vstack([obs_occgrid_image_max] * self.config.n_obs_stack) # type: ignore
+
+            obs_space_extcoldistancedist_goal_min = np.concatenate((obs_extcoldistancedist_min, obs_goal_min), axis=0)
+            obs_space_extcoldistancedist_goal_max = np.concatenate((obs_extcoldistancedist_max, obs_goal_max), axis=0)
+
+            self.obs = {"occgrid_image": obs_space_occgrid_image_min, 
+                        "extcoldistancedist_goal": obs_space_extcoldistancedist_goal_min}
+
+            self.observation_space = spaces.Dict({  "occgrid_image": spaces.Box(obs_space_occgrid_image_min, obs_space_occgrid_image_max), 
+                                                    "extcoldistancedist_goal": spaces.Box(obs_space_extcoldistancedist_goal_min, obs_space_extcoldistancedist_goal_max)})
+
+        self.config.set_observation_shape(self.observation_space.shape)
+
+        if self.config.action_type == 0:
+            self.action_space = spaces.Discrete(self.config.n_action)
+        else:
+            action_space_model_min = np.full((1, 1), 0.0).reshape(self.config.fc_obs_shape)
+            action_space_constraint_min = np.full((1, 1), 0.0).reshape(self.config.fc_obs_shape)
+            action_space_target_pos_min = np.array([self.config.goal_range_min_x, self.config.goal_range_min_y, self.config.goal_range_min_z]).reshape(self.config.fc_obs_shape) # type: ignore
+            action_space_target_ori_min = np.full((1, 3), -math.pi).reshape(self.config.fc_obs_shape)
+            obs_space_min = np.concatenate((action_space_model_min, action_space_constraint_min, action_space_target_pos_min, action_space_target_ori_min), axis=0)
+
+            action_space_model_max = np.full((1, 1), 1.0).reshape(self.config.fc_obs_shape)
+            action_space_constraint_max = np.full((1, 1), 1.0).reshape(self.config.fc_obs_shape)
+            action_space_target_pos_max = np.array([self.config.goal_range_max_x, self.config.goal_range_max_y, self.config.goal_range_max_z]).reshape(self.config.fc_obs_shape)
+            action_space_target_ori_max = np.full((1, 3), math.pi).reshape(self.config.fc_obs_shape)
+            obs_space_max = np.concatenate((action_space_model_max, action_space_constraint_max, action_space_target_pos_max, action_space_target_ori_max), axis=0)
+            
+            self.action_space = spaces.Box(obs_space_min, obs_space_max)
+
+        print("[igibson_env::iGibsonEnv::load_observation_space2] action_type: " + str(self.config.action_type))
+        if self.config.action_type == 0:
+            self.config.set_action_shape("Discrete, " + str(self.action_space.n)) # type: ignore
+        else:
+            self.config.set_action_shape(self.action_space.shape)
+
+        print("[igibson_env::iGibsonEnv::load_observation_space2] observation_space shape: " + str(self.observation_space.shape))
+        print("[igibson_env::iGibsonEnv::load_observation_space2] action_space shape: " + str(self.action_space.shape))
+
+        print("[igibson_env::iGibsonEnv::load_observation_space2] observation_space: " + str(self.observation_space))
+        print("[igibson_env::iGibsonEnv::load_observation_space2] action_space: " + str(self.action_space))
+        print("[igibson_env::iGibsonEnv::load_observation_space2] END")
+
+        #print("[igibson_env::iGibsonEnv::load_observation_space2] DEBUG INF")
+        #while 1:
+        #   continue
+
     def load_observation_space(self):
         """
         Load observation space.
         """
-        self.output = self.config["output"]
-        self.image_width = self.config.get("image_width", 128)
-        self.image_height = self.config.get("image_height", 128)
+        print("[igibson_env::iGibsonEnv::load_observation_space] START")
+
+        print("[igibson_env::iGibsonEnv::load_observation_space] DEPRECATED DEBUG_INF")
+        while 1:
+            continue
+
+        #self.output = self.config["output"]
+        #self.image_width = self.config.get("image_width", 128)
+        #self.image_height = self.config.get("image_height", 128)
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
@@ -783,6 +1051,8 @@ class iGibsonEnv(BaseEnv):
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
 
+        print("[igibson_env::iGibsonEnv::load_observation_space] END")
+
     def load_action_space(self):
         """
         Load action space.
@@ -810,24 +1080,28 @@ class iGibsonEnv(BaseEnv):
         """
         Load environment.
         """
-        #print("[igibson_env::iGibsonEnv::load] START")
+        print("[igibson_env::iGibsonEnv::load] START")
 
-        #print("[igibson_env::iGibsonEnv::load] START super")
+        print("[igibson_env::iGibsonEnv::load] START super")
         super(iGibsonEnv, self).load()
         
-        #print("[igibson_env::iGibsonEnv::load] START load_task_setup")
-        self.load_task_setup()
+        print("[igibson_env::iGibsonEnv::load] START load_task_setup")
+        #self.load_task_setup()
+
+        print("[igibson_env::iGibsonEnv::load] START load_observation_space")
+        self.load_observation_space2()
         
-        #print("[igibson_env::iGibsonEnv::load] START load_observation_space")
-        self.load_observation_space()
-        
-        #print("[igibson_env::iGibsonEnv::load] START load_action_space")
+        print("[igibson_env::iGibsonEnv::load] DEBUG_INF")   
+        while 1:
+            continue
+
+        print("[igibson_env::iGibsonEnv::load] START load_action_space")
         self.load_action_space()
         
-        #print("[igibson_env::iGibsonEnv::load] START load_miscellaneous_variables")
+        print("[igibson_env::iGibsonEnv::load] START load_miscellaneous_variables")
         self.load_miscellaneous_variables()
 
-        #print("[igibson_env::iGibsonEnv::load] END")
+        print("[igibson_env::iGibsonEnv::load] END")
 
     def get_state(self):
         """

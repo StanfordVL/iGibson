@@ -10,6 +10,7 @@ import pybullet as p
 from transforms3d.euler import euler2quat
 
 from igibson import ros_path
+import igibson
 from igibson.utils.utils import parse_config
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
@@ -34,29 +35,28 @@ from cv_bridge import CvBridge
 import rospkg
 import rospy
 import tf
-from geometry_msgs.msg import PoseStamped, Twist
-from nav_msgs.msg import Odometry
-from sensor_msgs import point_cloud2 as pc2
-from sensor_msgs.msg import CameraInfo
-from sensor_msgs.msg import Image as ImageMsg
-from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
-from sensor_msgs.msg import JointState
+from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs import point_cloud2 as pc2
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2, JointState
 from trajectory_msgs.msg import JointTrajectory
+from visualization_msgs.msg import MarkerArray
 
-#from ocs2_msgs.msg import collision_info
-#from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse
+from ocs2_msgs.msg import collision_info # type: ignore 
+from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse # type: ignore
+
+from drl.mobiman_drl_config import * # type: ignore 
 
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 log = logging.getLogger(__name__)
 
-
+'''
+DESCRIPTION: iGibson Environment (OpenAI Gym interface).
+'''
 class iGibsonEnv(BaseEnv):
-    """
-    iGibson Environment (OpenAI Gym interface).
-    """
 
     def __init__(
         self,
@@ -72,8 +72,10 @@ class iGibsonEnv(BaseEnv):
         use_pb_gui=False,
         ros_node_init=False,
         ros_node_id=0,
+        data_folder_path=""
     ):
         """
+        ### NUA TODO: UPDATE!
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
         :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive, vr
@@ -87,65 +89,117 @@ class iGibsonEnv(BaseEnv):
         """
 
         print("[igibson_env::iGibsonEnv::__init__] START")
+
+        ### NUA TODO: DEPRECATE ONE OF THE TWO CONFIG FILES!!!
+        ### Initialize Config Parameters
+        igibson_config_data = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
+        igibson_config = parse_config(igibson_config_data)
         
+        self.config_mobiman = Config(data_folder_path=data_folder_path) # type: ignore
+
+        ### Initialize Variables
+        self.init_flag = False
+        self.init_goal_flag = False
+        self.step_num = 1
+        self.total_step_num = 1
+        self.total_collisions = 0
+        self.total_rollover = 0
+        self.total_goal = 0
+        self.total_max_step = 0
+        self.total_mpc_exit = 0
+        self.total_target = 0
+        self.total_time_horizon = 0
+        self.step_reward = 0.0
+        self.episode_reward = 0.0
+        self.step_action = None
+        self.total_mean_episode_reward = 0.0
+        #self.goal_status = Bool()
+        #self.goal_status.data = False
+        self.action_counter = 0
+        self.observation_counter = 0
+        self.mrt_ready = False
+        self.mpc_action_result = 0
+        self.mpc_action_complete = False
+
+        # Variables for saving OARS data
+        self.data = None
+        self.oars_data = {'Index':[], 'Observation':[], 'Action':[], 'Reward':[]}
+        self.idx = 1
+        self.termination_reason = ''
+        self.model_mode = -1
+        
+        self.init_robot_pose = {}
+        self.robot_data = {}
+        self.goal_data = {}
+        self.target_data = {}
+        self.arm_data = {}
+        self.obs_data = {}
+        self.target_msg = None
+
+        self.training_data = []
+        self.training_data.append(["episode_reward"])
+        self.oar_data = []
+        self.episode_oar_data = dict(obs=[], acts=[], infos=None, terminal=[], rews=[])
+
+        # Set initial command
+        self.cmd_init_base = [0.0, 0.0]
+        self.cmd_base = self.cmd_init_base
+        self.cmd_init_j1 = 0.0
+        self.cmd_init_j2 = 2.9
+        self.cmd_init_j3 = 1.3
+        self.cmd_init_j4 = 4.2
+        self.cmd_init_j5 = 1.4
+        self.cmd_init_j6 = 0.0
+        self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
+        self.cmd_arm = self.cmd_init_arm
+        self.cmd = self.cmd_base + self.cmd_arm
+
+        ## Set Observation-Action-Reward data filename
+        self.oar_data_file = data_folder_path + "oar_data.csv"
+
+        #print("[igibson_env::iGibsonEnv::__init__] DEBUG_INF")
+        #while 1:
+        #    continue
+        
+        ### Initialize ROS node
+        robot_ns = igibson_config["robot_ns"]
+        self.ns = robot_ns + "_" + str(ros_node_id) + "/"
         self.ros_node_init = ros_node_init
         if not self.ros_node_init:
             rospy.init_node("igibson_ros_" + str(ros_node_id), anonymous=True)
 
-            config_data = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
-            config = parse_config(config_data)
-
-            robot_ns = config["robot_ns"]
-            self.ns = robot_ns + "_" + str(ros_node_id) + "/"
-
-            print("============================================")
-            print("[igibson_env::iGibsonEnv::__init__] config_file: " + str(config_file))
-            print("[igibson_env::iGibsonEnv::__init__] scene_id: " + str(scene_id))
-            print("[igibson_env::iGibsonEnv::__init__] mode: " + str(mode))
-            print("[igibson_env::iGibsonEnv::__init__] action_timestep: " + str(action_timestep))
-            print("[igibson_env::iGibsonEnv::__init__] physics_timestep: " + str(physics_timestep))
-            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
-            print("[igibson_env::iGibsonEnv::__init__] use_pb_gui: " + str(use_pb_gui))
-            print("[igibson_env::iGibsonEnv::__init__] device_idx: " + str(device_idx))
-            print("[igibson_env::iGibsonEnv::__init__] ros_node_init: " + str(ros_node_init))
-            print("[igibson_env::iGibsonEnv::__init__] ros_node_id: " + str(ros_node_id))
-            print("[igibson_env::iGibsonEnv::__init__] robot_ns: " + str(robot_ns))
-            print("[igibson_env::iGibsonEnv::__init__] ns: " + str(self.ns))
-            print("============================================")
-
-            # Set initial command
-            self.cmd_init_base = [0.0, 0.0]
-            self.cmd_base = self.cmd_init_base
-
-            self.cmd_init_j1 = 0.0
-            self.cmd_init_j2 = 2.9
-            self.cmd_init_j3 = 1.3
-            self.cmd_init_j4 = 4.2
-            self.cmd_init_j5 = 1.4
-            self.cmd_init_j6 = 0.0
-            self.cmd_init_arm = [self.cmd_init_j1, self.cmd_init_j2, self.cmd_init_j3, self.cmd_init_j4, self.cmd_init_j5, self.cmd_init_j6]
-            self.cmd_arm = self.cmd_init_arm
-            self.cmd = self.cmd_base + self.cmd_arm
-
+            # ROS variables
             self.last_update_base = rospy.Time.now()
             self.last_update_arm = rospy.Time.now()
-            
-            # Set Publishers
-            self.image_pub = rospy.Publisher(self.ns + "gibson_ros/camera/rgb/image", ImageMsg, queue_size=10)
-            self.depth_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image", ImageMsg, queue_size=10)
-            self.lidar_pub = rospy.Publisher(self.ns + "gibson_ros/lidar/points", PointCloud2, queue_size=10)
-            self.depth_raw_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/image_raw", ImageMsg, queue_size=10)
-            self.odom_pub = rospy.Publisher(self.ns + "odom", Odometry, queue_size=10)
-            self.gt_pose_pub = rospy.Publisher(self.ns + "ground_truth_odom", Odometry, queue_size=10)
-            self.camera_info_pub = rospy.Publisher(self.ns + "gibson_ros/camera/depth/camera_info", CameraInfo, queue_size=10)
-            self.joint_states_pub = rospy.Publisher(self.ns + "gibson_ros/joint_states", JointState, queue_size=10)
-            
-            # Set Subscribers
-            rospy.Subscriber(self.ns + "mobile_base_controller/cmd_vel", Twist, self.cmd_base_callback)
-            rospy.Subscriber(self.ns + "arm_controller/cmd_pos", JointTrajectory, self.cmd_arm_callback)
-
             self.bridge = CvBridge()
             self.br = tf.TransformBroadcaster()
+
+            # Subscribers
+            rospy.Subscriber(self.ns + self.config_mobiman.base_control_msg_name, Twist, self.cmd_base_callback)
+            rospy.Subscriber(self.ns + self.config_mobiman.arm_control_msg_name, JointTrajectory, self.cmd_arm_callback)
+            rospy.Subscriber(self.ns + self.config_mobiman.target_msg_name, MarkerArray, self.callback_target)
+            rospy.Subscriber(self.ns + self.config_mobiman.occgrid_msg_name, OccupancyGrid, self.callback_occgrid)
+            rospy.Subscriber(self.ns + self.config_mobiman.selfcoldistance_msg_name, collision_info, self.callback_selfcoldistance)
+            rospy.Subscriber(self.ns + self.config_mobiman.extcoldistance_base_msg_name, collision_info, self.callback_extcoldistance_base)
+            rospy.Subscriber(self.ns + self.config_mobiman.extcoldistance_arm_msg_name, collision_info, self.callback_extcoldistance_arm) # type: ignore
+            rospy.Subscriber(self.ns + self.config_mobiman.pointsonrobot_msg_name, MarkerArray, self.callback_pointsonrobot)
+
+            # Publishers
+            self.image_pub = rospy.Publisher(self.ns + self.config_mobiman.rgb_image_msg_name, Image, queue_size=10)
+            self.depth_pub = rospy.Publisher(self.ns + self.config_mobiman.depth_image_msg_name, Image, queue_size=10)
+            self.depth_raw_pub = rospy.Publisher(self.ns + self.config_mobiman.depth_image_raw_msg_name, Image, queue_size=10)
+            self.camera_info_pub = rospy.Publisher(self.ns + self.config_mobiman.camera_info_msg_name, CameraInfo, queue_size=10)
+            self.lidar_pub = rospy.Publisher(self.ns + self.config_mobiman.lidar_msg_name, PointCloud2, queue_size=10)
+            self.odom_pub = rospy.Publisher(self.ns + self.config_mobiman.odom_msg_name, Odometry, queue_size=10)
+            self.odom_gt_pub = rospy.Publisher(self.ns + self.config_mobiman.odom_msg_name, Odometry, queue_size=10)
+            self.joint_states_pub = rospy.Publisher(self.ns + self.config_mobiman.arm_state_msg_name, JointState, queue_size=10)
+            #self.goal_status_pub = rospy.Publisher(self.config.goal_status_msg_name, Bool, queue_size=1)
+            #self.filtered_laser_pub = rospy.Publisher(self.robot_namespace + '/laser/scan_filtered', LaserScan, queue_size=1)
+            self.debug_visu_pub = rospy.Publisher(self.ns + '/debug_visu', MarkerArray, queue_size=1)
+
+            # Services
+            rospy.Service(self.ns + 'set_mrt_ready', setBool, self.service_set_mrt_ready)
+            rospy.Service(self.ns + 'set_mpc_action_result', setMPCActionResult, self.service_set_mpc_action_result)
 
             #print("[igibson_env::iGibsonEnv::__init__] DEBUG_INF")
             #while 1:
@@ -170,29 +224,111 @@ class iGibsonEnv(BaseEnv):
         #while 1:
         #    continue
 
+    '''
+    DESCRIPTION: TODO...
+    '''
     def cmd_base_callback(self, data):
         self.cmd_base = [data.linear.x, -data.angular.z]
         self.last_update_base = rospy.Time.now()
 
+    '''
+    DESCRIPTION: TODO...
+    '''
     def cmd_arm_callback(self, data):
         joint_names = data.joint_names
         self.cmd_arm = list(data.points[0].positions)
 
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_target(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_target] INCOMING")
+        self.target_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_occgrid(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_occgrid] INCOMING")
+        self.occgrid_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_selfcoldistance(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_selfcoldistance] INCOMING")
+        self.selfcoldistance_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_extcoldistance_base(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_extcoldistance_base] INCOMING")
+        self.extcoldistance_base_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_extcoldistance_arm(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_extcoldistance_arm] INCOMING")
+        self.extcoldistance_arm_msg = msg
+
+    '''
+    DESCRIPTION: TODO...
+    '''
+    def callback_pointsonrobot(self, msg):
+        #print("[igibson_env::iGibsonEnv::callback_pointsonrobot] INCOMING")
+        self.pointsonrobot_msg = msg
+
+    def service_set_mrt_ready(self, req):
+        self.mrt_ready = req.val
+        return setBoolResponse(True)
+
+    def service_set_mpc_action_result(self, req):
+        # 0: MPC/MRT Failure
+        # 1: Collision
+        # 2: Rollover
+        # 3: Goal reached
+        # 4: Target reached
+        # 5: Time-horizon reached
+        self.mpc_action_result = req.action_result
+            
+        if self.mpc_action_result == 0:
+            self.termination_reason = 'mpc_exit'
+            self.total_mpc_exit += 1
+        elif self.mpc_action_result == 1:
+            self.termination_reason = 'collision'
+            self.total_collisions += 1
+            self._episode_done = True
+        elif self.mpc_action_result == 2:
+            self.termination_reason = 'rollover'
+            self.total_rollover += 1
+            self._episode_done = True
+        elif self.mpc_action_result == 3:
+            self.termination_reason = 'goal'
+            self.total_goal += 1
+            self._reached_goal = True
+            self._episode_done = True
+        elif self.mpc_action_result == 4:
+            self.termination_reason = 'target'
+            self.total_target += 1
+        elif self.mpc_action_result == 5:
+            self.termination_reason = 'time_horizon'
+            self.total_time_horizon += 1
+        
+        self.model_mode = req.model_mode
+        self.mpc_action_complete = True
+        return setMPCActionResultResponse(True)
+
+    '''
+    DESCRIPTION: TODO...
+    '''
     def update_ros_topics2(self, state):
         #print("[igibson_env::iGibsonEnv::update_ros_topics2] START")
 
-        last = rospy.Time.now()
-        '''
-        ctr = 0
-        init_j2n6s300_joint_1 = 0
-        init_j2n6s300_joint_2 = 0
-        init_j2n6s300_joint_3 = 0
-        init_j2n6s300_joint_4 = 0
-        init_j2n6s300_joint_5 = 0
-        init_j2n6s300_joint_6 = 0
-        '''
+        #last = rospy.Time.now()
         if not rospy.is_shutdown():
-            #print("[mobiman_jackal_jaco::run] ctr: " + str(ctr))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] ctr: " + str(ctr))
 
             now = rospy.Time.now()
             #dt = (now-last).to_sec()
@@ -203,7 +339,6 @@ class iGibsonEnv(BaseEnv):
             #print("[SimNode::__init__] DEBUG INF")
             #while 1:
             #    continue
-
             
             if (now - self.last_update_base).to_sec() > 0.1:
                 cmd_base = [0.0, 0.0]
@@ -221,152 +356,31 @@ class iGibsonEnv(BaseEnv):
             cmd_arm = self.cmd_arm
             #cmd = cmd_arm + cmd_base
             cmd = cmd_base + cmd_arm
-            #print("[mobiman_jackal_jaco::run] cmd: " + str(len(cmd)))
+            #print("[igibson_env::iGibsonEnv::update_ros_topics2] cmd: " + str(len(cmd)))
             #print(cmd)
             
             #print("")
             #cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-            joint_states_before = self.robots[0].get_joint_states()
-            #print("[mobiman_jackal_jaco::run] joint_states_before: " + str(len(joint_states_before)))
-            #print(joint_states_before)
-
-            '''
-            if ctr == 0:
-                init_j2n6s300_joint_1 = joint_states_before["j2n6s300_joint_1"][0]
-                init_j2n6s300_joint_2 = joint_states_before["j2n6s300_joint_2"][0]
-                init_j2n6s300_joint_3 = joint_states_before["j2n6s300_joint_3"][0]
-                init_j2n6s300_joint_4 = joint_states_before["j2n6s300_joint_4"][0]
-                init_j2n6s300_joint_5 = joint_states_before["j2n6s300_joint_5"][0]
-                init_j2n6s300_joint_6 = joint_states_before["j2n6s300_joint_6"][0]
-            '''
-
+            ### NUA NOTE: THE FOLLOWING SHOULD BE INCLUDED FOR NON-TRAINING EXAMPLES!
             #obs, _, _, _ = self.env.step(cmd)
 
-            joint_states_after = self.robots[0].get_joint_states()
-            #print("[mobiman_jackal_jaco::run] joint_states_after: " + str(len(joint_states_after)))
-            #print(joint_states_after)
-
+            # Odometry (Ground truth)
             '''
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_1: " + str(cmd_arm[0]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_1: " + str(joint_states_before["j2n6s300_joint_1"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_1: " + str(joint_states_after["j2n6s300_joint_1"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (rad):  " + str(abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - joint_states_before["j2n6s300_joint_1"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_2: " + str(cmd_arm[1]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_2: " + str(joint_states_before["j2n6s300_joint_2"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_2: " + str(joint_states_after["j2n6s300_joint_2"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - joint_states_before["j2n6s300_joint_2"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_3: " + str(cmd_arm[2]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_3: " + str(joint_states_before["j2n6s300_joint_3"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_3: " + str(joint_states_after["j2n6s300_joint_3"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - joint_states_before["j2n6s300_joint_3"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_4: " + str(cmd_arm[3]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_4: " + str(joint_states_before["j2n6s300_joint_4"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_4: " + str(joint_states_after["j2n6s300_joint_4"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - joint_states_before["j2n6s300_joint_4"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_5: " + str(cmd_arm[4]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_5: " + str(joint_states_before["j2n6s300_joint_5"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_5: " + str(joint_states_after["j2n6s300_joint_5"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - joint_states_before["j2n6s300_joint_5"][0]) / math.pi))
-            print("")
-            print("[mobiman_jackal_jaco::run] TARGET j2n6s300_joint_6: " + str(cmd_arm[5]))
-            print("[mobiman_jackal_jaco::run] BEFORE j2n6s300_joint_6: " + str(joint_states_before["j2n6s300_joint_6"][0]))
-            print("[mobiman_jackal_jaco::run] AFTER  j2n6s300_joint_6: " + str(joint_states_after["j2n6s300_joint_6"][0]))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (rad): " + str(abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0])))
-            print("[mobiman_jackal_jaco::run] j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - joint_states_before["j2n6s300_joint_6"][0]) / math.pi))
-            print("-------------------")
-            print("")
-            '''
-
-            '''
-            if ctr > 5:
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_1 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_1"][0] - init_j2n6s300_joint_1) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_2 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_2"][0] - init_j2n6s300_joint_2) / math.pi))          
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_3 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_3"][0] - init_j2n6s300_joint_3) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_4 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_4"][0] - init_j2n6s300_joint_4) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_5 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_5"][0] - init_j2n6s300_joint_5) / math.pi))            
-                print("[mobiman_jackal_jaco::run] TOTAL j2n6s300_joint_6 diff (deg): " + str(180 * abs(joint_states_after["j2n6s300_joint_6"][0] - init_j2n6s300_joint_6) / math.pi))            
-                print("[SimNode::__init__] DEBUG INF")
-                while 1:
-                    continue
-            '''
-
-            '''
-            rgb = (obs["rgb"] * 255).astype(np.uint8)
-            normalized_depth = obs["depth"].astype(np.float32)
-            depth = normalized_depth * self.env.sensors["vision"].depth_high
-            depth_raw_image = (obs["depth"] * 1000).astype(np.uint16)
-
-            image_message = self.bridge.cv2_to_imgmsg(rgb, encoding="rgb8")
-            depth_message = self.bridge.cv2_to_imgmsg(depth, encoding="passthrough")
-            depth_raw_message = self.bridge.cv2_to_imgmsg(depth_raw_image, encoding="passthrough")
-
-            image_message.header.stamp = now
-            depth_message.header.stamp = now
-            depth_raw_message.header.stamp = now
-            image_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-            depth_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-            depth_raw_message.header.frame_id = self.ns + "camera_depth_optical_frame"
-
-            self.image_pub.publish(image_message)
-            self.depth_pub.publish(depth_message)
-            self.depth_raw_pub.publish(depth_raw_message)
-
-            msg = CameraInfo(
-                height=256,
-                width=256,
-                distortion_model="plumb_bob",
-                D=[0.0, 0.0, 0.0, 0.0, 0.0],
-                K=[128, 0.0, 128, 0.0, 128, 128, 0.0, 0.0, 1.0],
-                R=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-                P=[128, 0.0, 128, 0.0, 0.0, 128, 128, 0.0, 0.0, 0.0, 1.0, 0.0],
-            )
-            msg.header.stamp = now
-            msg.header.frame_id = self.ns + "camera_depth_optical_frame"
-            self.camera_info_pub.publish(msg)
-
-            if (self.tp_time is None) or ((self.tp_time is not None) and ((rospy.Time.now() - self.tp_time).to_sec() > 1.0)):
-                scan = obs["scan"]
-                lidar_header = Header()
-                lidar_header.stamp = now
-                lidar_header.frame_id = self.ns + "scan_link"
-
-                laser_linear_range = self.env.sensors["scan_occ"].laser_linear_range
-                laser_angular_range = self.env.sensors["scan_occ"].laser_angular_range
-                min_laser_dist = self.env.sensors["scan_occ"].min_laser_dist
-                n_horizontal_rays = self.env.sensors["scan_occ"].n_horizontal_rays
-
-                laser_angular_half_range = laser_angular_range / 2.0
-                angle = np.arange(
-                    -np.radians(laser_angular_half_range),
-                    np.radians(laser_angular_half_range),
-                    np.radians(laser_angular_range) / n_horizontal_rays,
-                )
-                unit_vector_laser = np.array([[np.cos(ang), np.sin(ang), 0.0] for ang in angle])
-                lidar_points = unit_vector_laser * (scan * (laser_linear_range - min_laser_dist) + min_laser_dist)
-
-                lidar_message = pc2.create_cloud_xyz32(lidar_header, lidar_points.tolist())
-                self.lidar_pub.publish(lidar_message)
-            '''
-
-            # Odometry
             odom = [
                 np.array(self.robots[0].get_position()) - np.array(self.task.initial_pos),
                 np.array(self.robots[0].get_rpy()) - np.array(self.task.initial_orn),
             ]
+            '''
+
+            odom = [
+                np.array(self.robots[0].get_position()),
+                np.array(self.robots[0].get_rpy()),
+            ]
 
             self.br.sendTransform(
                 (odom[0][0], odom[0][1], 0),
-                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]),
+                tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]), # type: ignore
                 rospy.Time.now(),
                 self.ns + "base_link",
                 self.ns + "odom",
@@ -384,7 +398,7 @@ class iGibsonEnv(BaseEnv):
                 odom_msg.pose.pose.orientation.y,
                 odom_msg.pose.pose.orientation.z,
                 odom_msg.pose.pose.orientation.w,
-            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1])
+            ) = tf.transformations.quaternion_from_euler(0, 0, odom[-1][-1]) # type: ignore
 
             odom_msg.twist.twist.linear.x = self.robots[0].get_linear_velocity()[0]
             odom_msg.twist.twist.linear.y = self.robots[0].get_linear_velocity()[1]
@@ -594,10 +608,6 @@ class iGibsonEnv(BaseEnv):
             rospy.signal_shutdown("Action server not available!")
         else:
             return client.get_result()
-
-    def cmd_callback(self, data):
-        self.cmdx = data.linear.x
-        self.cmdy = -data.angular.z
 
     def tp_robot_callback(self, data):
         rospy.loginfo("Teleporting robot")

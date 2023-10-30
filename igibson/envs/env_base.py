@@ -56,8 +56,8 @@ class BaseEnv(gym.Env):
         if scene_id is not None:
             self.config["scene_id"] = scene_id
 
-        image_width = self.config["image_width"]
-        image_height = self.config["image_height"]
+        #image_width = self.config["image_width"]
+        #image_height = self.config["image_height"]
 
         #print("[env_base::__init__] image_width: " + str(image_width))
         #print("[env_base::__init__] image_height: " + str(image_height))
