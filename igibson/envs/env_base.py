@@ -109,7 +109,7 @@ class BaseEnv(gym.Env):
                 use_pb_gui=use_pb_gui,
             )
         else:
-            #print("[env_base::__init__] START Simulator")
+            print("[env_base::__init__] START Simulator")
             self.simulator = Simulator(
                 mode=mode,
                 physics_timestep=physics_timestep,

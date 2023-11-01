@@ -631,6 +631,21 @@ class BaseRobot(StatefulObject):
             joint_states[joint_name] = (joint_position, joint_velocity)
         return joint_states
 
+    def get_link_names(self):
+        """Get this robot's link names in the format of Array[String: ]]"""
+        link_names = []
+        for link_name in self._links.keys():
+            link_names.append(link_name)
+        return link_names
+    
+    def get_link_position_orientation(self, link_name):
+        """NUA TODO: UPDATE"""
+        return self._links[link_name].get_position_orientation()
+
+    def get_link_rpy(self, link_name):
+        """NUA TODO: UPDATE"""
+        return self._links[link_name].get_rpy()
+
     def get_linear_velocity(self):
         """
         Get linear velocity of this robot (velocity associated with base link)

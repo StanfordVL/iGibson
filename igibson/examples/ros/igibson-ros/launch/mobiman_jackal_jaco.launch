@@ -14,7 +14,7 @@
     <param name="robot_description" command="cat $(find mobiman_simulation)/$(arg urdf_path)"/>
     
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
-      <remap from="/$(arg robot_ns)/joint_states" to="gibson_ros/joint_states"/>
+      <remap from="/$(arg robot_ns)/joint_states" to="joint_states"/>
     </node>
     
     <!--node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
