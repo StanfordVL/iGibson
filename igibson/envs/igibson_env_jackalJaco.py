@@ -34,7 +34,7 @@ import rospkg
 import rospy
 import tf
 from std_msgs.msg import Header
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import PoseStamped, Twist, Pose
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, JointState
@@ -45,9 +45,11 @@ from ocs2_msgs.msg import collision_info # type: ignore
 from ocs2_msgs.srv import setDiscreteActionDRL, setContinuousActionDRL, setBool, setBoolResponse, setMPCActionResult, setMPCActionResultResponse # type: ignore
 
 from drl.mobiman_drl_config import * # type: ignore 
-
+from igibson.objects.ycb_object import YCBObject
+from igibson.objects.ycb_object import StatefulObject
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from gazebo_msgs.msg import ModelStates
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +72,8 @@ class iGibsonEnv(BaseEnv):
         use_pb_gui=False,
         ros_node_init=False,
         ros_node_id=0,
-        data_folder_path=""
+        data_folder_path="",
+        objects=None
     ):
         """
         ### NUA TODO: UPDATE!
@@ -198,6 +201,7 @@ class iGibsonEnv(BaseEnv):
             #self.goal_status_pub = rospy.Publisher(self.config_mobiman.goal_status_msg_name, Bool, queue_size=1)
             #self.filtered_laser_pub = rospy.Publisher(self.robot_namespace + '/laser/scan_filtered', LaserScan, queue_size=1)
             self.debug_visu_pub = rospy.Publisher(self.ns + 'debug_visu', MarkerArray, queue_size=1)
+            self.model_state_pub = rospy.Publisher(self.ns+ "model_states", ModelStates, queue_size=10)
 
             # Clients
 
@@ -223,6 +227,12 @@ class iGibsonEnv(BaseEnv):
         self.automatic_reset = automatic_reset
 
         # Timers
+        self.objects = objects
+        self.spawned_objects = []
+        self.create_objects(self.objects)
+        # print("[igibson_env::iGibsonEnv::__init__] END")
+        self.transform_timer = rospy.Timer(rospy.Duration(1/100), self.timer_transform)
+        
         self.timer = rospy.Timer(rospy.Duration(0.05), self.callback_update) # type: ignore
         print("[igibson_env_jackalJaco::iGibsonEnv::__init__] Waiting callback_update_flag...")
         while not self.callback_update_flag:
@@ -233,6 +243,33 @@ class iGibsonEnv(BaseEnv):
         print("[igibson_env_jackalJaco::iGibsonEnv::__init__] DEBUG INF")
         while 1:
             continue
+
+    def create_objects(self, objects):
+        for key,val in objects.items():
+            pointer = YCBObject(name=val, abilities={"soakable": {}, "cleaningTool": {}})
+            self.simulator.import_object(pointer)
+            self.spawned_objects.append(pointer)
+            self.spawned_objects[-1].set_position([3,3,0.2])
+            self.spawned_objects[-1].set_orientation([0.7071068, 0, 0, 0.7071068])
+
+    def timer_transform(self, timer):
+        # print("Works?")
+        model_state_msg = ModelStates()
+        pose = Pose()
+        for obj, dict in zip(self.spawned_objects, self.objects.items()):
+            # self.br.sendTransform(obj.get_position(), obj.get_orientation(), rospy.Time.now(), f'{self.ns}{dict[0]}', 'world')
+            model_state_msg.name.append(dict[0])
+            x,y,z = obj.get_position()
+            pose.position.x = x
+            pose.position.y = y
+            pose.position.z = z
+            x,y,z,w = obj.get_orientation()
+            pose.orientation.x = x
+            pose.orientation.y = y
+            pose.orientation.z = z
+            pose.orientation.w = w
+            model_state_msg.pose.append(pose)
+        self.model_state_pub.publish(model_state_msg)
 
     '''
     DESCRIPTION: TODO...

@@ -59,6 +59,9 @@ max_collisions_allowed: 500
 initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
 
+## Objects
+objects: {conveyor_belt: 101_conveyor}
+
 # sensor spec
 #output: [task_obs, rgb, depth, scan]
 #output: [task_obs]

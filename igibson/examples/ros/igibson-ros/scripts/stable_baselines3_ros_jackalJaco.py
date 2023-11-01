@@ -282,7 +282,7 @@ def main(selection="user", headless=False, short_exec=False):
     physics_timestep = igibson_config["physics_timestep"]
     render_timestep = igibson_config["render_timestep"]
     use_pb_gui = igibson_config["use_pb_gui"]
-
+    objects = igibson_config["objects"]
     tensorboard_log_dir = igibson.ros_path + "/log"
     num_environments = n_robot
 
@@ -314,7 +314,8 @@ def main(selection="user", headless=False, short_exec=False):
                 physics_timestep=1 / 120.0,
                 ros_node_id=rank,
                 use_pb_gui=use_pb_gui,
-                data_folder_path=data_folder_path
+                data_folder_path=data_folder_path,
+                objects=objects,
             )
             env.seed(seed + rank) # type: ignore
             return env
