@@ -129,7 +129,11 @@ def replay_demo(
     vr_settings.set_frame_save_path(frame_save_path)
 
     task = IGLogReader.read_metadata_attr(in_log_path, "/metadata/atus_activity")
+    if task is None:
+        task = IGLogReader.read_metadata_attr(in_log_path, "/metadata/task_name")
     task_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/activity_definition")
+    if task_id is None:
+        task_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/task_instance")
     scene = IGLogReader.read_metadata_attr(in_log_path, "/metadata/scene_id")
     physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
     render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
