@@ -1915,8 +1915,8 @@ class MeshRenderer(object):
         xx = xx.flatten()
         yy = yy.flatten()
 
-        x_samples = (np.tan(xx) / np.cos(yy) * self.height // 2 + self.height // 2).astype(np.int)
-        y_samples = (np.tan(yy) * self.height // 2 + self.height // 2).astype(np.int)
+        x_samples = (np.tan(xx) / np.cos(yy) * self.height // 2 + self.height // 2).astype(np.int32)
+        y_samples = (np.tan(yy) * self.height // 2 + self.height // 2).astype(np.int32)
 
         self.x_samples = x_samples.flatten()
         self.y_samples = y_samples.flatten()
