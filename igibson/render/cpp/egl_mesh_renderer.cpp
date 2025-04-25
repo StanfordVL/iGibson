@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 #include <glad/gl.h>
 
